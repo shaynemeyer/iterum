@@ -4,9 +4,11 @@
 
 # Iterum
 
-A small Python harness for running a fleet of coding agents, built on one SQLite system of record: `agent.db`.
+A small Python harness for running a fleet of [Claude Code](https://code.claude.com/docs) agents, built on one SQLite system of record: `agent.db`.
 
-*Iterum* is Latin for "again". Every action is appended to an event ledger, so state can always be rebuilt and shared across machines.
+The goal is a durable memory of what your agents did, instead of losing it when a session ends: events go into an append-only ledger that you can audit, rebuild state from and sync across machines. Today the ledger records the harness audit; recording agent activity is next.
+
+*Iterum* is Latin for "again". Because the ledger is the source of truth, state can always be rebuilt from it.
 
 > Early work in progress. The schema defines more than the code uses yet.
 
@@ -35,12 +37,18 @@ Every event carries a UUIDv7 `uid` and the `device` that wrote it, so ledgers fr
 
 ## Setup
 
-Requires Python 3.14 and [uv](https://docs.astral.sh/uv/). The doctor also checks for the `claude` CLI.
+Requires Python 3.14 and [uv](https://docs.astral.sh/uv/). The doctor also checks for the `claude` CLI. `uv` creates the environment on first run; there's no separate install step.
 
-Run from the repo root, in order:
+Name this device once, in your shell profile (for example `~/.zshrc`), then open a new terminal:
 
 ```bash
-export ITERUM_DEVICE=laptop       # name this device; every event records it
+export ITERUM_DEVICE=laptop       # unique per machine; every event records it
+```
+
+Then, in order:
+
+```bash
+git clone https://github.com/shaynemeyer/iterum.git && cd iterum
 uv run fleet/doctor.py            # audit this machine, writes harness-audit.json
 uv run scripts/seed-ledger.py     # record the audit in agent.db
 uv run python -m fleet.project    # rebuild knowledge from the ledger
@@ -67,3 +75,9 @@ It exports this device's events, commits only that file, pulls, pushes, imports 
 | `ITERUM_SYNC_DIR` | `~/private-data/iterum` | Private folder for exported events |
 
 `agent.db` and `harness-audit.json` hold local data and are git-ignored. Keep the sync folder in a private repo.
+
+## License
+
+The code is released under the [MIT License](LICENSE).
+
+The Iterum logo, the Septa mascot and the favicons in [`assets/`](assets/) are **not** covered by the MIT License; see [assets/LICENSE.md](assets/LICENSE.md).
