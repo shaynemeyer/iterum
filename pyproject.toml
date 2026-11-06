@@ -1,0 +1,7 @@
+[project]
+name = "iterum"
+version = "0.1.0"
+description = "A Python harness for a fleet of coding agents, built on an append-only SQLite ledger."
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = []
