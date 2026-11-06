@@ -1,0 +1,429 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Iterum</title>
+<meta name="description" content="A small Python harness for Claude Code agents, built on one SQLite file: an append-only event ledger you can audit, rebuild state from and sync across machines.">
+<meta property="og:title" content="Iterum">
+<meta property="og:description" content="A ledger your agents can't rewrite. Open source harness for Claude Code.">
+<meta property="og:image" content="https://shaynemeyer.github.io/iterum/img/septa.png">
+<link rel="icon" href="img/favicon.ico" sizes="32x32">
+<link rel="icon" href="img/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="img/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy: #1e293b; --navy-dark: #131c2b; --navy-deep: #0b1220; --teal: #0f9d8c; --teal-soft: #5cc8b8;
+  --mint: #e8f3f1; --coral: #f2a07b; --term: #0f1724;
+  --bg: #f4f8f7; --surface: #ffffff; --text: #1e293b; --muted: #52606d; --line: #d7e3e0;
+  --accent: #0b7a6e; --shadow: 0 1px 2px rgba(30,41,59,.06), 0 12px 32px -12px rgba(30,41,59,.25);
+  --display: "Bricolage Grotesque", -apple-system, BlinkMacSystemFont, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0e1520; --surface: #162030; --text: #e8f3f1; --muted: #9fb0bd; --line: #24324a;
+    --accent: #5cc8b8; --shadow: 0 1px 2px rgba(0,0,0,.3), 0 16px 40px -16px rgba(0,0,0,.7);
+  }
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: var(--bg); color: var(--text); overflow-x: hidden;
+  font: 17px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
+.wrap { max-width: 1120px; margin: 0 auto; padding: 0 20px; }
+a { color: var(--accent); }
+code, pre, .term, .oneliner, .chip, .tag, .eyebrow, .brand { font-variant-ligatures: none; }
+code { font-family: var(--mono); font-size: .88em; background: color-mix(in srgb, var(--teal) 14%, transparent); padding: .1em .35em; border-radius: 4px; }
+h1, h2, h3 { font-family: var(--display); line-height: 1.1; letter-spacing: -.02em; }
+h2 { font-size: clamp(2rem, 4.5vw, 2.9rem); margin: 0 0 .6rem; font-weight: 800; }
+.eyebrow { font-family: var(--mono); font-size: .78rem; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); font-weight: 700; margin: 0 0 .8rem; }
+.sub { color: var(--muted); font-size: 1.12rem; max-width: 40em; margin: 0; }
+section { padding: 104px 0; }
+
+/* Nav */
+nav { position: absolute; top: 0; left: 0; right: 0; z-index: 5; }
+nav .wrap { display: flex; align-items: center; justify-content: space-between; padding-top: 20px; padding-bottom: 20px; }
+.brand { display: flex; align-items: center; gap: 10px; color: var(--mint); text-decoration: none; font-family: var(--mono); font-weight: 700; }
+.brand img { width: 32px; height: 32px; border-radius: 8px; }
+nav ul { display: flex; gap: 24px; list-style: none; margin: 0; padding: 0; }
+nav ul a { color: color-mix(in srgb, var(--mint) 80%, transparent); text-decoration: none; font-size: .95rem; }
+nav ul a:hover { color: var(--mint); }
+.menu { display: none; position: relative; }
+.menu summary { list-style: none; cursor: pointer; width: 40px; height: 40px; display: grid; place-items: center;
+  border: 1px solid rgba(232,243,241,.3); border-radius: 8px; color: var(--mint); }
+.menu summary::-webkit-details-marker { display: none; }
+.menu .i-close, .menu[open] .i-open { display: none; }
+.menu[open] .i-close { display: block; }
+.menu ul { position: absolute; right: 0; top: calc(100% + 8px); flex-direction: column; gap: 0; min-width: 190px; padding: 6px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); }
+.menu ul a { display: block; padding: 10px 12px; border-radius: 8px; color: var(--text); }
+.menu ul a:hover { background: var(--bg); color: var(--text); }
+
+/* Hero */
+.hero { position: relative; overflow: hidden; color: var(--mint); padding: 150px 0 120px;
+  background:
+    radial-gradient(900px 500px at 85% 10%, rgba(15,157,140,.28), transparent 60%),
+    radial-gradient(700px 500px at 0% 100%, rgba(92,200,184,.18), transparent 60%),
+    linear-gradient(160deg, var(--navy) 0%, var(--navy-dark) 55%, var(--navy-deep) 100%); }
+.hero::after { content: ""; position: absolute; inset: auto 0 -1px 0; height: 80px; background: var(--bg);
+  clip-path: ellipse(75% 100% at 50% 100%); }
+.hero .wrap { position: relative; z-index: 2; display: grid; grid-template-columns: .9fr 1.1fr; gap: 48px; align-items: center; }
+.hero .wrap > *, .split > *, .septa > * { min-width: 0; }  /* let wide terminals scroll instead of widening the grid */
+.pill { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px 6px 8px; border-radius: 999px; background: rgba(232,243,241,.08);
+  border: 1px solid rgba(232,243,241,.18); font-size: .85rem; margin-bottom: 24px; }
+.pill b { background: var(--teal-soft); color: var(--navy); border-radius: 999px; padding: 1px 8px; font-size: .75rem; }
+.hero h1 { font-size: clamp(2.8rem, 7vw, 4.6rem); font-weight: 800; margin: 0 0 20px; }
+.hero h1 em { font-style: normal; color: var(--teal-soft); }
+.hero .lead { font-size: 1.2rem; color: rgba(232,243,241,.82); margin: 0 0 32px; max-width: 30em; }
+.cta { display: flex; flex-wrap: wrap; gap: 12px; }
+.btn { display: inline-flex; align-items: center; gap: 8px; padding: 13px 22px; border-radius: 10px; text-decoration: none; font-weight: 600;
+  transition: transform .15s ease, box-shadow .15s ease, background .15s; }
+.btn:hover { transform: translateY(-2px); }
+.btn.primary { background: var(--teal-soft); color: var(--navy); box-shadow: 0 8px 24px -8px rgba(92,200,184,.7); }
+.btn.ghost { color: var(--mint); border: 1px solid rgba(232,243,241,.3); }
+.btn.ghost:hover { background: rgba(232,243,241,.08); }
+.btn svg { width: 18px; height: 18px; }
+
+/* Terminal */
+.term-wrap { position: relative; }
+.term { background: var(--term); border-radius: 14px; box-shadow: 0 40px 80px -24px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.07);
+  font-family: var(--mono); font-size: .74rem; line-height: 1.7; color: var(--mint); overflow: hidden; transform: rotate(-1deg); }
+.term-bar { display: flex; align-items: center; gap: 8px; padding: 12px 14px; background: #172234; border-bottom: 1px solid rgba(255,255,255,.05); }
+.term-bar i { width: 12px; height: 12px; border-radius: 50%; display: block; }
+.term-bar i:nth-child(1) { background: #FF5F57; } .term-bar i:nth-child(2) { background: #FEBC2E; } .term-bar i:nth-child(3) { background: #28C840; }
+.term-bar span { margin-left: auto; margin-right: auto; color: #8193a3; font-size: .75rem; transform: translateX(-20px); }
+.term-body { padding: 20px 22px 24px; min-height: 300px; white-space: pre; overflow-x: auto; }
+.term .p { color: var(--teal-soft); } .term .dim { color: #8193a3; }
+.t-ok { color: var(--teal-soft); font-weight: 700; } .t-no { color: var(--coral); font-weight: 700; }
+.typed { display: inline-block; overflow: hidden; vertical-align: bottom; width: 0; animation: type 1.2s steps(22) .4s forwards; }
+.caret { display: inline-block; width: .6em; height: 1.1em; background: var(--mint); vertical-align: text-bottom; animation: blink 1s step-end infinite; }
+.line { opacity: 0; animation: fade .35s ease forwards; }
+@keyframes type { to { width: 22ch; } }
+@keyframes blink { 50% { opacity: 0; } }
+@keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.badge { position: absolute; right: -26px; bottom: -58px; width: 150px; z-index: 3;
+  filter: drop-shadow(0 16px 24px rgba(0,0,0,.45)); animation: bob 5s ease-in-out infinite; }
+@keyframes bob { 50% { transform: translateY(-8px) rotate(-3deg); } }
+
+/* Bubbles */
+.bubble { position: absolute; bottom: -30px; border-radius: 50%; z-index: 1; border: 1.5px solid rgba(232,243,241,.35);
+  background: radial-gradient(circle at 30% 30%, rgba(232,243,241,.35), transparent 60%); animation: rise linear infinite; }
+@keyframes rise { to { transform: translateY(-860px) translateX(var(--drift)); opacity: 0; } }
+
+/* Stats */
+.stats { margin-top: -10px; position: relative; z-index: 3; }
+.stats .wrap { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+.stat { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 22px; box-shadow: var(--shadow); }
+.stat b { display: block; font-family: var(--display); font-size: 2.1rem; font-weight: 800; line-height: 1; margin-bottom: 6px; color: var(--accent); }
+.stat span { color: var(--muted); font-size: .92rem; }
+
+/* Cards */
+.grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 48px; }
+.card { position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 26px;
+  transition: transform .2s ease, box-shadow .2s ease, border-color .2s; }
+.card:hover { transform: translateY(-4px); box-shadow: var(--shadow); border-color: color-mix(in srgb, var(--teal) 50%, var(--line)); }
+.icon { width: 46px; height: 46px; border-radius: 12px; display: grid; place-items: center; margin-bottom: 16px; color: var(--mint); }
+.icon svg { width: 24px; height: 24px; }
+.card h3 { margin: 0 0 6px; font-size: 1.2rem; }
+.card p { margin: 0; color: var(--muted); font-size: .96rem; }
+.card .tables { font-family: var(--mono); font-size: .78rem; color: var(--accent); margin: 0 0 8px; }
+.i1 { background: var(--navy); box-shadow: inset 0 0 0 1px rgba(232,243,241,.15); } .i2 { background: var(--teal); }
+.i3 { background: #3a6f8f; } .i4 { background: #4b5d78; } .i5 { background: #0b7a6e; } .i6 { background: #c76f4e; }
+
+/* Rebuild */
+.split { display: grid; grid-template-columns: .9fr 1.1fr; gap: 56px; align-items: center; }
+.split .term { transform: none; }
+.split .term-body { min-height: 0; }
+.tags { display: flex; flex-direction: column; gap: 12px; margin-top: 28px; }
+.tagrow { display: flex; align-items: center; gap: 14px; }
+.tag { font-family: var(--mono); font-size: .78rem; font-weight: 700; padding: 5px 0; width: 78px; text-align: center; border-radius: 6px; flex: none; }
+.tag.match { background: var(--teal); color: #fff; }
+.tag.drift { background: var(--coral); color: var(--navy); }
+.tagrow span:last-child { color: var(--muted); font-size: .96rem; }
+
+/* Sync band */
+.band { background: linear-gradient(170deg, var(--navy-dark), var(--navy-deep)); color: var(--mint); position: relative; overflow: hidden; }
+.band .eyebrow { color: var(--teal-soft); }
+.band .sub { color: rgba(232,243,241,.75); }
+.band a { color: var(--teal-soft); }
+.band .grid { grid-template-columns: repeat(2, 1fr); }
+.band .card { background: rgba(232,243,241,.04); border-color: rgba(232,243,241,.12); }
+.band .card:hover { border-color: rgba(92,200,184,.6); box-shadow: none; }
+.band .card p { color: rgba(232,243,241,.72); }
+.band code { background: rgba(232,243,241,.12); }
+.band .num { font-family: var(--mono); color: var(--teal-soft); font-size: .8rem; font-weight: 700; margin-bottom: 8px; display: block; }
+.shell-bg { position: absolute; right: -120px; top: 40px; width: 520px; opacity: .07; pointer-events: none; }
+.oneliner { display: inline-block; margin-top: 36px; font-family: var(--mono); font-size: .92rem; background: var(--term);
+  border: 1px solid rgba(232,243,241,.14); border-radius: 10px; padding: 12px 18px; }
+.oneliner .p { color: var(--teal-soft); }
+
+/* Septa */
+.septa { display: grid; grid-template-columns: 300px 1fr; gap: 56px; align-items: center; }
+.septa img { width: 100%; height: auto; filter: drop-shadow(0 20px 30px rgba(30,41,59,.25)); }
+
+/* Install */
+.install { text-align: center; }
+.install .sub { margin: 0 auto; }
+.code { position: relative; max-width: 720px; margin: 40px auto 0; text-align: left; background: var(--term); color: var(--mint); border-radius: 14px; box-shadow: var(--shadow); overflow: hidden; }
+.code pre { margin: 0; padding: 24px 26px; font-family: var(--mono); font-size: .88rem; line-height: 1.8; overflow-x: auto; }
+.code .p { color: var(--teal-soft); user-select: none; } .code .c { color: #8193a3; }
+.copy { position: absolute; top: 12px; right: 12px; font: 600 .78rem var(--mono); background: rgba(232,243,241,.1); color: var(--mint);
+  border: 1px solid rgba(232,243,241,.18); border-radius: 8px; padding: 6px 12px; cursor: pointer; }
+.copy:hover { background: rgba(232,243,241,.18); }
+.chips { display: flex; justify-content: center; flex-wrap: wrap; gap: 10px; margin-top: 24px; }
+.chip { font-family: var(--mono); font-size: .82rem; padding: 6px 12px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); }
+
+footer { border-top: 1px solid var(--line); padding: 48px 0 64px; color: var(--muted); font-size: .92rem; }
+footer .wrap { display: flex; justify-content: space-between; align-items: center; gap: 32px; flex-wrap: wrap; }
+footer img { width: 72px; height: auto; }
+
+.js .reveal { opacity: 0; transform: translateY(24px); transition: opacity .7s ease, transform .7s ease; }
+.reveal.in { opacity: 1; transform: none; }
+
+@media (max-width: 1119px) {
+  .hero .wrap { grid-template-columns: 1fr; }  /* terminal needs ~570px to show its longest line */
+  .hero .term-wrap { max-width: 640px; }
+}
+@media (max-width: 900px) {
+  .split, .septa { grid-template-columns: 1fr; }
+  .hero { padding: 120px 0 110px; }
+  .grid { grid-template-columns: repeat(2, 1fr); }
+  .stats .wrap { grid-template-columns: repeat(2, 1fr); }
+  .badge { right: -4px; bottom: -48px; width: 110px; }
+  .septa img { max-width: 240px; }
+}
+@media (max-width: 640px) {
+  nav .links { display: none; }
+  .menu { display: block; }
+}
+@media (max-width: 600px) {
+  section { padding: 72px 0; }
+  .wrap { padding: 0 16px; }
+  .grid, .band .grid { grid-template-columns: 1fr; }
+  .term { font-size: .64rem; transform: none; }
+  .shell-bg { display: none; }
+  .oneliner { font-size: .8rem; }
+  .code pre { padding-top: 56px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+  .typed { width: 22ch; } .line, .js .reveal { opacity: 1; transform: none; }
+  .bubble { display: none; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="wrap">
+    <a class="brand" href="#"><img src="img/favicon.svg" alt="">iterum</a>
+    <ul class="links">
+      <li><a href="#how">How it works</a></li>
+      <li><a href="#sync">Sync</a></li>
+      <li><a href="#start">Get started</a></li>
+      <li><a href="https://github.com/shaynemeyer/iterum">GitHub</a></li>
+    </ul>
+    <details class="menu" id="menu">
+      <summary aria-label="Menu">
+        <svg class="i-open" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+        <svg class="i-close" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </summary>
+      <ul>
+        <li><a href="#how">How it works</a></li>
+        <li><a href="#sync">Sync</a></li>
+        <li><a href="#start">Get started</a></li>
+        <li><a href="https://github.com/shaynemeyer/iterum">GitHub</a></li>
+      </ul>
+    </details>
+  </div>
+</nav>
+
+<header class="hero" id="top">
+  <div id="bubbles" aria-hidden="true"></div>
+  <div class="wrap">
+    <div>
+      <div class="pill"><b>Claude Code</b> Open source agent harness, early work in progress</div>
+      <h1>A ledger your agents <em>can't rewrite.</em></h1>
+      <p class="lead">Iterum is a small Python harness for Claude Code agents, built on one SQLite file. Events go into an append-only ledger you can audit, rebuild state from and sync across your machines.</p>
+      <div class="cta">
+        <a class="btn primary" href="#start">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17l6-6-6-6M12 19h8"/></svg>
+          Get started
+        </a>
+        <a class="btn ghost" href="https://github.com/shaynemeyer/iterum">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2.2c-3.3.7-4-1.4-4-1.4-.6-1.4-1.4-1.8-1.4-1.8-1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.7-1.6-2.7-.3-5.5-1.3-5.5-6 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0C17.3 4.6 18.3 5 18.3 5c.6 1.7.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .5z"/></svg>
+          View on GitHub
+        </a>
+      </div>
+    </div>
+    <div class="term-wrap">
+      <div class="term" role="img" aria-label="Terminal running uv run fleet/doctor.py, which reports 2 of 7 harness layers implemented on a fresh machine">
+        <div class="term-bar"><i></i><i></i><i></i><span>~/iterum</span></div>
+<div class="term-body"><span class="p">❯</span> <span class="typed">uv run fleet/doctor.py</span>
+<span class="line" style="animation-delay:1.9s">execution      <span class="t-ok">IMPLEMENTED</span>  <span class="dim">2.1.319 (Claude Code)</span></span>
+<span class="line" style="animation-delay:2.1s">tooling        <span class="t-no">NOTHING</span>      <span class="dim">no .claude/agents/*.md</span></span>
+<span class="line" style="animation-delay:2.3s">context        <span class="t-ok">IMPLEMENTED</span>  <span class="dim">CLAUDE.md present</span></span>
+<span class="line" style="animation-delay:2.5s">lifecycle      <span class="t-no">NOTHING</span>      <span class="dim">no durable run state in agent.db</span></span>
+<span class="line" style="animation-delay:2.7s">observability  <span class="t-no">NOTHING</span>      <span class="dim">1 live agents, no ledger to read them against</span></span>
+<span class="line" style="animation-delay:2.9s">verification   <span class="t-no">NOTHING</span>      <span class="dim">no replayable test tasks</span></span>
+<span class="line" style="animation-delay:3.1s">governance     <span class="t-no">NOTHING</span>      <span class="dim">0 hook events configured, no approval trail</span></span>
+<span class="line" style="animation-delay:3.4s"> </span>
+<span class="line" style="animation-delay:3.6s">5 of 7 layers: <span class="t-no">NOTHING</span></span>
+<span class="line" style="animation-delay:3.9s"><span class="p">❯</span> <span class="caret"></span></span></div>
+      </div>
+      <img class="badge" src="img/septa.png" alt="Septa, the Iterum mascot: a nautilus holding a scroll">
+    </div>
+  </div>
+</header>
+
+<div class="stats">
+  <div class="wrap">
+    <div class="stat reveal"><b>1</b><span>SQLite file, <code>agent.db</code>, holds everything.</span></div>
+    <div class="stat reveal"><b>0</b><span>servers to run. Sync uses a private git repo.</span></div>
+    <div class="stat reveal"><b>7</b><span>harness layers checked by the doctor.</span></div>
+    <div class="stat reveal"><b>2</b><span>triggers block every UPDATE and DELETE on the ledger.</span></div>
+  </div>
+</div>
+
+<section id="how">
+  <div class="wrap">
+    <p class="eyebrow">How it works</p>
+    <h2>Three contracts, kept apart</h2>
+    <p class="sub"><code>agent.db</code> separates what's true now from what happened and from what you've concluded. Mix them and you can't tell which to trust.</p>
+    <div class="grid">
+      <div class="card reveal"><div class="icon i1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div>
+        <p class="tables">runs · steps</p><h3>Control state</h3><p>Mutable. Answers "what is true right now?"</p></div>
+      <div class="card reveal"><div class="icon i2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"/><path d="M8 9h8M8 13h8M8 17h5"/></svg></div>
+        <p class="tables">events</p><h3>Event ledger</h3><p>Append-only. Every event gets a UUIDv7 and the name of the device that wrote it.</p></div>
+      <div class="card reveal"><div class="icon i3"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg></div>
+        <p class="tables">knowledge</p><h3>Derived knowledge</h3><p>A projection of the ledger. Wipe it and rebuild it from events at any time.</p></div>
+      <div class="card reveal"><div class="icon i4"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6v4l4 6v6a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-6l4-6z"/><path d="M5 14h14"/></svg></div>
+        <p class="tables">fleet/doctor.py</p><h3>Harness doctor</h3><p>Checks execution, tooling, context, lifecycle, observability, verification and governance, and writes its findings to <code>harness-audit.json</code>.</p></div>
+      <div class="card reveal"><div class="icon i5"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4"/><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/></svg></div>
+        <p class="tables">fleet/project.py</p><h3>Drift check</h3><p>Rebuilds knowledge and exits 1 on drift, so a hook can catch unrecorded writes.</p></div>
+      <div class="card reveal"><div class="icon i6"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></div>
+        <p class="tables">fleet/sync.py</p><h3>Cross-device sync</h3><p>One command shares events between your machines through a private git repo.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="rebuild" style="padding-top:40px">
+  <div class="wrap split">
+    <div class="reveal">
+      <p class="eyebrow">Rebuild, don't trust</p>
+      <h2>If it isn't in the ledger, it didn't happen</h2>
+      <p class="sub">Knowledge is a projection. <code>fleet.project</code> throws it away, rebuilds it from events and compares fingerprints. A mismatch means something wrote knowledge without recording why.</p>
+      <div class="tags">
+        <div class="tagrow"><span class="tag match">MATCH</span><span>Everything is explained by the ledger. Exit 0.</span></div>
+        <div class="tagrow"><span class="tag drift">DRIFT</span><span>Something changed off the record. Exit 1, so a hook fails.</span></div>
+      </div>
+    </div>
+    <div class="term reveal" role="img" aria-label="Terminal running fleet.project twice: DRIFT then MATCH">
+      <div class="term-bar"><i></i><i></i><i></i><span>~/iterum</span></div>
+<div class="term-body"><span class="p">❯</span> uv run python -m fleet.project
+<span class="dim">before: 4f53cda18c2baa0c</span>
+<span class="dim">after:  84970c6be3dbcf7f</span>
+<span class="t-no">DRIFT</span> - something wrote knowledge that no event explains
+
+<span class="p">❯</span> uv run python -m fleet.project
+<span class="dim">before: 84970c6be3dbcf7f</span>
+<span class="dim">after:  84970c6be3dbcf7f</span>
+<span class="t-ok">MATCH</span> - the projection is rebuildable from the ledger</div>
+    </div>
+  </div>
+</section>
+
+<section class="band" id="sync">
+  <img class="shell-bg" src="img/logo-dark.svg" alt="" aria-hidden="true">
+  <div class="wrap" style="position:relative">
+    <p class="eyebrow">Sync across devices</p>
+    <h2>One history, every machine, no server</h2>
+    <p class="sub">Each machine keeps its own <code>agent.db</code>. Only events move, as plain text files in a private git repo you control.</p>
+    <div class="grid">
+      <div class="card reveal"><span class="num">01</span><h3>Events travel, not the database</h3><p>Copying a live SQLite file can corrupt it. Text files of events can't.</p></div>
+      <div class="card reveal"><span class="num">02</span><h3>One file per machine</h3><p>Each machine writes only its own <code>events-&lt;device&gt;.jsonl</code>, so git never has a conflict to resolve.</p></div>
+      <div class="card reveal"><span class="num">03</span><h3>Merging is just adding</h3><p>Events are never edited. Import skips ones it already has, so running it twice changes nothing.</p></div>
+      <div class="card reveal"><span class="num">04</span><h3>Files only grow</h3><p>Export never removes an event, so a rebuilt machine can't wipe its own history.</p></div>
+    </div>
+    <div class="oneliner reveal"><span class="p">❯</span> uv run python -m fleet.sync sync</div>
+    <p class="sub" style="margin-top:16px;font-size:1rem">Export, commit, pull, push, import and rebuild, in one go. The <a href="https://github.com/shaynemeyer/iterum/blob/main/docs/sync.md">sync guide</a> walks through setup.</p>
+  </div>
+</section>
+
+<section id="septa">
+  <div class="wrap septa">
+    <img class="reveal" src="img/septa.png" alt="Septa, a cartoon nautilus with one large eye, holding a rolled scroll" loading="lazy">
+    <div class="reveal">
+      <p class="eyebrow">Meet Septa</p>
+      <h2>Named for the walls that never come down</h2>
+      <p class="sub">A nautilus grows by building a new chamber and sealing the old one with a wall called a <em>septum</em>. It never reopens a chamber. Iterum's ledger works the same way: every event gets a new chamber, and the old ones stay sealed.</p>
+    </div>
+  </div>
+</section>
+
+<section class="install" id="start" style="padding-top:40px">
+  <div class="wrap">
+    <p class="eyebrow">Get started</p>
+    <h2>Up and running in a minute</h2>
+    <p class="sub"><code>uv</code> sets up the environment on first run, so there's nothing to install. Put <code>ITERUM_DEVICE</code> in your shell profile so every new terminal has it.</p>
+    <div class="chips"><span class="chip">Python 3.14</span><span class="chip">uv</span><span class="chip">git</span><span class="chip">Claude Code</span></div>
+    <div class="code reveal">
+      <button class="copy" type="button">Copy</button>
+<pre id="cmds"><span class="p">$ </span>export ITERUM_DEVICE=laptop       <span class="c"># unique per machine</span>
+<span class="p">$ </span>git clone https://github.com/shaynemeyer/iterum.git
+<span class="p">$ </span>cd iterum
+<span class="p">$ </span>uv run fleet/doctor.py            <span class="c"># audit this machine</span>
+<span class="p">$ </span>uv run scripts/seed-ledger.py     <span class="c"># record the audit in agent.db</span>
+<span class="p">$ </span>uv run python -m fleet.project    <span class="c"># rebuild knowledge from the ledger</span></pre>
+    </div>
+    <p class="sub" style="margin:28px auto 0;font-size:1rem">Then read the <a href="https://github.com/shaynemeyer/iterum#readme">README</a>, and the <a href="https://github.com/shaynemeyer/iterum/blob/main/docs/sync.md">sync guide</a> to add more machines.</p>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div>
+      <p style="margin:0 0 6px"><b style="font-family:var(--mono);color:var(--text)">iterum</b> is open source on <a href="https://github.com/shaynemeyer/iterum">GitHub</a>. Code under the <a href="https://github.com/shaynemeyer/iterum/blob/main/LICENSE">MIT License</a>; the logo and mascot are <a href="https://github.com/shaynemeyer/iterum/blob/main/assets/LICENSE.md">not</a>.</p>
+      <p style="margin:0">Early development. Today the ledger records the harness audit; recording agent activity is next.</p>
+    </div>
+    <img src="img/septa.png" alt="" aria-hidden="true">
+  </div>
+</footer>
+
+<script>document.documentElement.classList.add("js");
+const bubbles = document.getElementById("bubbles");
+for (let i = 0; i < 16; i++) {
+  const b = document.createElement("div");
+  const size = 6 + Math.random() * 18;
+  b.className = "bubble";
+  b.style.width = b.style.height = size + "px";
+  b.style.left = Math.random() * 100 + "%";
+  b.style.setProperty("--drift", (Math.random() * 60 - 30) + "px");
+  b.style.animationDuration = 10 + Math.random() * 10 + "s";
+  b.style.animationDelay = -Math.random() * 20 + "s";
+  bubbles.appendChild(b);
+}
+
+const io = new IntersectionObserver(entries => entries.forEach(e => {
+  if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); }
+}), { threshold: .12 });
+document.querySelectorAll(".reveal").forEach((el, i) => {
+  el.style.transitionDelay = (i % 3) * 80 + "ms";
+  io.observe(el);
+});
+
+document.querySelectorAll("#menu a").forEach(a => a.addEventListener("click", () => { document.getElementById("menu").open = false; }));
+
+document.querySelector(".copy").addEventListener("click", e => {
+  const text = document.getElementById("cmds").innerText.replace(/^\$ /gm, "").replace(/\s+#.*$/gm, "");
+  navigator.clipboard.writeText(text).then(() => {
+    e.target.textContent = "Copied";
+    setTimeout(() => e.target.textContent = "Copy", 1500);
+  });
+});
+</script>
+</body>
+</html>
