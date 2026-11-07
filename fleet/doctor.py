@@ -2,7 +2,7 @@
 
 """fleet doctor - print which harness layers this machine actually implements.
 
-Chapter 2. Reads your real environment, invents nothing, changes nothing.
+Reads your real environment, invents nothing, changes nothing.
 Run it from the root of a project where you actually use agents.
 
 This is the one module that imports nothing from `fleet`, so it runs before the
@@ -46,7 +46,8 @@ def db_tables():
 def layers():
     tables = db_tables()
     agents = sorted(PROJECT.glob(".claude/agents/*.md"))
-    claude_md = (PROJECT / "CLAUDE.md").exists()
+    claude_md_path = PROJECT / "CLAUDE.md"
+    claude_md = claude_md_path.exists() and bool(claude_md_path.read_text().strip())
 
     hooks = []
     settings = PROJECT / ".claude" / "settings.json"
@@ -77,7 +78,11 @@ def layers():
                 else "no .claude/agents/*.md"
             ),
         ),
-        ("context", claude_md, "CLAUDE.md present" if claude_md else "no CLAUDE.md"),
+        (
+            "context",
+            claude_md,
+            "CLAUDE.md present" if claude_md else "no CLAUDE.md, or it is empty",
+        ),
         (
             "lifecycle",
             {"runs", "steps"} <= tables,

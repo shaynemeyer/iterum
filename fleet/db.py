@@ -28,6 +28,10 @@ def write():
     con = connect()
     try:
         con.execute("BEGIN IMMEDIATE")
+    except Exception:
+        con.close()  # no transaction was opened, so there is nothing to roll back
+        raise
+    try:
         yield con
         con.execute("COMMIT")
     except Exception:

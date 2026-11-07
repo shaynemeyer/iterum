@@ -1,6 +1,8 @@
 """Record harness-audit.json in agent.db as one fleet-doctor run.
 
-Logs one `layer.checked` event per layer. Each invocation appends a new run.
+Reads harness-audit.json from the current directory, where fleet/doctor.py
+writes it. Logs one `layer.checked` event per layer. Each invocation appends
+a new run.
 """
 
 import json
@@ -12,9 +14,9 @@ sys.path.insert(0, str(ROOT))
 
 from fleet import db
 
-AUDIT = ROOT / "harness-audit.json"
+AUDIT = Path("harness-audit.json")
 if not AUDIT.exists():
-    sys.exit(f"{AUDIT.name} not found. Create it first: uv run fleet/doctor.py")
+    sys.exit(f"{AUDIT.resolve()} not found. Create it first, in this directory: uv run fleet/doctor.py")
 
 audit = json.loads(AUDIT.read_text())
 db.init()

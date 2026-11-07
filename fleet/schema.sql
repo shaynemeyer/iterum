@@ -29,8 +29,8 @@ CREATE TABLE IF NOT EXISTS steps (
   intent     TEXT NOT NULL,
   status     TEXT NOT NULL CHECK (status IN
                ('proposed','committed','failed','skipped')),
-  idem_key   TEXT UNIQUE,          -- chapter 5
-  receipt    TEXT,                 -- chapter 5
+  idem_key   TEXT UNIQUE,          -- not used yet
+  receipt    TEXT,                 -- not used yet
   started_at REAL NOT NULL,
   ended_at   REAL,
   PRIMARY KEY (run_id, seq)
@@ -60,7 +60,7 @@ CREATE TABLE IF NOT EXISTS events (
   run_id   TEXT NOT NULL,
   seq      INTEGER,
   ts       REAL NOT NULL,
-  stage    TEXT NOT NULL,          -- chapter 8 reads this
+  stage    TEXT NOT NULL,
   kind     TEXT NOT NULL,
   payload  TEXT NOT NULL DEFAULT '{}'
 );
@@ -132,7 +132,7 @@ CREATE TABLE IF NOT EXISTS leases (
 
 -- ============ budgets ============
 -- `scope` is a string so `fleet`, `agent:worker-3` and `run:abc123` all meter
--- through one table. Chapter 11's freeze uses the scope `FROZEN`.
+-- through one table.
 CREATE TABLE IF NOT EXISTS budgets (
   scope        TEXT PRIMARY KEY,
   limit_usd    REAL NOT NULL,

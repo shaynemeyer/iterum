@@ -6,7 +6,7 @@
 
 A small Python harness for running a fleet of [Claude Code](https://code.claude.com/docs) agents, built on one SQLite system of record: `agent.db`.
 
-The goal is a durable memory of what your agents did, instead of losing it when a session ends: events go into an append-only ledger that you can audit, rebuild state from and sync across machines. Today the ledger records the harness audit; recording agent activity is next.
+The goal is a durable memory of what your agents did, instead of losing it when a session ends: events go into an append-only ledger that you can audit, rebuild state from and sync across machines. Today the ledger records the harness audit and the steps of resumable runs.
 
 *Iterum* is Latin for "again". Because the ledger is the source of truth, state can always be rebuilt from it.
 
@@ -32,6 +32,7 @@ Every event carries a UUIDv7 `uid` and the `device` that wrote it, so ledgers fr
 | `fleet/db.py` | `agent.db` access; every write runs in `BEGIN IMMEDIATE` |
 | `fleet/schema.sql` | Tables for runs, events, knowledge, claims, the task queue, budgets, evals and approvals |
 | `fleet/project.py` | Rebuilds `knowledge` from `events`; exits 1 on DRIFT |
+| `fleet/run.py` | Runs a multi-step plan that can be killed and resumed; each step is recorded before it runs |
 | `fleet/sync.py` | `sync` shares events across devices through a private git repo; `export` and `import` run single steps |
 | `scripts/seed-ledger.py` | Records the harness audit in the ledger |
 
