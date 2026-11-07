@@ -70,7 +70,7 @@ sequenceDiagram
    WHERE status = 'running' AND heartbeat_at < :now - :expiry;
    ```
 
-5. **Mark them.** Set each stale run's status to `halted` (already allowed by the `runs` CHECK constraint) and log a `run.halted` event in the same transaction. `check_resumable()` refuses only `done`, so a halted run can still be resumed.
+5. **Mark them.** Set each stale run's status to `halted` (already allowed by the `runs` CHECK constraint) and log a `run.halted` event in the same transaction. Note: `check_resumable()` now refuses `halted` without `--force`, because `fleet/recovery.py` uses `halted` to mean "needs a human". Decide whether a stale run should share that status.
 6. **Verify.** Kill the drill, wait past the expiry, and confirm the run is listed, then marked `halted`, then resumes to `done`. Also confirm that a live run with a long step (the drill's step 5) is never listed.
 
 ### Open questions

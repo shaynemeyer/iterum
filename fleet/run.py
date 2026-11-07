@@ -4,6 +4,7 @@
     uv run python -u -m fleet.run --plan myplan.json  # your own plan
     uv run python -u -m fleet.run --resume <run_id>   # pick up uncommitted steps
     uv run python -u -m fleet.run --resume <run_id> --plan myplan.json   # resuming your own plan
+    uv run python -u -m fleet.run --resume <run_id> --force           # resume a halted run after review
 
 Always with `-u`. A killed process does not flush its buffers, so without it
 output that is piped or redirected is lost and you conclude the wrapper did nothing.
@@ -39,8 +40,8 @@ def committed_seqs(run_id):
     return {r["seq"] for r in rows}
 
 
-def check_resumable(run_id, plan):
-    """Exit unless run_id exists, is not done, and every recorded step matches the plan by seq."""
+def check_resumable(run_id, plan, force=False):
+    """Exit unless run_id exists, is not done, is not halted (unless force), and every recorded step matches the plan by seq."""
     con = db.connect()
     try:
         run = con.execute("SELECT status FROM runs WHERE run_id=?", (run_id,)).fetchone()
@@ -54,6 +55,11 @@ def check_resumable(run_id, plan):
         sys.exit(f"no run {run_id!r} in {db.DB}")
     if run["status"] == "done":
         sys.exit(f"run {run_id} is already done; nothing to resume")
+    if run["status"] == "halted" and not force:
+        sys.exit(
+            f"run {run_id} was halted for review; resume it only after a human has looked:\n"
+            f"  uv run python -u -m fleet.run --resume {run_id} --force"
+        )
     planned = {seq: intent for seq, intent, _ in plan}
     for r in recorded:
         if planned.get(r["seq"]) != r["intent"]:
@@ -182,6 +188,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(prog="uv run python -u -m fleet.run")
     parser.add_argument("--plan", help="JSON plan file (default: the built-in drill)")
     parser.add_argument("--resume", metavar="RUN_ID", help="resume this run")
+    parser.add_argument("--force", action="store_true", help="resume a halted run")
     args = parser.parse_args()
     plan = load_plan(args.plan) if args.plan else PLAN
 
@@ -193,7 +200,7 @@ if __name__ == "__main__":
         # passing --plan again, we would silently execute the demo's steps under
         # your run id, which is worse than failing. the same goes for passing the
         # wrong --plan file, so compare on every resume and refuse on mismatch.
-        check_resumable(run_id, plan)
+        check_resumable(run_id, plan, args.force)
     else:
         run_id = db.start_run("worker-1", args.plan or "six step demo")
         print(f"run {run_id} started")
