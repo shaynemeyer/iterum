@@ -50,9 +50,13 @@ def device():
 
 
 def init():
+    """Create the schema, and add columns that CREATE TABLE IF NOT EXISTS skips on old databases."""
     con = connect()
     try:
         con.executescript(SCHEMA.read_text())
+        columns = {r["name"] for r in con.execute("PRAGMA table_info(runs)")}
+        if "heartbeat_at" not in columns:
+            con.execute("ALTER TABLE runs ADD COLUMN heartbeat_at REAL")
     finally:
         con.close()
 

@@ -20,7 +20,8 @@ CREATE TABLE IF NOT EXISTS runs (
   session_id TEXT,
   started_at REAL NOT NULL,
   ended_at   REAL,
-  cost_usd   REAL NOT NULL DEFAULT 0
+  cost_usd   REAL NOT NULL DEFAULT 0,
+  heartbeat_at REAL                -- set by a live run.py; stops moving when it dies
 );
 
 CREATE TABLE IF NOT EXISTS steps (

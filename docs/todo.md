@@ -38,6 +38,8 @@ Catching SIGTERM and marking the run on the way out would cover a polite `kill`,
 
 ## Plan: a heartbeat and an expiry
 
+Status: steps 1-5 are done. Step 6's kill test has not been run yet; a live run in a long step was verified not to be listed.
+
 A running process keeps proving it is alive. A row whose proof has gone stale is treated as dead, whatever its status says.
 
 ```mermaid

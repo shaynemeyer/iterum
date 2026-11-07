@@ -1,13 +1,13 @@
 """Find runs that died and decide whether it is safe to restart them.
 
     uv run python -m fleet.recovery
-    uv run python -m fleet.recovery --idle-seconds 900 --max-attempts 5
-    ITERUM_IDLE_SECONDS=900 uv run python -m fleet.recovery
+    uv run python -m fleet.recovery --idle-seconds 120 --max-attempts 5
+    ITERUM_IDLE_SECONDS=120 uv run python -m fleet.recovery
 
-A run is dead if it is `failed`, or still `running` with no event for longer
-than the idle time. Idle time is a proxy for death, not a proof of it: no event
-is written while a step runs, so a live run in a long step looks identical to a
-killed one. Set the idle time longer than your slowest step.
+A run is dead if it is `failed`, or still `running` with a heartbeat older than
+the idle time. A live run.py refreshes heartbeat_at every HEARTBEAT seconds,
+even during a long step. Runs from before heartbeats fall back to their last
+event time, which a long step can make look dead.
 """
 
 import argparse
@@ -16,17 +16,18 @@ import time
 
 from fleet import db
 
-IDLE_SECONDS = int(os.environ.get("ITERUM_IDLE_SECONDS", 600))
+IDLE_SECONDS = int(os.environ.get("ITERUM_IDLE_SECONDS", 60))
 MAX_ATTEMPTS = int(os.environ.get("ITERUM_MAX_ATTEMPTS", 3))
 
 
 def dead_runs(idle_seconds=IDLE_SECONDS):
-    """Failed runs, and running runs whose last event is older than idle_seconds."""
+    """Failed runs, and running runs whose heartbeat (or, without one, last event) is older than idle_seconds."""
     con = db.connect()
     try:
         rows = con.execute(
             "SELECT r.run_id, r.agent, r.task, r.status,"
-            "  (SELECT MAX(ts) FROM events e WHERE e.run_id = r.run_id) AS last_event"
+            "  COALESCE(r.heartbeat_at,"
+            "    (SELECT MAX(ts) FROM events e WHERE e.run_id = r.run_id)) AS last_seen"
             " FROM runs r WHERE r.status IN ('running', 'failed')"
         ).fetchall()
     finally:
@@ -34,9 +35,9 @@ def dead_runs(idle_seconds=IDLE_SECONDS):
 
     now = time.time()
     return [
-        (r["run_id"], r["agent"], r["task"], r["status"], now - r["last_event"])
+        (r["run_id"], r["agent"], r["task"], r["status"], now - r["last_seen"])
         for r in rows
-        if r["status"] == "failed" or now - r["last_event"] > idle_seconds
+        if r["status"] == "failed" or now - r["last_seen"] > idle_seconds
     ]
 
 

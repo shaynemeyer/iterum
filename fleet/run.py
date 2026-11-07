@@ -14,9 +14,12 @@ import argparse
 import json
 import subprocess
 import sys
+import threading
 import time
 
 from fleet import db
+
+HEARTBEAT = 10  # seconds between heartbeat_at updates; fleet.recovery's expiry must be several of these
 
 
 def shell(cmd):
@@ -87,12 +90,31 @@ def mark_running(run_id):
     """Set the run back to running; a resumed run may have been marked failed."""
     with db.write() as con:
         con.execute(
-            "UPDATE runs SET status='running', ended_at=NULL WHERE run_id=?", (run_id,)
+            "UPDATE runs SET status='running', ended_at=NULL, heartbeat_at=? WHERE run_id=?",
+            (time.time(), run_id),
         )
+
+
+def beat(run_id, stop):
+    """Refresh heartbeat_at every HEARTBEAT seconds until stop is set. Runs in its own thread."""
+    while not stop.wait(HEARTBEAT):
+        with db.write() as con:
+            con.execute(
+                "UPDATE runs SET heartbeat_at=? WHERE run_id=?", (time.time(), run_id)
+            )
 
 
 def execute(run_id, plan):
     mark_running(run_id)
+    stop = threading.Event()
+    threading.Thread(target=beat, args=(run_id, stop), daemon=True).start()
+    try:
+        run_steps(run_id, plan)
+    finally:
+        stop.set()
+
+
+def run_steps(run_id, plan):
     done = committed_seqs(run_id)
     if done:
         print(f"resuming {run_id}, {len(done)} step(s) already committed")
