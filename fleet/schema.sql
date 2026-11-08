@@ -30,15 +30,12 @@ CREATE TABLE IF NOT EXISTS steps (
   intent     TEXT NOT NULL,
   status     TEXT NOT NULL CHECK (status IN
                ('proposed','committed','failed','skipped')),
-  idem_key   TEXT UNIQUE,          -- not used yet
-  receipt    TEXT,                 -- not used yet
   started_at REAL NOT NULL,
   ended_at   REAL,
   PRIMARY KEY (run_id, seq)
 );
 
--------------------------------------
--- ============ receipts ============
+-- One row per side effect, keyed by idem_key; fleet/idem.py owns it.
 CREATE TABLE IF NOT EXISTS receipts (
   idem_key    TEXT PRIMARY KEY,
   run_id      TEXT NOT NULL,

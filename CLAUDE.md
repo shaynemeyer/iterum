@@ -41,7 +41,7 @@ ITERUM_DB=/tmp/scratch.db ITERUM_DEVICE=test uv run python -u -m fleet.run
 
 | Contract | Tables | Rule |
 | --- | --- | --- |
-| Control state | `runs`, `steps` (and the queue/claims/budget tables) | Mutable, local to one machine |
+| Control state | `runs`, `steps`, `receipts` (and the queue/claims/budget tables) | Mutable, local to one machine |
 | Event ledger | `events` | Append-only; triggers abort any UPDATE or DELETE |
 | Derived knowledge | `knowledge` | Rebuilt from events by `fleet/project.py`; never written directly |
 
