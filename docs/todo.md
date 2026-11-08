@@ -1,76 +1,21 @@
 # TODO
 
-## Bug: a killed run stays `running` forever
+Done items move to `work-completed.md`. Undecided questions live in `open-questions.md`, made decisions in `decision-log.md`.
 
-### What happens
+## Leftovers from the heartbeat work
 
-`fleet/run.py` sets a run's status in only two ways: `record_failure()` marks it `failed` when a step's command fails, and `db.finish_run()` marks it `done` when every step has committed. Both run inside the process. When the process itself is killed (SIGTERM, SIGKILL, out-of-memory, power loss), neither runs, so the `runs` row keeps saying `running` until someone resumes it. If nobody does, it says `running` forever, and nothing in the repo looks for such rows.
+The heartbeat and expiry are done (see `work-completed.md`). Still open (who runs `fleet.recovery` is in `open-questions.md`):
 
-```mermaid
-sequenceDiagram
-    participant R as run.py
-    participant DB as agent.db
-    R->>DB: runs: status = running
-    R->>DB: step 1..3: proposed, committed
-    R->>DB: step 4: proposed
-    Note over R: side effect runs
-    Note over R: kill -TERM, process dies
-    Note over DB: steps: 4 is proposed<br/>runs: still running
-    Note over DB: nothing ever changes this row<br/>unless someone resumes the run
-```
+- **Not yet tried with `kill -9`.** Verification used Ctrl-C mid-step.
 
-### How to reproduce
+## Check: `run_step` raises `StepError`, not `Uncertain`, for ambiguous failures
 
-From the repo root (the drill's step 2 lists `fleet/`). The drill writes an `out/` folder there; delete it afterwards.
+Status: open. Revisit when the first caller of `fleet/step.py`'s `run_step()` is written.
 
-```bash
-export ITERUM_DB=/tmp/stale.db ITERUM_DEVICE=test
-uv run python -u -m fleet.run & sleep 2
-pkill -TERM -f fleet.run
-sqlite3 /tmp/stale.db "SELECT run_id, status FROM runs"
-```
+### What changed
 
-The run is listed as `running`, although no process is working on it. Step 4 is `proposed`, and `out/step4.txt` exists.
+`commit_once()` leaves a receipt `in_flight` when an action fails with a category in `idem.AMBIGUOUS` (`timeout`, `server_error`). `run_step()` used to classify those as `transient`, sleep, and retry, and the retry could only raise `idem.Uncertain`. It now halts on the first failure with classification `ambiguous` and re-raises the original `StepError`, so the halt reason keeps the real cause (`timeout: request timed out` instead of `key ... was started and never settled`).
 
-### Why a shutdown handler is not enough
+### What to check
 
-Catching SIGTERM and marking the run on the way out would cover a polite `kill`, but not SIGKILL, an out-of-memory kill or a power cut. The state has to be correct without the dying process doing anything.
-
-## Plan: a heartbeat and an expiry
-
-Status: done. Verified: a live run in a long step is not listed; a run interrupted with Ctrl-C mid-step stays `running`, is listed after the cutoff, and resumes to `done` without `--force`. Not yet tried with `kill -9`.
-
-A running process keeps proving it is alive. A row whose proof has gone stale is treated as dead, whatever its status says.
-
-```mermaid
-sequenceDiagram
-    participant R as run.py
-    participant H as heartbeat thread
-    participant DB as agent.db
-    participant Q as fleet.recovery
-    R->>DB: runs: status = running, heartbeat_at = now
-    R->>H: start
-    loop every HEARTBEAT seconds
-        H->>DB: UPDATE runs SET heartbeat_at = now
-    end
-    Note over R,H: kill: process and heartbeat die together
-    Note over DB: heartbeat_at stops moving
-    Q->>DB: status = running AND heartbeat_at older than EXPIRY
-    DB-->>Q: the killed run
-    Note over Q: reported as dead; status stays running
-```
-
-### Steps
-
-1. **Schema.** Add `heartbeat_at REAL` to `runs` in `fleet/schema.sql`.
-2. **Migration.** `CREATE TABLE IF NOT EXISTS` does not add columns to an existing table, and `ALTER TABLE ... ADD COLUMN` fails if the column is already there. In `db.init()`, check `PRAGMA table_info(runs)` and run the `ALTER TABLE` only when `heartbeat_at` is missing.
-3. **Heartbeat.** In `run.py`, set `heartbeat_at` when the run starts or resumes, and run a daemon thread that updates it every `HEARTBEAT` seconds until `execute()` returns. It needs its own connection, since SQLite connections are not shared across threads by default. A thread is needed because a single step can run far longer than the expiry (the drill's step 5 sleeps 20 seconds; a `claude_step()` call can take minutes).
-4. **Find stale runs.** In `fleet/recovery.py`, `dead_runs()` compares the last event time to `--idle-seconds`. Compare `heartbeat_at` instead.
-5. **Do not mark them.** A stale run keeps its `running` status. `halted` means "a human must look", and `check_resumable()` refuses it without `--force`. A run that died once and is under the retry cap is safe to resume, so it should not need `--force`. `resume_is_safe()` still halts runs that are over the cap.
-6. **Verify.** Kill the drill, wait past the expiry, and confirm the run is listed and resumes to `done` without `--force`. Also confirm that a live run with a long step (the drill's step 5) is never listed.
-
-### Open questions
-
-- **Values for `HEARTBEAT` and `EXPIRY`.** The expiry must be several heartbeats long, so one slow write is not mistaken for a death.
-- **Who runs `fleet.recovery`:** by hand, at the start of every `run.py` invocation, or a scheduler.
-- **Not the `leases` table.** `leases` already has `heartbeat_at` and `expires_at`, but it is keyed by `task_id` and references `tasks`, so it does not cover rows in `runs`.
+A caller that treats `idem.Uncertain` as "the action may have happened" must also treat a `StepError` whose `category` is in `idem.AMBIGUOUS` the same way. Both leave the receipt `in_flight`, and neither may be retried until a human settles it. No caller exists yet, so nothing is broken today.
