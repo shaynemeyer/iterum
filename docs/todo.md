@@ -8,6 +8,10 @@ The heartbeat and expiry are done (see `work-completed.md`). Still open (who run
 
 - **Not yet tried with `kill -9`.** Verification used Ctrl-C mid-step.
 
+## `commit_once` logs nothing on an ambiguous failure
+
+When an action fails without a `REFUSED` category, `commit_once()` leaves the receipt `in_flight` and writes no event, so the ledger shows `action.claimed` with no outcome. `run_step()` covers this with `step.failed` and `run.halted`, but a direct caller of `commit_once()` leaves no record of why the receipt is stuck. Log an event (for example `action.uncertain`, with the category) before re-raising.
+
 ## Check: `run_step` raises `StepError`, not `Uncertain`, for ambiguous failures
 
 Status: open. Revisit when the first caller of `fleet/step.py`'s `run_step()` is written.

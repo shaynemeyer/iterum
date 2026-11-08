@@ -1,4 +1,4 @@
-"""Exactly-once side effects: keys, receipts, and a retry classifier."""
+"""At-most-once side effects: keys, receipts, and a retry classifier."""
 
 import hashlib
 import json
@@ -40,7 +40,7 @@ REFUSED = {
     "permission_denied",
     "schema_invalid",
 }
-# Used by future code
+# step.py halts on these at once; a retry could only hit Uncertain.
 AMBIGUOUS = {"timeout", "server_error"}
 
 

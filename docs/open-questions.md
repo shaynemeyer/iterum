@@ -14,6 +14,16 @@ Decisions not made yet. When one is answered, record it in `decision-log.md`, ad
 
 **Settled by.** Choosing where the command lives, what it records in the ledger, and whether it needs `--force` like a halted run.
 
+## Should some actions get exactly-once, not just at-most-once?
+
+**Context.** `commit_once()` guarantees at most once. A failure after the side effect leaves the receipt `in_flight`, and the step stays blocked until a human checks. Getting exactly once across that failure needs the target system to take part, and `commit_once()` cannot involve it: it calls `action()` with no arguments, so the key never leaves `agent.db`.
+
+**Options.** Pass the key to the action, so a target that deduplicates by key can drop a repeat. Or give an action a check that asks the target whether the effect already happened, and settle the receipt from the answer. Or stay at most once and rely on a human to settle.
+
+**Blocks.** Nothing yet. Matters once real actions run through `commit_once()`.
+
+**Settled by.** Knowing which actions the fleet will run and whether their targets accept a key or can be queried.
+
 ## Which actions can prove nothing ran?
 
 **Context.** An action that knows it failed before taking effect can raise an error whose `category` is in `REFUSED`, freeing its key. Anything else stays locked.
