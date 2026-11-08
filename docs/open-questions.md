@@ -14,6 +14,16 @@ Decisions not made yet. When one is answered, record it in `decision-log.md`, ad
 
 **Settled by.** Choosing where the command lives, what it records in the ledger, and whether it needs `--force` like a halted run.
 
+## Should settling an irreversible action go through `approvals`?
+
+**Context.** For an irreversible action that can neither take a key nor be checked, an `in_flight` receipt older than its timeout should be treated as an incident for a human, not retried. The schema has an `approvals` table (`run_id`, `seq`, `action`, `fingerprint`, `decision`, `decided_by`) for recording such decisions, but nothing writes to it: `fleet/doctor.py` only checks that the table exists. So the approval trail is a schema, not a working feature.
+
+**Options.** Have the settle command (see the question above) write an `approvals` row as well as its `action.settled` event; require an `approved` row before an irreversible action runs at all; or leave `approvals` unused until a concrete action needs it.
+
+**Blocks.** Nothing yet. Matters once an irreversible action runs through `commit_once()`.
+
+**Settled by.** Deciding which actions count as irreversible, and whether the human decision belongs on the settle path, before the action, or both.
+
 ## Should some actions get exactly-once, not just at-most-once?
 
 **Context.** `commit_once()` guarantees at most once. A failure after the side effect leaves the receipt `in_flight`, and the step stays blocked until a human checks. Getting exactly once across that failure needs the target system to take part, and `commit_once()` cannot involve it: it calls `action()` with no arguments, so the key never leaves `agent.db`.
