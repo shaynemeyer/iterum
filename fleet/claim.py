@@ -1,6 +1,8 @@
 """Claim work before doing it. Leases expire; fences make expiry safe."""
 
+import subprocess
 import time
+from pathlib import Path
 
 from fleet import db
 
@@ -13,6 +15,25 @@ class Refused(Exception):
 
 class Fenced(Exception):
     """You woke up holding a lease the world has moved past."""
+
+
+def file_resource(path):
+    """The resource name for a file: `file:` plus its path from its git root, or None outside any repo.
+
+    Using the git root gives a file the same name from any directory and in every worktree.
+    """
+    path = Path(path).resolve()
+    existing = next(p for p in path.parents if p.is_dir())  # a new file's folder may not exist yet
+    git = subprocess.run(
+        ["git", "rev-parse", "--show-toplevel"],
+        cwd=existing,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if git.returncode != 0:
+        return None
+    return f"file:{path.relative_to(Path(git.stdout.strip()).resolve())}"
 
 
 def acquire(resource, run_id, agent, ttl=DEFAULT_TTL):
