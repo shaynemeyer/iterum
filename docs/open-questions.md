@@ -2,6 +2,18 @@
 
 Decisions not made yet. When one is answered, record it in `decision-log.md`, add any resulting work to `todo.md`, and remove it here.
 
+## Should `claim.guard()` also require a live claim?
+
+**Context.** `guard()` compares a fence to `fences.high` only. A holder that released its claim, or whose lease expired with no successor, still passes, because no newer fence exists yet.
+
+**Options.** Keep the fence-only check, which refuses a write only once a newer fence exists. Or also require a matching, unexpired `claims` row, which is stricter but refuses a slow holder whose work nobody else has taken.
+
+**Blocks.** Finishing the merge gate in `todo.md`.
+
+**Revisit when.** Before the merge gate calls `guard()`.
+
+**Settled by.** Choosing whether an expired holder with no successor may still land its change.
+
 ## How does a human settle a stuck `in_flight` receipt?
 
 **Context.** An ambiguous failure leaves the receipt `in_flight`, and every later attempt raises `Uncertain` (see the decision log). Today the only way out is editing `agent.db` by hand.

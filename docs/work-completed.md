@@ -2,6 +2,16 @@
 
 Items moved here from `todo.md` once done. Newest first.
 
+## Upgrade SQLite past 3.51.2
+
+Completed 2026-11-08 in the commit that adds `fleet/claim.py`.
+
+`uv run python -c "import sqlite3; print(sqlite3.sqlite_version)"` reports 3.50.4, and `fleet/db.py` uses WAL mode. The [SQLite WAL docs](https://www.sqlite.org/wal.html) describe a WAL-reset bug likely present through 3.51.2 and fixed in 3.51.3. It affects WAL databases with two or more connections, in separate threads or processes, that write or checkpoint at the same instant. It has not been observed here.
+
+Find out what sets the SQLite version in this environment, move to 3.51.3 or later, and confirm with the command above.
+
+**Outcome.** The version comes from the SQLite bundled in the uv-managed Python build. `.python-version` now pins 3.14.10, which bundles SQLite 3.53.1, and the command above reports 3.53.1. uv 0.11.7 does not offer 3.14.10, so it was installed with `uvx uv@latest python install 3.14.10`. Another device needs the same step.
+
 ## Killed runs stay `running` (heartbeat and expiry)
 
 Completed 2026-11-07 in commit 472d943.

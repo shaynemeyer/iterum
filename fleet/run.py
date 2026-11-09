@@ -12,6 +12,7 @@ output that is piped or redirected is lost and you conclude the wrapper did noth
 
 import argparse
 import json
+import sqlite3
 import subprocess
 import sys
 import threading
@@ -96,12 +97,19 @@ def mark_running(run_id):
 
 
 def beat(run_id, stop):
-    """Refresh heartbeat_at every HEARTBEAT seconds until stop is set. Runs in its own thread."""
+    """Refresh heartbeat_at every HEARTBEAT seconds until stop is set. Runs in its own thread.
+
+    A locked database skips one beat, since losing the thread would make a live run look dead.
+    """
     while not stop.wait(HEARTBEAT):
-        with db.write() as con:
-            con.execute(
-                "UPDATE runs SET heartbeat_at=? WHERE run_id=?", (time.time(), run_id)
-            )
+        try:
+            with db.write() as con:
+                con.execute(
+                    "UPDATE runs SET heartbeat_at=? WHERE run_id=?", (time.time(), run_id)
+                )
+        except sqlite3.OperationalError as e:
+            if e.sqlite_errorcode != sqlite3.SQLITE_BUSY:
+                raise
 
 
 def execute(run_id, plan):
