@@ -37,7 +37,7 @@ def file_resource(path):
 
 
 def acquire(resource, run_id, agent, ttl=DEFAULT_TTL):
-    """Claim resource and return a new fence. Raises Refused if another holder's lease is live.
+    """Claim resource and return a new fence. Logs claim.refused and raises Refused if another holder's lease is live.
 
     The same run and agent claiming again also gets a new fence, so a paused
     process from before a resume is left holding a stale one.
@@ -47,52 +47,72 @@ def acquire(resource, run_id, agent, ttl=DEFAULT_TTL):
         row = con.execute(
             "SELECT * FROM claims WHERE resource=?", (resource,)
         ).fetchone()
-        if (
+        held = (
             row
             and row["expires_at"] > now
             and (row["run_id"], row["agent"]) != (run_id, agent)
-        ):
-            raise Refused(
-                f"{resource} held by {row['agent']} "
-                f"for another {row['expires_at'] - now:.0f}s"
-            )
-        if row:
+        )
+        if held:
             db.log(
                 con,
                 run_id,
-                "claim.reclaimed",
+                "claim.refused",
                 stage="coordination",
                 resource=resource,
-                from_agent=row["agent"],
+                agent=agent,
+                held_by=row["agent"],
+                fence=row["fence"],
             )
-            con.execute("DELETE FROM claims WHERE resource=?", (resource,))
-
-        # Monotonic fence: never reused, never reset, even across reclaims.
-        con.execute(
-            "INSERT INTO fences (resource, high) VALUES (?, 0)"
-            " ON CONFLICT(resource) DO NOTHING",
-            (resource,),
+        else:
+            fence = _grant(con, row, resource, run_id, agent, now, ttl)
+    # Raised after the block: raising inside it would roll back the claim.refused event.
+    if held:
+        raise Refused(
+            f"{resource} held by {row['agent']} "
+            f"for another {row['expires_at'] - now:.0f}s"
         )
-        con.execute("UPDATE fences SET high = high + 1 WHERE resource=?", (resource,))
-        fence = con.execute(
-            "SELECT high FROM fences WHERE resource=?", (resource,)
-        ).fetchone()["high"]
+    return fence
 
-        con.execute(
-            "INSERT INTO claims (resource,run_id,agent,fence,granted_at,expires_at)"
-            " VALUES (?,?,?,?,?,?)",
-            (resource, run_id, agent, fence, now, now + ttl),
-        )
+
+def _grant(con, row, resource, run_id, agent, now, ttl):
+    """Replace any existing claim with a new one under the next fence, and return that fence."""
+    if row:
         db.log(
             con,
             run_id,
-            "claim.granted",
+            "claim.reclaimed",
             stage="coordination",
             resource=resource,
-            agent=agent,
-            fence=fence,
-            ttl=ttl,
+            from_agent=row["agent"],
         )
+        con.execute("DELETE FROM claims WHERE resource=?", (resource,))
+
+    # Monotonic fence: never reused, never reset, even across reclaims.
+    con.execute(
+        "INSERT INTO fences (resource, high) VALUES (?, 0)"
+        " ON CONFLICT(resource) DO NOTHING",
+        (resource,),
+    )
+    con.execute("UPDATE fences SET high = high + 1 WHERE resource=?", (resource,))
+    fence = con.execute(
+        "SELECT high FROM fences WHERE resource=?", (resource,)
+    ).fetchone()["high"]
+
+    con.execute(
+        "INSERT INTO claims (resource,run_id,agent,fence,granted_at,expires_at)"
+        " VALUES (?,?,?,?,?,?)",
+        (resource, run_id, agent, fence, now, now + ttl),
+    )
+    db.log(
+        con,
+        run_id,
+        "claim.granted",
+        stage="coordination",
+        resource=resource,
+        agent=agent,
+        fence=fence,
+        ttl=ttl,
+    )
     return fence
 
 
