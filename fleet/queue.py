@@ -12,6 +12,7 @@ from fleet.claim import Refused, guard
 
 LEASE_TTL = 30
 RETRY_BASE_S = 5  # doubles with each attempt
+HUMAN_KIND = "resolve_conflict"  # claim() skips these; only resolve() closes them
 
 
 def _run_id(task_id):
@@ -146,12 +147,12 @@ def claim(worker, ttl=LEASE_TTL):
         row = con.execute(
             "SELECT t.* FROM tasks t"
             " LEFT JOIN tasks d ON d.task_id = t.depends_on"
-            " WHERE t.status='ready'"
+            " WHERE t.status='ready' AND t.kind != ?"
             "   AND (t.depends_on IS NULL OR d.status='done')"
             "   AND (t.not_before IS NULL OR t.not_before <= ?)"
             "   AND (t.deadline IS NULL OR t.deadline >= ?)"
             " ORDER BY t.task_id LIMIT 1",
-            (now, now),
+            (HUMAN_KIND, now, now),
         ).fetchone()
         if not row:
             return None
@@ -192,13 +193,13 @@ def heartbeat(task_id, worker, fence, ttl=LEASE_TTL):
         )
 
 
-def finish(task_id, worker, fence):
-    """Mark the task done. Raises Fenced or Refused if the worker has lost it."""
+def finish(task_id, worker, fence, result=None):
+    """Mark the task done and keep its result. Raises Fenced or Refused if the worker has lost it."""
     with db.write() as con:
         _require_lease(con, task_id, worker, fence)
         con.execute(
-            "UPDATE tasks SET status='done', ended_at=? WHERE task_id=?",
-            (time.time(), task_id),
+            "UPDATE tasks SET status='done', result=?, ended_at=? WHERE task_id=?",
+            (json.dumps(result), time.time(), task_id),
         )
         con.execute("DELETE FROM leases WHERE task_id=?", (task_id,))
         db.log(con, _run_id(task_id), "task.done", stage="scheduling", worker=worker)
@@ -268,6 +269,52 @@ def redrive(task_id):
         for row in restored:
             db.log(con, _run_id(row["task_id"]), "task.restored", stage="scheduling")
         return [row["task_id"] for row in restored]
+
+
+def results(task_ids):
+    """The results of these tasks, in order, or None until every one is done."""
+    con = db.connect()
+    try:
+        rows = [
+            con.execute(
+                "SELECT status, result FROM tasks WHERE task_id=?", (task_id,)
+            ).fetchone()
+            for task_id in task_ids
+        ]
+    finally:
+        con.close()
+    if any(row["status"] != "done" for row in rows):
+        return None
+    return [json.loads(row["result"]) for row in rows]
+
+
+def human_tasks():
+    """Tasks waiting for a person, oldest first."""
+    con = db.connect()
+    try:
+        return [
+            dict(row)
+            for row in con.execute(
+                "SELECT * FROM tasks WHERE status='ready' AND kind=? ORDER BY task_id",
+                (HUMAN_KIND,),
+            )
+        ]
+    finally:
+        con.close()
+
+
+def resolve(task_id, decision):
+    """Close a task that was waiting for a person. Returns False if there is no such open task."""
+    with db.write() as con:
+        cur = con.execute(
+            "UPDATE tasks SET status='done', result=?, ended_at=?"
+            " WHERE task_id=? AND status='ready' AND kind=?",
+            (json.dumps(decision), time.time(), task_id, HUMAN_KIND),
+        )
+        if cur.rowcount == 0:
+            return False
+        db.log(con, _run_id(task_id), "task.resolved", stage="scheduling", decision=decision)
+        return True
 
 
 def dead_letters():

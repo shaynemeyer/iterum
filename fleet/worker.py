@@ -121,23 +121,22 @@ def _reap(worker):
 
 
 def _attempt(task, worker):
-    """Run do_work under a heartbeat. Return the error text, or None on success."""
+    """Run do_work under a heartbeat. Return (result, None), or (None, error text) on failure."""
     try:
         with _heartbeating(task, worker):
-            do_work(task)
+            return do_work(task), None
     except Exception as e:
-        return str(e)
-    return None
+        return None, str(e)
 
 
 def _run_one(task, worker):
     """Do one task and report one outcome. A worker that lost its lease has nothing to report."""
     task_id, fence = task["task_id"], task["fence"]
     label = f"{worker}  task {task_id} ({task['kind']})"
-    error = _attempt(task, worker)
+    result, error = _attempt(task, worker)
     try:
         if error is None:
-            queue.finish(task_id, worker, fence)
+            queue.finish(task_id, worker, fence, result)
         else:
             queue.fail(task_id, worker, fence, error)
     except (Fenced, Refused) as e:

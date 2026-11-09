@@ -21,6 +21,7 @@ uv run python -m fleet.recovery [--idle-seconds 60] [--max-attempts 3]   # list 
 uv run python -m fleet.sync sync|export|import
 uv run python -u -m fleet.worker <name> [--budget-s 30]   # claim, run and report tasks until the budget ends
 uv run python -m fleet.dlq [redrive <task_id>]            # list dead-lettered tasks, or put one back on the queue
+uv run python -m fleet.conflicts [resolve <task_id> "<decision>"]   # list conflicts waiting for a person, or settle one
 uv run python -u -m fleet.kill_drill                      # SIGKILL a worker mid-task and check recovery (about 40s)
 ```
 
@@ -59,6 +60,6 @@ ITERUM_DB=/tmp/scratch.db ITERUM_DEVICE=test uv run python -u -m fleet.run
 
 `fleet/sync.py` shares only `events` across devices: each device appends its own events to `events-<ITERUM_DEVICE>.jsonl` (export never removes lines) and imports every file with `ON CONFLICT(uid) DO NOTHING`. `uid` (UUIDv7) is the global identity; `event_id` is local and differs per device. `runs`, `steps` and the coordination tables are never synced.
 
-`fleet/queue.py` is the work queue over `tasks` and `leases`. `claim()` issues a fence per task, and a worker must present it, with a live lease, to `heartbeat()`, `finish()`, `fail()` or `release_back()`; a stale worker gets `Fenced` or `Refused` and changes nothing. A dead-lettered task halts everything waiting on it, and `redrive()` restores those tasks. `fleet/worker.py` runs the loop and does the reaping itself, so there is no separate reaper process. Ledger events use `task-<device>-<task_id>` as `run_id`, because `task_id` is local and events sync.
+`fleet/queue.py` is the work queue over `tasks` and `leases`. `claim()` issues a fence per task, and a worker must present it, with a live lease, to `heartbeat()`, `finish()`, `fail()` or `release_back()`; a stale worker gets `Fenced` or `Refused` and changes nothing. A dead-lettered task halts everything waiting on it, and `redrive()` restores those tasks. `fleet/worker.py` runs the loop and does the reaping itself, so there is no separate reaper process. Ledger events use `task-<device>-<task_id>` as `run_id`, because `task_id` is local and events sync. `finish()` stores what `do_work` returns in `tasks.result`, read back with `queue.results()`. `claim()` skips tasks of kind `queue.HUMAN_KIND`; only `queue.resolve()` closes those.
 
 The schema defines more tables (`budgets`, `evals`, `approvals`) than the code uses yet.

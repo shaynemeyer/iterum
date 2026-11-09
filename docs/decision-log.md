@@ -2,6 +2,18 @@
 
 Decisions and why they were made. Newest first. Entries are never deleted; a decision that is reversed is marked "Superseded by" the entry that replaces it. Open decisions live in `open-questions.md`.
 
+## 2026-11-09: Conflicts wait on the queue for a person
+
+**Decision.** `tasks.result` keeps what `do_work` returns. `claim()` skips tasks of kind `resolve_conflict`, and only `queue.resolve()`, reached through `fleet.conflicts`, closes them. Tasks that depend on a conflict wait until a person settles it.
+
+**Context.** The worker discarded `do_work`'s return value, so there was nothing to compare. A `resolve_conflict` task was claimed like any other: under the default worker it failed three times on a missing `cmd` and was dead-lettered, so it never reached a person.
+
+**Alternatives.** A separate table for human work: more schema for what is still a task with a status. Keeping results only in the ledger: events sync to every device and results can be large. A list of kinds for `claim()` to skip: only one kind exists.
+
+**Evidence.** Tested on throwaway databases: a worker leaves the task `ready`, `resolve` closes it and logs `task.resolved`, and its dependent then runs.
+
+**Affects.** `fleet/queue.py`, `fleet/worker.py`, `fleet/conflicts.py`, `fleet/schema.sql`, `fleet/db.py`. `depends_on` holds one parent, so a merge task cannot wait on both reviewers; the caller polls `queue.results()`.
+
 ## 2026-11-09: Queue workers prove ownership with a fence, and failure cascades
 
 **Decision.** `queue.claim()` issues a fence per task from the `fences` table, and `heartbeat`, `finish`, `fail` and `release_back` require that fence and a live lease. A dead-lettered task halts everything waiting on it with a reason naming the task, and `redrive()` restores tasks halted for that reason. Retries wait in a new `tasks.not_before` column, 5 seconds doubling per attempt. Workers reap inside their own loop every 5 seconds. Shell tasks run in their own process group and stop at the task's deadline or `FLEET_TASK_TIMEOUT_S` (600), whichever is sooner.

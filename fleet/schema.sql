@@ -117,6 +117,7 @@ CREATE TABLE IF NOT EXISTS tasks (
   reason       TEXT,
   deadline     REAL,
   not_before   REAL,
+  result       TEXT,
   created_at   REAL NOT NULL,
   ended_at     REAL
 );

@@ -49,10 +49,10 @@ def device():
     return name
 
 
-def _add_missing_column(con, table, column):
-    """Add a REAL column that an older database lacks."""
+def _add_missing_column(con, table, column, sql_type="REAL"):
+    """Add a column that an older database lacks."""
     if column not in {r["name"] for r in con.execute(f"PRAGMA table_info({table})")}:
-        con.execute(f"ALTER TABLE {table} ADD COLUMN {column} REAL")
+        con.execute(f"ALTER TABLE {table} ADD COLUMN {column} {sql_type}")
 
 
 def init():
@@ -62,6 +62,7 @@ def init():
         con.executescript(SCHEMA.read_text())
         _add_missing_column(con, "runs", "heartbeat_at")
         _add_missing_column(con, "tasks", "not_before")
+        _add_missing_column(con, "tasks", "result", "TEXT")
     finally:
         con.close()
 
