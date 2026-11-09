@@ -2,6 +2,18 @@
 
 Decisions and why they were made. Newest first. Entries are never deleted; a decision that is reversed is marked "Superseded by" the entry that replaces it. Open decisions live in `open-questions.md`.
 
+## 2026-11-09: `fleet/drill.sh` pipes one statement per line into `sqlite3 -bail`
+
+**Decision.** Each worker in `fleet/drill.sh` pipes its statements, one per line, into `sqlite3 -bail`. The script runs in a temporary directory that it removes on exit.
+
+**Context.** With all statements in one command-line argument, a failed `BEGIN IMMEDIATE` did not stop the rest. The `INSERT` could land outside a transaction and `COMMIT` then failed with `no transaction is active`, so the rows figure was too high and the reported error hid the lock.
+
+**Alternatives.** Add `-bail` and keep the single argument: it still ran the later statements on the CLI builds tested (3.54.0 and 3.53.4). Or rewrite the drill in Python around `db.write()`, which would exercise the harness but needs the timeout in `db.py` to be configurable.
+
+**Evidence.** At `busy_timeout=1` the old script printed `rows=100/100` with up to 23 errors. With the change, every failure was `database is locked` and rows + errors was 100 in each run. https://sqlite.org/cli.html documents `.bail` but not this case.
+
+**Affects.** `fleet/drill.sh`. It uses the `sqlite3` CLI, not the SQLite bundled with Python, and does not exercise `db.write()`.
+
 ## 2026-11-08: The edit hook fails closed and names files from the git root
 
 **Decision.** `fleet/gate.py` exits 2 on any failure, including a missing `FLEET_RUN_ID` or a relative `ITERUM_DB`. File resources are `file:` plus the path from the git root, built by `claim.file_resource()`. Files outside any git repo are allowed, and unclaimed files are allowed for now.
