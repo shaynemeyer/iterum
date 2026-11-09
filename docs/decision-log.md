@@ -2,6 +2,18 @@
 
 Decisions and why they were made. Newest first. Entries are never deleted; a decision that is reversed is marked "Superseded by" the entry that replaces it. Open decisions live in `open-questions.md`.
 
+## 2026-11-09: Queue workers prove ownership with a fence, and failure cascades
+
+**Decision.** `queue.claim()` issues a fence per task from the `fences` table, and `heartbeat`, `finish`, `fail` and `release_back` require that fence and a live lease. A dead-lettered task halts everything waiting on it with a reason naming the task, and `redrive()` restores tasks halted for that reason. Retries wait in a new `tasks.not_before` column, 5 seconds doubling per attempt. Workers reap inside their own loop every 5 seconds. Shell tasks run in their own process group and stop at the task's deadline or `FLEET_TASK_TIMEOUT_S` (600), whichever is sooner.
+
+**Context.** `worker` was logged but never checked, so after a reap and re-claim the old worker's `finish` marked the task done and deleted the new worker's lease, and `finish` could turn `dead_letter` into `done`. Children of a dead-lettered task stayed `ready` forever with nothing to say why. Without backoff, a failing task spent all 3 attempts in about 0.2 seconds.
+
+**Alternatives.** Check only the worker name: a restarted process reusing its name would pass. Leave children `ready` so that a redrive needs no restore: they stay stranded with no visible reason, and never reach a terminal state. Sleep in the worker after a failure: another worker could re-claim the task at once. A separate reaper process: one more thing to forget to start.
+
+**Evidence.** Reproduced before and after on throwaway databases: a stale `finish` is refused with `Fenced` even under the current holder's name; a 1-second task on a 0.3-second lease ran once under heartbeats, and twice without them. The 600-second default and the backoff values are starting guesses, not measurements.
+
+**Affects.** `fleet/queue.py`, `fleet/worker.py`, `fleet/schema.sql`, `fleet/db.py`. Reaping pauses while every worker is busy, and a command keeps running after its lease is lost until it exits or times out.
+
 ## 2026-11-09: `fleet/drill.sh` pipes one statement per line into `sqlite3 -bail`
 
 **Decision.** Each worker in `fleet/drill.sh` pipes its statements, one per line, into `sqlite3 -bail`. The script runs in a temporary directory that it removes on exit.

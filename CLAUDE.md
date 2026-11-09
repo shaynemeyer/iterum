@@ -19,6 +19,7 @@ uv run python -u -m fleet.run --plan p.json     # a plan: [[seq, intent, shell_c
 uv run python -u -m fleet.run --resume <run_id> [--plan p.json] [--force]
 uv run python -m fleet.recovery [--idle-seconds 60] [--max-attempts 3]   # list dead runs, halt over-retried ones
 uv run python -m fleet.sync sync|export|import
+uv run python -u -m fleet.worker <name> [--budget-s 30]   # claim, run and report tasks until the budget ends
 ```
 
 `fleet` has no `__init__.py` (a namespace package), so its modules must run with `-m`: `python fleet/run.py` fails with `ModuleNotFoundError`. `doctor.py` imports nothing from `fleet` and runs as a script; `seed-ledger.py` adds the repo root to `sys.path` itself.
@@ -56,4 +57,6 @@ ITERUM_DB=/tmp/scratch.db ITERUM_DEVICE=test uv run python -u -m fleet.run
 
 `fleet/sync.py` shares only `events` across devices: each device appends its own events to `events-<ITERUM_DEVICE>.jsonl` (export never removes lines) and imports every file with `ON CONFLICT(uid) DO NOTHING`. `uid` (UUIDv7) is the global identity; `event_id` is local and differs per device. `runs`, `steps` and the coordination tables are never synced.
 
-The schema defines more tables (`claims`, `fences`, `tasks`, `leases`, `budgets`, `evals`, `approvals`) than the code uses yet.
+`fleet/queue.py` is the work queue over `tasks` and `leases`. `claim()` issues a fence per task, and a worker must present it, with a live lease, to `heartbeat()`, `finish()`, `fail()` or `release_back()`; a stale worker gets `Fenced` or `Refused` and changes nothing. A dead-lettered task halts everything waiting on it, and `redrive()` restores those tasks. `fleet/worker.py` runs the loop and does the reaping itself, so there is no separate reaper process. Ledger events use `task-<device>-<task_id>` as `run_id`, because `task_id` is local and events sync.
+
+The schema defines more tables (`budgets`, `evals`, `approvals`) than the code uses yet.

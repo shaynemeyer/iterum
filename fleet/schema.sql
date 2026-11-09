@@ -116,6 +116,7 @@ CREATE TABLE IF NOT EXISTS tasks (
   max_attempts INTEGER NOT NULL DEFAULT 3,
   reason       TEXT,
   deadline     REAL,
+  not_before   REAL,
   created_at   REAL NOT NULL,
   ended_at     REAL
 );
