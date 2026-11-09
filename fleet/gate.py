@@ -11,7 +11,7 @@ Needs an absolute ITERUM_DB, so every worktree reads the same database, and a
 FLEET_RUN_ID for each agent. Reads the hook payload on stdin:
 
     echo '{"tool_name":"Edit","tool_input":{"file_path":"/repo/parser.py"}}' \\
-      | ITERUM_DB=/repo/agent.db FLEET_RUN_ID=agent-b-run uv run python fleet/edit_hook.py
+      | ITERUM_DB=/repo/agent.db FLEET_RUN_ID=agent-b-run uv run python fleet/gate.py
 """
 
 import json

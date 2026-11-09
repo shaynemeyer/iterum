@@ -4,7 +4,7 @@ Decisions and why they were made. Newest first. Entries are never deleted; a dec
 
 ## 2026-11-08: The edit hook fails closed and names files from the git root
 
-**Decision.** `fleet/edit_hook.py` exits 2 on any failure, including a missing `FLEET_RUN_ID` or a relative `ITERUM_DB`. File resources are `file:` plus the path from the git root, built by `claim.file_resource()`. Files outside any git repo are allowed, and unclaimed files are allowed for now.
+**Decision.** `fleet/gate.py` exits 2 on any failure, including a missing `FLEET_RUN_ID` or a relative `ITERUM_DB`. File resources are `file:` plus the path from the git root, built by `claim.file_resource()`. Files outside any git repo are allowed, and unclaimed files are allowed for now.
 
 **Context.** A `PreToolUse` hook that exits with anything but 2 does not block, so a crash let the edit through. A key built from the current directory missed claims from a subdirectory, and a relative database path opened a different, empty database in each worktree.
 
@@ -12,7 +12,7 @@ Decisions and why they were made. Newest first. Entries are never deleted; a dec
 
 **Evidence.** Eighteen cases run as a subprocess in a throwaway git repo with a linked worktree, covering each earlier failure. The hook has not yet been registered in a live Claude Code session.
 
-**Affects.** `fleet/edit_hook.py`, `fleet/claim.py`. A broken database blocks edits until it is repaired.
+**Affects.** `fleet/gate.py`, `fleet/claim.py`. A broken database blocks edits until it is repaired.
 
 ## 2026-11-08: Claiming again always issues a new fence
 
