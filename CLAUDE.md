@@ -20,6 +20,8 @@ uv run python -u -m fleet.run --resume <run_id> [--plan p.json] [--force]
 uv run python -m fleet.recovery [--idle-seconds 60] [--max-attempts 3]   # list dead runs, halt over-retried ones
 uv run python -m fleet.sync sync|export|import
 uv run python -u -m fleet.worker <name> [--budget-s 30]   # claim, run and report tasks until the budget ends
+uv run python -m fleet.dlq [redrive <task_id>]            # list dead-lettered tasks, or put one back on the queue
+uv run python -u -m fleet.kill_drill                      # SIGKILL a worker mid-task and check recovery (about 40s)
 ```
 
 `fleet` has no `__init__.py` (a namespace package), so its modules must run with `-m`: `python fleet/run.py` fails with `ModuleNotFoundError`. `doctor.py` imports nothing from `fleet` and runs as a script; `seed-ledger.py` adds the repo root to `sys.path` itself.

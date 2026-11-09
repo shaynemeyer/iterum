@@ -248,7 +248,8 @@ def reap():
 def redrive(task_id):
     """Put a dead-lettered task back on the queue, with the tasks halted behind it.
 
-    A DLQ you cannot replay from is a graveyard. Anything else changes nothing and logs nothing.
+    A DLQ you cannot replay from is a graveyard. Returns the restored task ids, or
+    None if the task is not dead-lettered, which changes nothing and logs nothing.
     """
     with db.write() as con:
         cur = con.execute(
@@ -257,14 +258,37 @@ def redrive(task_id):
             (task_id,),
         )
         if cur.rowcount == 0:
-            return
+            return None
         db.log(con, _run_id(task_id), "task.redriven", stage="scheduling")
-        for row in con.execute(
+        restored = con.execute(
             "UPDATE tasks SET status='ready', reason=NULL, ended_at=NULL"
             " WHERE status='halted' AND reason=? RETURNING task_id",
             (_blocked_by(task_id),),
-        ).fetchall():
+        ).fetchall()
+        for row in restored:
             db.log(con, _run_id(row["task_id"]), "task.restored", stage="scheduling")
+        return [row["task_id"] for row in restored]
+
+
+def dead_letters():
+    """Dead-lettered tasks, oldest first, each with `waiting`: how many are halted behind it."""
+    con = db.connect()
+    try:
+        rows = con.execute(
+            "SELECT * FROM tasks WHERE status='dead_letter' ORDER BY task_id"
+        ).fetchall()
+        return [
+            dict(
+                row,
+                waiting=con.execute(
+                    "SELECT COUNT(*) FROM tasks WHERE status='halted' AND reason=?",
+                    (_blocked_by(row["task_id"]),),
+                ).fetchone()[0],
+            )
+            for row in rows
+        ]
+    finally:
+        con.close()
 
 
 def sweep_deadlines():
