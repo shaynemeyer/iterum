@@ -63,10 +63,12 @@ def _halt(con, task_ids, reason, now):
     return halted
 
 
-def _spend_attempt(con, task_id, worker, reason, retry_event):
+def _spend_attempt(con, task_id, worker, reason, cause_event, cause_stage):
     """Charge one attempt: retry after a backoff, or dead-letter and halt what waits on it.
 
-    Returns the task's new status.
+    The cause is always logged in the stage where it happened, so the last
+    attempt keeps its cause too; dead-lettering is logged after it as
+    scheduling bookkeeping. Returns the task's new status.
     """
     row = con.execute(
         "SELECT attempts, max_attempts FROM tasks WHERE task_id=?", (task_id,)
@@ -74,6 +76,15 @@ def _spend_attempt(con, task_id, worker, reason, retry_event):
     attempts = row["attempts"] + 1
     now = time.time()
     con.execute("DELETE FROM leases WHERE task_id=?", (task_id,))
+    db.log(
+        con,
+        _run_id(task_id),
+        cause_event,
+        stage=cause_stage,
+        worker=worker,
+        attempts=attempts,
+        reason=reason,
+    )
     if attempts >= row["max_attempts"]:
         con.execute(
             "UPDATE tasks SET status='dead_letter', attempts=?, reason=?, ended_at=?"
@@ -95,15 +106,6 @@ def _spend_attempt(con, task_id, worker, reason, retry_event):
         "UPDATE tasks SET status='ready', attempts=?, reason=?, not_before=?"
         " WHERE task_id=?",
         (attempts, reason, now + RETRY_BASE_S * 2 ** (attempts - 1), task_id),
-    )
-    db.log(
-        con,
-        _run_id(task_id),
-        retry_event,
-        stage="scheduling",
-        worker=worker,
-        attempts=attempts,
-        reason=reason,
     )
     return "ready"
 
@@ -209,7 +211,7 @@ def fail(task_id, worker, fence, reason):
     """Retry until max_attempts, then dead-letter with the reason attached."""
     with db.write() as con:
         _require_lease(con, task_id, worker, fence)
-        _spend_attempt(con, task_id, worker, reason, "task.failed")
+        _spend_attempt(con, task_id, worker, reason, "task.failed", "tool_execution")
 
 
 def release_back(task_id, worker, fence, reason):
@@ -240,7 +242,7 @@ def reap():
         ).fetchall():
             reason = f"lease expired ({row['worker']} stopped reporting)"
             status = _spend_attempt(
-                con, row["task_id"], row["worker"], reason, "task.reaped"
+                con, row["task_id"], row["worker"], reason, "task.reaped", "coordination"
             )
             reaped.append((row["task_id"], row["worker"], status))
     return reaped

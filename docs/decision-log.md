@@ -2,6 +2,18 @@
 
 Decisions and why they were made. Newest first. Entries are never deleted; a decision that is reversed is marked "Superseded by" the entry that replaces it. Open decisions live in `open-questions.md`.
 
+## 2026-11-10: Queue failures are tagged with the stage where they happened
+
+**Decision.** `_spend_attempt()` always logs the cause of a spent attempt in its own stage: `task.failed` as `tool_execution`, `task.reaped` as `coordination`. When no attempts are left, `task.dead_lettered` follows as `scheduling`. `fleet/view.py` counts `failed`, `halted`, `dead_letter`, `refused` and `reaped` kinds as failures.
+
+**Context.** Every queue event was tagged `scheduling`, which is outside the seven failure stages, so `view stages` never saw a queue failure. On the last attempt only `task.dead_lettered` was logged, so the cause was lost. `trace()` did not count `reaped`, so it named `scheduling` as the failing stage.
+
+**Alternatives.** Retag only, keeping one event per attempt: the last attempt would still lose its cause. Add `scheduling` to the failure stages: it records consequences, and counting them would make one failure show up twice. Tag `task.reaped` as `tool_execution`: a dead worker needs a different fix from a failing command, and a reap is the lease system's call, the same family as a refused claim.
+
+**Evidence.** On scratch databases, before: a task failing its only attempt logged `task.claimed` then `task.dead_lettered`, both `scheduling`. After: `task.failed` (`tool_execution`) then `task.dead_lettered`; `view stages` shows 3 of 3 failures under `tool_execution`. A reaped task shows `task.reaped` as `coordination`, and `view trace` reports `FAILED AT STAGE: coordination`. `fleet.kill_drill` passes unchanged.
+
+**Affects.** `fleet/queue.py`, `fleet/view.py`. A final failure now writes one more event. Events already in a ledger keep their old `scheduling` tag, since `events` is append-only.
+
 ## 2026-11-09: Conflicts wait on the queue for a person
 
 **Decision.** `tasks.result` keeps what `do_work` returns. `claim()` skips tasks of kind `resolve_conflict`, and only `queue.resolve()`, reached through `fleet.conflicts`, closes them. Tasks that depend on a conflict wait until a person settles it.
