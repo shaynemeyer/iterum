@@ -28,6 +28,7 @@ from contextlib import contextmanager
 
 from fleet import db, queue
 from fleet.claim import Fenced, Refused
+from fleet.proc import stop_on_sigterm
 
 BUDGET_S = float(os.environ.get("FLEET_WORKER_BUDGET_S", 12))
 TASK_TIMEOUT_S = float(os.environ.get("FLEET_TASK_TIMEOUT_S", 600))
@@ -173,5 +174,6 @@ if __name__ == "__main__":
     parser.add_argument("worker", help="a name unique to this worker")
     parser.add_argument("--budget-s", type=float, default=BUDGET_S)
     args = parser.parse_args()
+    stop_on_sigterm()
     db.init()
     main(args.worker, args.budget_s)

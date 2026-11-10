@@ -21,7 +21,7 @@ import threading
 import time
 
 from fleet import claim, db, recovery
-from fleet.proc import group_alive
+from fleet.proc import group_alive, stop_on_sigterm
 
 HEARTBEAT = 10  # seconds between heartbeat_at updates; fleet.recovery's expiry must be several of these
 CLAIM_TTL = float(os.environ.get("ITERUM_CLAIM_TTL", claim.DEFAULT_TTL))  # seconds; must be several HEARTBEATs
@@ -343,6 +343,7 @@ if __name__ == "__main__":
     parser.add_argument("--force", action="store_true", help="resume a halted run")
     parser.add_argument("--target", default="main", help="the branch fleet.merge lands on; a plan that declares files may not run on it")
     args = parser.parse_args()
+    stop_on_sigterm()
     plan = load_plan(args.plan) if args.plan else PLAN
     branch = run_branch(args.target) if any(resources for *_, resources in plan) else None
 

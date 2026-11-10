@@ -2,6 +2,18 @@
 
 Decisions and why they were made. Newest first. Entries are never deleted; a decision that is reversed is marked "Superseded by" the entry that replaces it. Open decisions live in `open-questions.md`.
 
+## 2026-11-10: SIGTERM stops a run's step and a worker's task command
+
+**Decision.** For the todo "Should SIGTERM stop a step's command?": yes. `fleet.run` and `fleet.worker` call `proc.stop_on_sigterm()`, which makes SIGTERM raise `KeyboardInterrupt` and so kill the command's process group as Ctrl-C does. The step or task is left as Ctrl-C leaves it (`proposed`, or `in_progress` with its lease) for a resume or a reap.
+
+**Context.** Ctrl-C, a worker's early exit and a lost claim already kill the command; SIGTERM was the one stop that left it running. Supervisors stop processes with SIGTERM: `docker stop` sends SIGTERM, then SIGKILL after a grace period (https://docs.docker.com/reference/cli/docker/container/stop/). Not tested under any supervisor.
+
+**Alternatives.** Leave SIGTERM alone: the command runs on, unsupervised, and a resume waits for it. A separate SIGTERM path: two cleanups to keep in step.
+
+**Evidence.** See the work-completed entry "Should SIGTERM stop a step's command?".
+
+**Affects.** `fleet/proc.py`, `fleet/run.py`, `fleet/worker.py`, both drills. Both processes now exit -2 (`KeyboardInterrupt` ends Python via SIGINT) instead of -15 on SIGTERM. SIGKILL still leaves the command running; the resume guard and `reap()` wait for it.
+
 ## 2026-11-10: A run that declares files must be on its own branch, not in a linked worktree
 
 **Decision.** For merge-gate item 1 ("agents edit only in their own git worktrees"): `fleet.run` refuses a plan that declares files unless HEAD is on a branch other than the target. It does not check that the directory is a linked worktree, and it does not check plans that declare nothing.

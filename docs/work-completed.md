@@ -2,6 +2,20 @@
 
 Items moved here from `todo.md` once done. Newest first.
 
+## Should SIGTERM stop a step's command?
+
+Completed 2026-11-10. Moved from `todo.md`:
+
+`kill -TERM` on `fleet/run.py` mid-step leaves the step's command running (tested 2026-11-10, see `work-completed.md`); the resume guard waits for it. It did the same before steps had their own group. A SIGTERM handler that raises like Ctrl-C would let `shell()` kill the group on a polite stop. Decide whether a polite stop should end the step; SIGKILL can never be covered this way.
+
+**Outcome: yes**, for `fleet/run.py` and `fleet/worker.py` (see the decision log).
+
+**Before.** On a scratch database, SIGTERM sent once the command's group was recorded: `fleet.run` (a `sleep 30` step) exited -15 with the group alive and the step `proposed`; `fleet.worker` (a `sleep 30` task) exited -15 with the group alive and the task `in_progress` with its lease.
+
+**Change.** `proc.stop_on_sigterm()` installs `signal.default_int_handler` for SIGTERM, so it raises `KeyboardInterrupt` and runs the existing Ctrl-C cleanup: `shell()` in `fleet/run.py` and `_shell()` in `fleet/worker.py` kill the group. Both entry points call it first.
+
+**After.** Both exited -2 with the group gone, the step still `proposed` and the task still `in_progress`, as after Ctrl-C. `fleet.claims_drill` and `fleet.kill_drill` each gained a SIGTERM case; with the handler disabled, both failed on "command killed". The built-in plan, `fleet.merge_drill` and both drills passed with it. `kill_drill` already stops its rescuer with `terminate()`, which now goes through the handler and still passes.
+
 ## `commit_once` logs nothing on an ambiguous failure
 
 Completed 2026-11-10. Moved from `todo.md`:

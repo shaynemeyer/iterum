@@ -196,6 +196,18 @@ def _taken(d):
     d.check("paused agent taken over: file untouched", (d.wt / "b.txt").read_text(), "b4\n")
 
 
+def _terminated(d):
+    p = subprocess.Popen(d.run_args("--plan", d.plan("term", [_edit(1, "a.txt", "a7", sleep=60)])),
+                         cwd=d.wt, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    while not (row := _query("SELECT pgid FROM steps WHERE status='proposed' AND pgid IS NOT NULL")):
+        time.sleep(0.2)
+    p.send_signal(signal.SIGTERM)
+    p.communicate(timeout=10)
+    time.sleep(0.2)
+    d.check("SIGTERM mid-step: step's command killed", group_alive(row[0][0]), False)
+    d.check("SIGTERM mid-step: file untouched", (d.wt / "a.txt").read_text(), "a5\n")
+
+
 def main():
     with tempfile.TemporaryDirectory() as tmp:
         work = Path(tmp)
@@ -205,7 +217,7 @@ def main():
         db.init()
         d = Drill(work)
         d.setup()
-        for part in (_wrong_branch, _declared, _held, _resume, _expired_renew, _renewed, _taken):
+        for part in (_wrong_branch, _declared, _held, _resume, _expired_renew, _renewed, _taken, _terminated):
             part(d)
         passed = all(d.results)
     print("drill passed" if passed else "drill FAILED")

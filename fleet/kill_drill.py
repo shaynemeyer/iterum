@@ -9,6 +9,7 @@ any check fails.
 
 import os
 import shlex
+import signal
 import subprocess
 import sys
 import tempfile
@@ -16,6 +17,7 @@ import time
 from pathlib import Path
 
 from fleet import db, queue
+from fleet.proc import group_alive
 
 TIMEOUT_S = 90
 RECOVERED_EVENTS = [
@@ -111,13 +113,26 @@ def _run_drill(work):
     ]
 
 
+def _run_sigterm():
+    """SIGTERM a worker mid-task. Returns the check results."""
+    task = queue.add("polite stop", {"cmd": "sleep 60"})
+    worker = _start_worker("polite")
+    _wait_until(lambda: _query("SELECT pgid FROM leases WHERE task_id=? AND pgid IS NOT NULL", task),
+                "the worker to start its command")
+    pgid = _query("SELECT pgid FROM leases WHERE task_id=?", task)[0][0]
+    worker.send_signal(signal.SIGTERM)
+    worker.wait()
+    time.sleep(0.2)
+    return [_check("SIGTERM: task's command killed", group_alive(pgid), False)]
+
+
 def main():
     with tempfile.TemporaryDirectory() as tmp:
         work = Path(tmp)
         os.environ.update(ITERUM_DB=str(work / "drill.db"), ITERUM_DEVICE="drill")
         db.DB = work / "drill.db"
         db.init()
-        passed = all(_run_drill(work))
+        passed = all(_run_drill(work) + _run_sigterm())
     print("drill passed" if passed else "drill FAILED")
     sys.exit(0 if passed else 1)
 

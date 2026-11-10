@@ -1,6 +1,7 @@
 """Process checks shared by run.py and the queue."""
 
 import os
+import signal
 
 
 def group_alive(pgid):
@@ -12,3 +13,11 @@ def group_alive(pgid):
     except PermissionError:
         return True
     return True
+
+
+def stop_on_sigterm():
+    """Make SIGTERM raise KeyboardInterrupt, so a polite stop kills the running command's group as Ctrl-C does.
+
+    Call from the main thread; Python runs signal handlers there.
+    """
+    signal.signal(signal.SIGTERM, signal.default_int_handler)
