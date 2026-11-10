@@ -117,6 +117,7 @@ def _refusals(d):
     d.landed("live claim", "live", "run-a", {"file:a.txt": claim.acquire("file:a.txt", "run-a", "A"),
                                              "file:e.txt": claim.acquire("file:e.txt", "run-a", "A")})
     d.check("live claim: every presented claim released", _claims(), [])
+    d.refused("branch already landed", "live", "run-a", {})
 
     d.branch("unclaimed", {"b.txt": "b2\n"})
     d.refused("no fence", "unclaimed", "run-b", {})

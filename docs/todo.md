@@ -46,7 +46,6 @@ A fence protects nothing unless whatever accepts the write checks it. An agent c
 4. Wire claims into `fleet/run.py`, and renew them while a step runs. A step longer than `claim.DEFAULT_TTL` (300 seconds) would otherwise lose its lease.
    - Done 2026-11-10: plans declare resources and `fleet.run` claims them all before any step (see the decision log).
    - Still to do: renew the claims from the heartbeat thread, with `renew()` refusing an expired claim and a refused renewal failing the step. Claims are released on landing (see the decision log).
-   - Found while testing: `fleet.merge` lands a branch with no changes left as an empty merge commit, with no fences needed. Refuse or skip when the branch is already in the target.
 5. Done 2026-11-10: `uv run python -u -m fleet.merge_drill` covers the paused-agent case, the other refusals, the lock, a crash after `update-ref` and a moved target, in about 3.5 seconds. Removing the live-claim check from `require_claim()` made it fail on the expired claim; removing `reconcile()` from the merge process made it fail on the crash.
 
 File claims do not catch changes in different files that break each other, even when the merge is clean. Tests or CI still have to catch those.

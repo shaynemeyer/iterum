@@ -2,6 +2,18 @@
 
 Items moved here from `todo.md` once done. Newest first.
 
+## Refuse an empty merge
+
+Completed 2026-11-10. Moved from `todo.md` (a bullet under merge-gate item 4):
+
+Found while testing: `fleet.merge` lands a branch with no changes left as an empty merge commit, with no fences needed. Refuse or skip when the branch is already in the target.
+
+**Before.** A new `fleet.merge_drill` check merged the already-landed `live` branch again with no fences: it exited 0 and moved `main`.
+
+**Change.** `build()` in `fleet/merge.py` raises a new `merge.Empty` when the merged tree equals the target's tree, before the write-ahead, so nothing is logged, as with a conflict. The merge process exits 1 with "refused". Comparing trees, not ancestry, also catches a branch whose change the target already has from a cherry-pick.
+
+**After.** All 33 drill checks passed. On a scratch repo where `main` moved on and then cherry-picked branch `side`, `side` was not an ancestor of `main` (`merge-base --is-ancestor` exit 1) and `build()` raised `Empty`; a branch adding a new file still built.
+
 ## Enforce the `fences` rules in the database
 
 Completed 2026-11-10. Moved from `todo.md`:

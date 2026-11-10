@@ -15,6 +15,10 @@ class Conflict(Exception):
     """The branch does not merge cleanly into the target."""
 
 
+class Empty(Exception):
+    """Merging the branch would not change the target's files, for example because it already landed."""
+
+
 def _git(repo, *args):
     return subprocess.run(
         ["git", "-C", str(repo), *args], capture_output=True, text=True, check=True
@@ -33,6 +37,8 @@ def build(repo, target, branch):
         raise Conflict(f"{branch} does not merge cleanly into {target}:\n{merged.stdout}")
     merged.check_returncode()
     tree = merged.stdout.splitlines()[0]
+    if tree == _git(repo, "rev-parse", f"{old}^{{tree}}"):
+        raise Empty(f"merging {branch} would not change {target}")
     new = _git(repo, "commit-tree", tree, "-p", old, "-p", branch, "-m", f"Merge {branch} into {target}")
     return old, new
 
@@ -47,7 +53,7 @@ def land(repo, branch, run_id, fences, target="main"):
     """Merge branch into target if fences (resource -> fence) holds a live claim on every changed file.
 
     Landing releases every claim in fences, in the same block. A refusal keeps them, so the caller can retry.
-    Raises Conflict, Refused or Fenced, or CalledProcessError if target moved since the build.
+    Raises Conflict, Empty, Refused or Fenced, or CalledProcessError if target moved since the build.
     """
     old, new = build(repo, target, branch)
     needed = changed_resources(repo, old, branch)
@@ -140,7 +146,7 @@ def main():
         reconcile(args.repo)
         try:
             new = land(args.repo, args.branch, args.run_id, fences, args.target)
-        except (Conflict, claim.Refused, claim.Fenced) as e:
+        except (Conflict, Empty, claim.Refused, claim.Fenced) as e:
             sys.exit(f"refused: {e}")
         except subprocess.CalledProcessError as e:
             sys.exit(f"refused: {e.stderr.strip()}")
