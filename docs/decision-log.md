@@ -2,6 +2,18 @@
 
 Decisions and why they were made. Newest first. Entries are never deleted; a decision that is reversed is marked "Superseded by" the entry that replaces it. Open decisions live in `open-questions.md`.
 
+## 2026-11-10: fleet.run prints dead runs when it starts; halting stays manual
+
+**Decision.** For the open question "Who runs `fleet.recovery`?": every `fleet.run` start, fresh or `--resume`, calls `notice_dead_runs()` after `db.init()`. It lists each `running` run whose heartbeat is older than `ITERUM_IDLE_SECONDS`, counts `failed` runs without listing them, and prints the `fleet.recovery` command. It only reads; halting stays a manual `fleet.recovery` step.
+
+**Context.** A SIGKILLed run stays `running` with nothing left to report it, and nothing ran `fleet.recovery`. `recovery.dead_runs()` returns every `failed` run however old, so listing them all would grow without bound; a failed run already reported itself when it exited.
+
+**Alternatives.** Keep it manual: the gap stays. A scheduler (cron, launchd): something to install and keep alive per machine, needed only if dead runs must be noticed when nobody starts runs; can be added later. List failures from a recent window: a time limit with no evidence for any value.
+
+**Evidence.** See the work-completed entry "Who runs `fleet.recovery`?".
+
+**Affects.** `fleet/run.py`. One read query per start. `fleet.claims_drill` output now includes `1 failed run(s).` from its own scenarios.
+
 ## 2026-11-10: SIGTERM stops a run's step and a worker's task command
 
 **Decision.** For the todo "Should SIGTERM stop a step's command?": yes. `fleet.run` and `fleet.worker` call `proc.stop_on_sigterm()`, which makes SIGTERM raise `KeyboardInterrupt` and so kill the command's process group as Ctrl-C does. The step or task is left as Ctrl-C leaves it (`proposed`, or `in_progress` with its lease) for a resume or a reap.

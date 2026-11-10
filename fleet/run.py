@@ -324,6 +324,26 @@ PLAN = [
 ]
 
 
+def notice_dead_runs():
+    """Print stale running runs and a count of failed ones, with the fleet.recovery command. Reads only.
+
+    A SIGKILLed run stays `running` with nothing left to report it, so it is listed.
+    A failed run reported itself when it exited, so it is only counted.
+    """
+    dead = recovery.dead_runs()
+    if not dead:
+        return
+    stale = [(run_id, idle) for run_id, _, _, status, idle in dead if status == "running"]
+    failed = sum(1 for *_, status, _ in dead if status == "failed")
+    if stale:
+        print(f"{len(stale)} run(s) look dead (no heartbeat for over {recovery.IDLE_SECONDS}s):")
+        for run_id, idle in stale:
+            print(f"  {run_id}  running  idle {idle:.0f}s")
+    if failed:
+        print(f"{failed} failed run(s).")
+    print("see: uv run python -m fleet.recovery")
+
+
 def load_plan(path):
     """Read a plan from JSON: [[seq, intent, shell_command, [resource, ...]], ...]. The resources are optional.
 
@@ -348,6 +368,7 @@ if __name__ == "__main__":
     branch = run_branch(args.target) if any(resources for *_, resources in plan) else None
 
     db.init()  # a fresh agent.db has no tables yet; safe to repeat
+    notice_dead_runs()
     if args.resume:
         run_id = args.resume
         # a resume has to re-read the plan from somewhere, and the ledger stores

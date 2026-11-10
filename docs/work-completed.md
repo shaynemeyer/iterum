@@ -2,6 +2,20 @@
 
 Items moved here from `todo.md` once done. Newest first.
 
+## Who runs `fleet.recovery`?
+
+Completed 2026-11-10. Moved from `todo.md`:
+
+`fleet.recovery` finds runs that died, but nothing calls it. At the start of `fleet.run`, after `db.init()`, print the dead runs (read-only) with the `fleet.recovery` command to act on them; list stale `running` runs and count `failed` ones.
+
+**Outcome:** a read-only notice at every `fleet.run` start (see the decision log).
+
+**Before.** On a scratch database with `ITERUM_IDLE_SECONDS=15`, a `fleet.run` with a `sleep 300` step had its Python process and the step's process group SIGKILLed. Its last output was `run ... started`; its row stayed `running` with a 24s-old heartbeat. The next `fleet.run` printed only its own lines; `fleet.recovery` listed the dead run. A first attempt that killed the `uv` wrapper instead did not count: `fleet.run` survived, saw its step die and marked the run `failed`.
+
+**Change.** `notice_dead_runs()` in `fleet/run.py`, called after `db.init()`, uses `recovery.dead_runs()`.
+
+**After.** With one failed run and one SIGKILLed run, the next run printed `1 run(s) look dead (no heartbeat for over 15s):`, the run id with `idle 25s`, `1 failed run(s).` and `see: uv run python -m fleet.recovery`. Both rows, including `heartbeat_at`, were unchanged. A clean database printed no notice. The built-in plan, `fleet.merge_drill`, `fleet.claims_drill` and `fleet.kill_drill` passed. No drill check was added: the notice is output, not state.
+
 ## Should SIGTERM stop a step's command?
 
 Completed 2026-11-10. Moved from `todo.md`:
