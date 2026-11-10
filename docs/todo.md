@@ -6,11 +6,11 @@ Done items move to `work-completed.md`. Undecided questions live in `open-questi
 
 When `claude_step()` replaces `shell()` in `fleet/run.py`, it must start Claude Code with the `.env.example` settings plus `OTEL_RESOURCE_ATTRIBUTES=iterum.run_id=<run_id>`, so spend lands under the run instead of `session-<session.id>`.
 
-## Leftovers from the heartbeat work
+## A killed run.py leaves its step's command running
 
-The heartbeat and expiry are done (see `work-completed.md`). Still open (who runs `fleet.recovery` is in `open-questions.md`):
+Found in the `kill -9` test (see `work-completed.md`). `shell()` starts each step with `subprocess.run(cmd, shell=True)`. After `kill -9` on run.py mid step 5, `/bin/sh -c sleep 20 && echo summary > out/summary.txt` and its `sleep 20` were still alive, reparented, and later wrote `out/summary.txt`. A resume before that finishes would run step 5 a second time while the first copy is still going. In that test the orphan finished before the resume, so nothing overlapped.
 
-- **Not yet tried with `kill -9`.** Verification used Ctrl-C mid-step.
+Copying the worker's process group would not fix this. The worker's group only helps on a timeout, when the worker itself calls `os.killpg` (`fleet/worker.py`); a SIGKILLed process calls nothing. A resume would have to detect the leftover command itself, for example by storing the step's process group id in `steps` and refusing to resume while that group is alive. Untested idea; refusing avoids killing a reused process id. The worker likely has the same gap under SIGKILL; not checked.
 
 ## `commit_once` logs nothing on an ambiguous failure
 

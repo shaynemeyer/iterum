@@ -2,6 +2,21 @@
 
 Items moved here from `todo.md` once done. Newest first.
 
+## Heartbeat: tried with `kill -9`
+
+Completed 2026-11-10. From the heartbeat leftovers: "**Not yet tried with `kill -9`.** Verification used Ctrl-C mid-step."
+
+On a scratch database, the drill was SIGKILLed 14 seconds in, during step 5 (`sleep 20`):
+
+1. Before the kill, `fleet.recovery --idle-seconds 30` listed nothing; `heartbeat_at` was 4 seconds old and step 5 was `proposed`.
+2. After the kill, `heartbeat_at` stayed at the same value. 45 seconds later the run was still `running`, and `fleet.recovery --idle-seconds 30` listed it as `RESUME ... idle 46s ... (ok)`.
+3. `fleet.run --resume <run_id>` without `--force` skipped steps 1 to 4, ran 5 and 6, and marked the run `done`. Afterwards recovery listed nothing. The ledger shows step 5 `step.proposed` twice, then `step.committed`.
+
+Two things to know when repeating it:
+
+- Kill the `.venv/bin/python3 -u -m fleet.run` process, not `uv run`. A first attempt that SIGKILLed the `uv run` process left the Python child running, and it finished the run to `done`.
+- The step's shell command outlives the kill. See the todo "A killed run.py leaves its step's command running".
+
 ## Telemetry: what does a killed session lose?
 
 Completed 2026-11-10 in the commit that sets `OTEL_LOGS_EXPORT_INTERVAL` in `.env.example`.
