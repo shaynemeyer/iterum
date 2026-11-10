@@ -32,12 +32,12 @@ A caller that treats `idem.Uncertain` as "the action may have happened" must als
 
 ## Build the merge gate that checks fences
 
-Status: open. `fleet/claim.py` issues fences and provides `guard()`, but nothing calls it yet.
+Status: open. `fleet/claim.py` issues fences and provides `require_claim()`, but nothing calls it yet.
 
 A fence protects nothing unless whatever accepts the write checks it. An agent cannot check its own fence, because it can pause right after checking. A `PreToolUse` hook has the same gap, and one that times out does not block the call.
 
 1. Agents edit only in their own git worktrees.
-2. A single merge process lands each change on the shared branch. It builds the merge outside any transaction. Then, inside one `db.write()` block, it calls `claim.guard()` and moves the branch with `git update-ref` and the expected old value, so no newer fence can be issued between the check and the update. Do not hold the write lock for the whole merge: other writers fail after the 5-second busy timeout.
+2. A single merge process lands each change on the shared branch. It builds the merge outside any transaction. Then, inside one `db.write()` block, it calls `claim.require_claim()` and moves the branch with `git update-ref` and the expected old value, so no newer fence can be issued between the check and the update. Do not hold the write lock for the whole merge: other writers fail after the 5-second busy timeout.
 3. Decide how to recover from a crash during the update. Git and SQLite do not commit together.
 4. Wire claims into `fleet/run.py`, and renew them while a step runs. A step longer than `claim.DEFAULT_TTL` (300 seconds) would otherwise lose its lease.
 5. Add a drill for the paused-agent case: Agent A claims a resource and stops, its lease expires, Agent B claims it, then Agent A tries to merge and is refused.

@@ -2,6 +2,18 @@
 
 Decisions and why they were made. Newest first. Entries are never deleted; a decision that is reversed is marked "Superseded by" the entry that replaces it. Open decisions live in `open-questions.md`.
 
+## 2026-11-10: The merge gate requires a live claim, not just the current fence
+
+**Decision.** For the open question "Should `claim.guard()` also require a live claim?": yes, but through a new `claim.require_claim()`, not by changing `guard()`. It calls `guard()` and then requires a `claims` row with the same resource and fence whose `expires_at` has not passed, and raises `Refused` otherwise. The merge gate calls `require_claim()`.
+
+**Context.** With `guard()` alone, a holder that released its claim, or whose lease expired with no successor, can write until someone else claims the resource. The `claims` table then says nobody holds it while a write is still allowed, and a merge after `release()` (a bug) gets through. A holder that is refused can call `acquire()` again: if nobody else took the resource it gets a new fence and passes.
+
+**Alternatives.** Keep `guard()` fence-only for the merge gate, which is the usual fencing-token check and needs no clock ([Kleppmann, "How to do distributed locking"](https://martin.kleppmann.com/2016/02/08/how-to-do-distributed-locking.html)). It would not let two writers overlap, but it allows the two cases above. Put the claims check inside `guard()`: `fleet/queue.py` calls `guard()` on `task:<id>` fences and never writes `claims` rows (it checks `leases` in `_require_lease()`), so every worker would be refused.
+
+**Evidence.** On a scratch database, before the change `guard()` accepted an expired holder with no successor and a released holder. After it, `require_claim()` refused both with `Refused`, accepted the live current holder and a holder that re-acquired after expiry (fence 1 to 2), and still refused a stale fence after takeover and a never-issued fence with `Fenced`.
+
+**Affects.** `fleet/claim.py` and the merge gate in `todo.md`. `guard()` and the queue are unchanged. The merge process reads the clock to compare with `expires_at`. A slow holder that misses renewal is refused even when nobody else wants the resource. `renew()` can still revive an expired claim; see `open-questions.md`.
+
 ## 2026-11-10: The worker kills its command's group on any early exit
 
 **Decision.** `_shell()` in `fleet/worker.py` kills the command's process group on any exception while it runs (`except BaseException`), not only a timeout.

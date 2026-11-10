@@ -2,17 +2,17 @@
 
 Decisions not made yet. When one is answered, record it in `decision-log.md`, add any resulting work to `todo.md`, and remove it here.
 
-## Should `claim.guard()` also require a live claim?
+## May `renew()` revive an expired claim?
 
-**Context.** `guard()` compares a fence to `fences.high` only. A holder that released its claim, or whose lease expired with no successor, still passes, because no newer fence exists yet.
+**Context.** `renew()` matches a claim by resource and fence and never checks `expires_at`. An expired holder with no successor can renew, keep its old fence, and pass `require_claim()` without calling `acquire()` again (tested 2026-11-10). No other writer can have landed in between, so this is not an overlap. But between the expiry and the renewal, the `claims` table showed an expired claim for a holder that was still about to write.
 
-**Options.** Keep the fence-only check, which refuses a write only once a newer fence exists. Or also require a matching, unexpired `claims` row, which is stricter but refuses a slow holder whose work nobody else has taken.
+**Options.** Leave it: renewing is then just a way to take the claim back without a new fence. Or add `AND expires_at > now` to the `UPDATE` in `renew()`, so an expired holder must call `acquire()` again and gets a new fence.
 
-**Blocks.** Finishing the merge gate in `todo.md`.
+**Blocks.** Nothing yet. The merge gate refuses correctly either way.
 
-**Revisit when.** Before the merge gate calls `guard()`.
+**Revisit when.** Wiring claim renewal into `fleet/run.py` (merge gate, item 4).
 
-**Settled by.** Choosing whether an expired holder with no successor may still land its change.
+**Settled by.** Choosing whether an expired claim can come back to life with its old fence.
 
 ## How does a human settle a stuck `in_flight` receipt?
 

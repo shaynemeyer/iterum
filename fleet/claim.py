@@ -133,6 +133,21 @@ def guard(con, resource, fence):
         )
 
 
+def require_claim(con, resource, fence):
+    """Refuse a fence that is not current or whose claim is released or expired. Call inside the db.write() block.
+
+    guard() alone lets a released or expired holder write until someone else
+    claims the resource. The queue checks its own leases, so it uses guard().
+    """
+    guard(con, resource, fence)
+    live = con.execute(
+        "SELECT 1 FROM claims WHERE resource=? AND fence=? AND expires_at>?",
+        (resource, fence, time.time()),
+    ).fetchone()
+    if not live:
+        raise Refused(f"{resource}: the claim under fence {fence} was released or has expired")
+
+
 def renew(resource, run_id, fence, ttl=DEFAULT_TTL):
     """Extend the lease held under fence. Raises Refused if it is no longer the current claim."""
     with db.write() as con:
