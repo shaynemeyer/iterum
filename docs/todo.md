@@ -2,6 +2,25 @@
 
 Done items move to `work-completed.md`. Undecided questions live in `open-questions.md`, made decisions in `decision-log.md`.
 
+## Next: what to work on, in order
+
+Status: open, written 2026-11-10 after the merge gate was finished. The fence and merge-gate work is in `work-completed.md` and the decision log. Most open questions wait on `commit_once()` or `claude_step()` being wired into `fleet/run.py`; "Who runs `fleet.recovery`?" does not, so it comes first.
+
+How this work has been done, and should continue: one small step at a time; reproduce a problem before fixing it; check each change against the three drills (`fleet.merge_drill`, a few seconds; `fleet.claims_drill` and `fleet.kill_drill`, about 50 seconds each, runnable in parallel) and the built-in `fleet.run` plan on a scratch `ITERUM_DB`; when a drill gains a check, break the code once to see it fail, and undo the break by reversing the edit, not with `git checkout` (that also discards uncommitted work).
+
+1. **Settle "Who runs `fleet.recovery`?"** (`open-questions.md`, which has the recommended answer). It needs the user's decision first. If the recommendation is accepted, the work is:
+   - Check first: `recovery.dead_runs()` returns every `failed` run however old, not only stale `running` ones, so a notice built on it would grow without bound. Decide whether the notice counts `failed` runs and lists only stale `running` ones, or lists failures from a recent window.
+   - At the start of `fleet.run`, after `db.init()`, print the dead runs (read-only) with the `fleet.recovery` command to act on them. Do not halt anything from `fleet.run`.
+   - Reproduce first: a run SIGKILLed mid-step (no heartbeat after) is not mentioned when the next run starts. After: it is, and nothing about it changes.
+   - Add a check to `fleet.claims_drill` or `fleet.kill_drill` only if it fits; the notice is output, not state.
+2. **Write a design note for wiring `claude_step()` into `fleet/run.py`, before any code.** Every call is billed to the user, so get the note agreed first. It should answer:
+   - How a plan marks a step as a prompt rather than a shell command, and how resume and `check_resumable()` treat it.
+   - How the step is made opt-in (a flag or plan field), so the built-in plan and drills never spend.
+   - The `iterum.run_id` todo below (start Claude Code with `.env.example` settings plus `OTEL_RESOURCE_ATTRIBUTES=iterum.run_id=<run_id>`).
+   - Whether it runs through `commit_once()`, which brings in the open questions on settling `in_flight` receipts, `REFUSED` Claude Code errors, and which actions can prove nothing ran.
+   - Where the edits happen: in the run's own branch, under its declared claims, so they land through `fleet.merge`.
+   - A test plan that spends as little as possible (one short prompt), run only with the user's go-ahead.
+
 ## Wire `iterum.run_id` into `claude_step()`
 
 When `claude_step()` replaces `shell()` in `fleet/run.py`, it must start Claude Code with the `.env.example` settings plus `OTEL_RESOURCE_ATTRIBUTES=iterum.run_id=<run_id>`, so spend lands under the run instead of `session-<session.id>`.

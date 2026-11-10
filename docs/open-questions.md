@@ -63,3 +63,5 @@ Decisions not made yet. When one is answered, record it in `decision-log.md`, ad
 **Blocks.** Dead runs being noticed without a human looking.
 
 **Settled by.** Deciding how often a dead run must be noticed, and whether `run.py` should pay that cost on every start.
+
+**Recommended (2026-11-10, not decided).** At the start of every `fleet.run`, print the dead runs, read-only, with the `fleet.recovery` command to act on them; halting stays a manual `fleet.recovery` step. Dead runs get noticed whenever anyone starts a run, for one query per start, and starting a run never changes another run's state. A scheduler can be added if dead runs must be noticed when nobody starts runs. Caveat: `dead_runs()` returns every `failed` run however old, so the notice needs a limit (see `todo.md`, "Next").
