@@ -22,3 +22,5 @@ harness-audit.json
 .ruff_cache
 
 .local-only
+
+out/
