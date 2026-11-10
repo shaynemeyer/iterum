@@ -27,6 +27,7 @@ uv run python -m fleet.view [trace <run_id> | stages [days]]   # live sessions a
 uv run python -u -m fleet.telemetry [--port 4318]                # receive Claude Code telemetry; settings in .env.example
 uv run python -m fleet.merge <branch> --run-id R --fence file:path=N [--repo .] [--target main]   # land a branch if every changed file has a live claim
 uv run python -u -m fleet.merge_drill                     # drive the merge gate through refusals, the lock and a crash (a few seconds)
+uv run python -u -m fleet.claims_drill                    # fleet.run's declared claims: refusal, resume, renewal, paused-agent takeover (about 50s)
 ```
 
 `fleet` has no `__init__.py` (a namespace package), so its modules must run with `-m`: `python fleet/run.py` fails with `ModuleNotFoundError`. `doctor.py` imports nothing from `fleet` and runs as a script; `seed-ledger.py` adds the repo root to `sys.path` itself.
