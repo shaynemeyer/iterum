@@ -32,7 +32,11 @@ A caller that treats `idem.Uncertain` as "the action may have happened" must als
 
 ## Build the merge gate that checks fences
 
-Status: open. `fleet/claim.py` issues fences and provides `require_claim()`, but nothing calls it yet.
+Status: open. `fleet/merge.py` has `land()` (item 2), tested 2026-11-10 against a scratch repo; nothing calls it yet, and it has no command line.
+
+`land()` builds the merge with `git merge-tree --write-tree` and `git commit-tree`, so no working tree is touched. It lists the changed files with `--no-renames` (a rename needs claims on both paths). Then, in one `db.write()` block, it calls `require_claim()` for each file and either logs `merge.landed` and runs `git update-ref` with the old value, or logs `merge.refused` and raises. Checked: a live claim landed; a file with no claim, an expired claim and a stale fence after a takeover were refused with `main` unchanged; a conflict raised `Conflict`; a target moved between build and update raised `CalledProcessError` and left no `merge.landed` event; a retry then landed.
+
+Found while testing: the target branch must not be checked out in any working tree. `update-ref` moves the branch but not that tree's index, so the next commit made there reverted the landed change (seen in the scratch repo: an "edit b" commit also reverted `a.txt`).
 
 A fence protects nothing unless whatever accepts the write checks it. An agent cannot check its own fence, because it can pause right after checking. A `PreToolUse` hook has the same gap, and one that times out does not block the call.
 
