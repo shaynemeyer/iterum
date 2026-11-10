@@ -204,7 +204,22 @@ def claim_files(run_id, plan):
     return fences
 
 
-def execute(run_id, plan):
+def run_branch(target):
+    """The current branch. Exits on a detached HEAD, outside a repo, or on target.
+
+    A run that declares files must reach target only through fleet.merge; its commits
+    would otherwise land on target directly, past every claim check.
+    """
+    head = subprocess.run(["git", "symbolic-ref", "--quiet", "--short", "HEAD"], capture_output=True, text=True)
+    if head.returncode != 0:
+        sys.exit(f"a plan that declares files must run on a branch: {head.stderr.strip() or 'HEAD is detached'}")
+    branch = head.stdout.strip()
+    if branch == target:
+        sys.exit(f"a plan that declares files must not run on {target}: its commits would skip fleet.merge. Use your own branch.")
+    return branch
+
+
+def execute(run_id, plan, branch=None, target="main"):
     try:
         fences = claim_files(run_id, plan)
     except claim.Refused as e:
@@ -220,7 +235,8 @@ def execute(run_id, plan):
         stop.set()
     if fences:
         flags = " ".join(f"--fence {r}={f}" for r, f in fences.items())
-        print(f"land with: uv run python -m fleet.merge <branch> --run-id {run_id} {flags}")
+        to = "" if target == "main" else f" --target {target}"
+        print(f"land with: uv run python -m fleet.merge {branch} --run-id {run_id}{to} {flags}")
 
 
 def run_steps(run_id, plan, lost):
@@ -325,8 +341,10 @@ if __name__ == "__main__":
     parser.add_argument("--plan", help="JSON plan file (default: the built-in drill)")
     parser.add_argument("--resume", metavar="RUN_ID", help="resume this run")
     parser.add_argument("--force", action="store_true", help="resume a halted run")
+    parser.add_argument("--target", default="main", help="the branch fleet.merge lands on; a plan that declares files may not run on it")
     args = parser.parse_args()
     plan = load_plan(args.plan) if args.plan else PLAN
+    branch = run_branch(args.target) if any(resources for *_, resources in plan) else None
 
     db.init()  # a fresh agent.db has no tables yet; safe to repeat
     if args.resume:
@@ -340,4 +358,4 @@ if __name__ == "__main__":
     else:
         run_id = db.start_run("worker-1", args.plan or "six step demo")
         print(f"run {run_id} started")
-    execute(run_id, plan)
+    execute(run_id, plan, branch, args.target)

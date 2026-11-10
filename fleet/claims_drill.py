@@ -63,9 +63,9 @@ class Drill:
     def run_args(self, *args):
         return [sys.executable, "-u", "-m", "fleet.run", *map(str, args)]
 
-    def run(self, *args):
-        """Run fleet.run in the agent worktree. Returns (exit code, output)."""
-        p = subprocess.run(self.run_args(*args), cwd=self.wt, capture_output=True, text=True)
+    def run(self, *args, cwd=None):
+        """Run fleet.run in the agent worktree, or cwd. Returns (exit code, output)."""
+        p = subprocess.run(self.run_args(*args), cwd=cwd or self.wt, capture_output=True, text=True)
         return p.returncode, p.stdout + p.stderr
 
     def merge(self, run_id, fences):
@@ -101,6 +101,18 @@ def _query(sql, *params):
 
 def _claims():
     return _query("SELECT resource, run_id FROM claims ORDER BY resource")
+
+
+def _wrong_branch(d):
+    plan = d.plan("wrong", [_edit(1, "a.txt", "a1")])
+    head = d.git("rev-parse", "agent")
+    code, out = d.run("--plan", plan, "--target", "agent")
+    d.check("on the target branch: exit code", code, 1)
+    d.check("on the target branch: reason", "must not run on agent" in out, True)
+    code, out = d.run("--plan", plan, cwd=d.repo)
+    d.check("detached HEAD: exit code", code, 1)
+    d.check("detached HEAD: reason", "HEAD is detached" in out, True)
+    d.check("wrong branch: no run recorded, no commit", (_query("SELECT count(*) FROM runs"), d.git("rev-parse", "agent")), ([(0,)], head))
 
 
 def _declared(d):
@@ -193,7 +205,7 @@ def main():
         db.init()
         d = Drill(work)
         d.setup()
-        for part in (_declared, _held, _resume, _expired_renew, _renewed, _taken):
+        for part in (_wrong_branch, _declared, _held, _resume, _expired_renew, _renewed, _taken):
             part(d)
         passed = all(d.results)
     print("drill passed" if passed else "drill FAILED")

@@ -2,6 +2,18 @@
 
 Decisions and why they were made. Newest first. Entries are never deleted; a decision that is reversed is marked "Superseded by" the entry that replaces it. Open decisions live in `open-questions.md`.
 
+## 2026-11-10: A run that declares files must be on its own branch, not in a linked worktree
+
+**Decision.** For merge-gate item 1 ("agents edit only in their own git worktrees"): `fleet.run` refuses a plan that declares files unless HEAD is on a branch other than the target. It does not check that the directory is a linked worktree, and it does not check plans that declare nothing.
+
+**Context.** The harm is a run whose steps commit straight onto the target, skipping every claim check: reproduced with a declared plan run with `main` checked out. A run in a separate clone cannot do that harm: its branch is not in the shared repo, so `fleet.merge` cannot find it. The built-in drill runs from the repo root on `main` and declares nothing.
+
+**Alternatives.** Require a linked worktree (`git rev-parse --git-dir` differs from `--git-common-dir`): adds a rule that guards against nothing the branch check misses. Check every plan: breaks `uv run python -u -m fleet.run` from the repo root.
+
+**Evidence.** See the work-completed entry "Build the merge gate that checks fences", item 1.
+
+**Affects.** `fleet/run.py` (`run_branch()`, `--target`), `fleet/claims_drill.py`. An agent can still write outside its worktree by other means; the `gate.py` hook is the only check there.
+
 ## 2026-11-10: A run renews its claims at half the TTL and stops its step when a renewal is refused
 
 **Decision.** `fleet/run.py`'s heartbeat thread renews the run's claims once half of `CLAIM_TTL` (`ITERUM_CLAIM_TTL`, default 300 seconds) has passed since the last renewal, not on every 10-second beat. A refused renewal kills the running step's process group, and the step and run are marked `failed` with "claim lost". This implements the decision above that `renew()` refuses an expired claim.

@@ -2,6 +2,32 @@
 
 Items moved here from `todo.md` once done. Newest first.
 
+## Build the merge gate that checks fences
+
+Completed 2026-11-10. Moved from `todo.md`:
+
+Status: open. Items 2 to 5 are done: `uv run python -m fleet.merge <branch> --run-id R --fence RESOURCE=FENCE ...` is the merge process, and `fleet.run` claims and renews a plan's declared files. Item 1 remains.
+
+`land()` builds the merge with `git merge-tree --write-tree` and `git commit-tree`, so no working tree is touched. It lists the changed files with `--no-renames` (a rename needs claims on both paths). Then, in one `db.write()` block, it calls `require_claim()` for each file and either logs `merge.landed` and runs `git update-ref` with the old value, or logs `merge.refused` and raises. Checked: a live claim landed; a file with no claim, an expired claim and a stale fence after a takeover were refused with `main` unchanged; a conflict raised `Conflict`; a target moved between build and update raised `CalledProcessError` and left no `merge.landed` event; a retry then landed.
+
+Found while testing: the target branch must not be checked out in any working tree. `update-ref` moves the branch but not that tree's index, so the next commit made there reverted the landed change (seen in the scratch repo: an "edit b" commit also reverted `a.txt`).
+
+A fence protects nothing unless whatever accepts the write checks it. An agent cannot check its own fence, because it can pause right after checking. A `PreToolUse` hook has the same gap, and one that times out does not block the call.
+
+1. Done 2026-11-10: agents edit only in their own git worktrees. Narrowed to a branch check; see below.
+2. A single merge process lands each change on the shared branch. It builds the merge outside any transaction. Then, inside one `db.write()` block, it calls `claim.require_claim()` and moves the branch with `git update-ref` and the expected old value, so no newer fence can be issued between the check and the update. Do not hold the write lock for the whole merge: other writers fail after the 5-second busy timeout.
+3. Done 2026-11-10: `land()` writes `merge.started` ahead, and `merge.reconcile()` settles a crash when the merge process starts (see the decision log). `python -m fleet.merge` takes an exclusive `flock` on `iterum-merge.lock` in the repo's git common dir, refuses if the target is checked out in any worktree, then calls `reconcile()` and `land()`. Tested 2026-11-10 against a shared repo with a detached HEAD and one worktree per agent: a checked-out `main` was refused; a live claim landed (exit 0); no fence and a paused agent's stale fence after a takeover were refused (exit 1); a second merge waited about 2 seconds for a process holding the lock, then landed; after a crash right after `update-ref`, the next merge logged `merge.landed` recovered before landing its own branch.
+4. Done 2026-11-10: moved to `work-completed.md`.
+5. Done 2026-11-10: `uv run python -u -m fleet.merge_drill` covers the paused-agent case, the other refusals, the lock, a crash after `update-ref` and a moved target, in about 3.5 seconds. Removing the live-claim check from `require_claim()` made it fail on the expired claim; removing `reconcile()` from the merge process made it fail on the crash.
+
+File claims do not catch changes in different files that break each other, even when the merge is clean. Tests or CI still have to catch those.
+
+**Item 1, before.** In a scratch repo with `main` checked out, `fleet.run` with a plan declaring `file:a.txt` committed `edit-a` straight onto `main` and printed a merge command with nothing left to merge.
+
+**Item 1, change.** `run_branch()` in `fleet/run.py`: a plan that declares files must run on a branch, and not on the target (`--target`, default `main`). It exits before the run is recorded. Plans that declare nothing are not checked, so the built-in drill still runs from the repo root on `main`. The printed merge command now names the branch, and passes `--target` when it is not `main`.
+
+**Item 1, after.** On `main`: exit 1, `main` unchanged, no run recorded. Detached HEAD: exit 1, "HEAD is detached". Outside a repo: exit 1 with git's "not a git repository". On its own branch: the run finished and printed `fleet.merge work ...`. `fleet.claims_drill` gained the target-branch and detached cases (27 checks, about 46 seconds); with `run_branch()` disabled they failed. The built-in plan and `fleet.merge_drill` still passed.
+
 ## Wire claims into `fleet/run.py` and renew them
 
 Completed 2026-11-10. Moved from `todo.md` (merge-gate item 4):
