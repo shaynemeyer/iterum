@@ -128,7 +128,8 @@ CREATE TABLE IF NOT EXISTS leases (
   worker       TEXT NOT NULL,
   granted_at   REAL NOT NULL,
   expires_at   REAL NOT NULL,
-  heartbeat_at REAL NOT NULL
+  heartbeat_at REAL NOT NULL,
+  pgid         INTEGER            -- process group of the task's command; may outlive a killed worker
 );
 
 -- ============ budgets ============

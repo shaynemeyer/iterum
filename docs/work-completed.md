@@ -2,6 +2,22 @@
 
 Items moved here from `todo.md` once done. Newest first.
 
+## A SIGKILLed worker's task command overlaps the rescuer's rerun
+
+Completed 2026-11-10. Moved from `todo.md`:
+
+Reproduced 2026-11-10 (see `work-completed.md`). `_shell()` in `fleet/worker.py` kills the task's process group only on a timeout, from inside the worker, and stores the group id nowhere, so nothing else can check it. A command that outlives the 30-second lease is still running when another worker reaps the task and starts it again.
+
+Possible fix, untested: the same shape as `fleet/run.py`. Store the group id with the lease, and have `queue.reap()` leave a task alone while that group still has a process in it (`os.killpg(pgid, 0)`). It would inherit the `pgid` write window above. `fleet.kill_drill` cannot catch this: its task sleeps 2 seconds, well inside the lease, so it needs a case whose command outlives the lease.
+
+**Drill first.** `fleet.kill_drill`'s parent task now sleeps `LEASE_TTL + 15` seconds on its first run and finishes at once on the rerun, writing `start` and `end` around each. A new check expects `start end start end child`. On the old code it failed with `start start end child`: the rerun ran inside the first copy, and the drill exited, deleting its directory, before the first copy could write its `end`.
+
+**Change.** `leases.pgid` is a new column (added to older databases by `db.init()`). `_shell()` stores the command's group with `queue.record_pgid()`, which checks the fence and refuses if the lease is gone. `reap()` leaves an expired lease alone, reported as `waiting` and printed by the worker, while that group has a process in it. `group_alive()` moved from `fleet/run.py` to `fleet/proc.py` so both can use it. Only the default `do_work` is covered (see the decision log).
+
+**After.** The drill passed in 51.5 seconds. The rescuer printed "lease expired but its command is still running" three times, then reaped and reran the task, and `runs.txt` read `start end start end child`. The ledger events and the single charged attempt are unchanged. A worker over three tasks on a scratch database still finished `echo hello` with result `"hello"`, dead-lettered `exit 3`, and dead-lettered `sleep 5` on a 1-second `FLEET_TASK_TIMEOUT_S` with no `sleep` left behind. `fleet/run.py`'s resume guard, now using `fleet/proc.py`, still refused: a one-step `sleep 60` plan, `run.py` SIGKILLed after 3 seconds, `--resume` 17 seconds later with `ITERUM_IDLE_SECONDS=15` exited 1 with "step 1 may still be running: process group 42035 exists".
+
+**Ctrl-C.** `_shell()` now kills the group on any early exit, not only a timeout. SIGINT to a worker mid `sleep 37`: the old `worker.py` exited and left `sleep 37` running; the new one killed it at once. Testing this needs SIGINT restored first: a job started with `&` from a non-interactive shell inherits SIGINT as ignored (`signal.getsignal` printed `1`, `SIG_IGN`), so the first attempt never interrupted the worker.
+
 ## Does the worker leave a task's command running when SIGKILLed?
 
 Completed 2026-11-10. Moved from `todo.md`:

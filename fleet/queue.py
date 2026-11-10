@@ -9,6 +9,7 @@ import time
 
 from fleet import db
 from fleet.claim import Refused, guard
+from fleet.proc import group_alive
 
 LEASE_TTL = 30
 RETRY_BASE_S = 5  # doubles with each attempt
@@ -195,6 +196,18 @@ def heartbeat(task_id, worker, fence, ttl=LEASE_TTL):
         )
 
 
+def record_pgid(task_id, fence, pgid):
+    """Store the task command's process group on the lease, so reap() can wait for it.
+
+    Raises Fenced, or Refused if the lease is gone.
+    """
+    with db.write() as con:
+        guard(con, f"task:{task_id}", fence)
+        cur = con.execute("UPDATE leases SET pgid=? WHERE task_id=?", (pgid, task_id))
+        if cur.rowcount == 0:
+            raise Refused(f"task {task_id}: no lease to record process group {pgid} on")
+
+
 def finish(task_id, worker, fence, result=None):
     """Mark the task done and keep its result. Raises Fenced or Refused if the worker has lost it."""
     with db.write() as con:
@@ -234,12 +247,19 @@ def release_back(task_id, worker, fence, reason):
 
 
 def reap():
-    """Expired lease = the worker is gone. Give the task back, or bury it."""
+    """Expired lease = the worker is gone. Give the task back, or bury it.
+
+    A dead worker's command can outlive it. While the lease's process group is
+    alive the task is left alone, reported with status "waiting", and logs nothing.
+    """
     reaped = []
     with db.write() as con:
         for row in con.execute(
-            "SELECT task_id, worker FROM leases WHERE expires_at < ?", (time.time(),)
+            "SELECT task_id, worker, pgid FROM leases WHERE expires_at < ?", (time.time(),)
         ).fetchall():
+            if row["pgid"] and group_alive(row["pgid"]):
+                reaped.append((row["task_id"], row["worker"], "waiting"))
+                continue
             reason = f"lease expired ({row['worker']} stopped reporting)"
             status = _spend_attempt(
                 con, row["task_id"], row["worker"], reason, "task.reaped", "coordination"

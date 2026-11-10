@@ -21,6 +21,7 @@ import threading
 import time
 
 from fleet import db, recovery
+from fleet.proc import group_alive
 
 HEARTBEAT = 10  # seconds between heartbeat_at updates; fleet.recovery's expiry must be several of these
 
@@ -59,17 +60,6 @@ def committed_seqs(run_id):
     finally:
         con.close()
     return {r["seq"] for r in rows}
-
-
-def group_alive(pgid):
-    """True if any process is left in this process group. EPERM means it exists but is not ours."""
-    try:
-        os.killpg(pgid, 0)
-    except ProcessLookupError:
-        return False
-    except PermissionError:
-        return True
-    return True
 
 
 def check_resumable(run_id, plan, force=False):

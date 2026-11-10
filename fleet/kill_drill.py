@@ -3,7 +3,7 @@
     uv run python -u -m fleet.kill_drill
 
 Works in a temporary directory with its own database, so it never touches
-agent.db. It uses the real lease, so a run takes about 40 seconds. Exits 1 if
+agent.db. It uses the real lease, so a run takes about 50 seconds. Exits 1 if
 any check fails.
 """
 
@@ -67,7 +67,11 @@ def _run_drill(work):
     """Run the drill in the directory work. Returns True if every check held."""
     runs = work / "runs.txt"
     quoted = shlex.quote(str(runs))
-    parent = queue.add("parent", {"cmd": f"echo parent >> {quoted}; sleep 2"})
+    # The first run outlives the lease; the rerun finishes at once. Overlapping
+    # copies write "start start end end", one after the other "start end start end".
+    first_run = f"echo start >> {quoted}; sleep {queue.LEASE_TTL + 15}; echo end >> {quoted}"
+    rerun = f"echo start >> {quoted}; echo end >> {quoted}"
+    parent = queue.add("parent", {"cmd": f"if [ -s {quoted} ]; then {rerun}; else {first_run}; fi"})
     child = queue.add("child", {"cmd": f"echo child >> {quoted}"}, depends_on=parent)
 
     victim = _start_worker("victim")
@@ -99,7 +103,11 @@ def _run_drill(work):
         _check("attempts charged", _query("SELECT attempts FROM tasks WHERE task_id=?", parent), [(1,)]),
         _check("parent events", [e[0] for e in events], RECOVERED_EVENTS),
         _check("leases remaining", _query("SELECT COUNT(*) FROM leases"), [(0,)]),
-        _check("commands started", runs.read_text().split(), ["parent", "parent", "child"]),
+        _check(
+            "commands in order, never overlapping",
+            runs.read_text().split(),
+            ["start", "end", "start", "end", "child"],
+        ),
     ]
 
 

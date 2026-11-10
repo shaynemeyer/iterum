@@ -7,7 +7,10 @@
 `do_work` is yours. The default below runs whatever shell command the task
 payload carries, because that is the smallest thing that is real work rather
 than a mime of it; point FLEET_WORK_MODULE at a module of your own exporting
-`do_work(task)` and this file does not change.
+`do_work(task)` and this file does not change. Only the default records its
+command's process group on the lease, so only it is protected from a rerun
+while a killed worker's command is still running; a module of your own must
+handle the processes it starts.
 
 Raising from `do_work` is how a worker reports failure.
 """
@@ -39,11 +42,13 @@ def _time_left(task):
     return min(TASK_TIMEOUT_S, task["deadline"] - time.time())
 
 
-def _shell(cmd, timeout):
-    """Run cmd and return (returncode, stdout, stderr).
+def _shell(cmd, task):
+    """Run the task's cmd and return (returncode, stdout, stderr).
 
-    It gets its own process group so that a timeout kills everything it started;
-    killing only the shell would leave its children holding the output pipes open.
+    It gets its own process group, recorded on the lease, so that reap() waits
+    for it if this worker is killed. If _shell exits early for any reason (a
+    timeout, a lost lease, Ctrl-C), it kills the whole group; killing only the
+    shell would leave its children holding the output pipes open.
     """
     p = subprocess.Popen(
         cmd,
@@ -54,8 +59,9 @@ def _shell(cmd, timeout):
         start_new_session=True,
     )
     try:
-        stdout, stderr = p.communicate(timeout=timeout)
-    except subprocess.TimeoutExpired:
+        queue.record_pgid(task["task_id"], task["fence"], p.pid)
+        stdout, stderr = p.communicate(timeout=_time_left(task))
+    except BaseException:
         os.killpg(p.pid, signal.SIGKILL)
         p.communicate()
         raise
@@ -71,7 +77,7 @@ def _default_do_work(task):
             "task payload has no 'cmd': give the task a shell command, or set "
             "FLEET_WORK_MODULE to a module exporting do_work(task)"
         )
-    code, stdout, stderr = _shell(payload["cmd"], _time_left(task))
+    code, stdout, stderr = _shell(payload["cmd"], task)
     if code != 0:
         raise RuntimeError(stderr.strip()[:200] or f"exit {code}")
     return stdout.strip()[:200]
@@ -115,7 +121,10 @@ def _heartbeating(task, worker):
 def _reap(worker):
     """Return dead workers' tasks to the queue and halt anything past its deadline."""
     for task_id, gone, status in queue.reap():
-        print(f"{worker}  reaped task {task_id} from {gone}: now {status}")
+        if status == "waiting":
+            print(f"{worker}  task {task_id}: {gone}'s lease expired but its command is still running")
+        else:
+            print(f"{worker}  reaped task {task_id} from {gone}: now {status}")
     for task_id in queue.sweep_deadlines():
         print(f"{worker}  halted task {task_id}: deadline exceeded")
 

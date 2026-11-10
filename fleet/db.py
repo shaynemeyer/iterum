@@ -62,6 +62,7 @@ def init():
         con.executescript(SCHEMA.read_text())
         _add_missing_column(con, "runs", "heartbeat_at")
         _add_missing_column(con, "steps", "pgid", "INTEGER")
+        _add_missing_column(con, "leases", "pgid", "INTEGER")
         _add_missing_column(con, "tasks", "not_before")
         _add_missing_column(con, "tasks", "result", "TEXT")
     finally:

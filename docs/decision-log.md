@@ -2,6 +2,30 @@
 
 Decisions and why they were made. Newest first. Entries are never deleted; a decision that is reversed is marked "Superseded by" the entry that replaces it. Open decisions live in `open-questions.md`.
 
+## 2026-11-10: The worker kills its command's group on any early exit
+
+**Decision.** `_shell()` in `fleet/worker.py` kills the command's process group on any exception while it runs (`except BaseException`), not only a timeout.
+
+**Context.** `_shell()` now calls `queue.record_pgid()`, which can raise `Fenced`, `Refused` or a busy `sqlite3.OperationalError` after the command has started. A command left running with no lease that knows its group is the overlap the fix removes. Ctrl-C is also an early exit.
+
+**Alternatives.** List the exceptions (`TimeoutExpired`, `Fenced`, `Refused`): misses a busy database and Ctrl-C. Leave Ctrl-C alone: the command would run on with nothing waiting for it, as `fleet/run.py` did before its own Ctrl-C entry below.
+
+**Evidence.** See the work-completed entry "A SIGKILLed worker's task command overlaps the rescuer's rerun", paragraph "Ctrl-C".
+
+**Affects.** `fleet/worker.py`. SIGKILL and SIGTERM still leave the command running; `reap()` waits for those.
+
+## 2026-11-10: The reaper waits for a dead worker's task command, default `do_work` only
+
+**Decision.** For the todo "A SIGKILLed worker's task command overlaps the rescuer's rerun": only the default `do_work` records its process group on the lease. A worker module set with `FLEET_WORK_MODULE` must handle its own processes. When `reap()` skips an expired lease because its group is still alive, it prints a line and writes no ledger event.
+
+**Context.** The overlap comes from `_shell()`, which only the default `do_work` uses. `reap()` runs every 5 seconds in every worker.
+
+**Alternatives.** Cover every `do_work` by changing its contract, for example passing it a way to record a group id: no custom module exists to test it against. A ledger event per skipped reap: a 10-minute command would write about 120 identical events. One event per lease would need extra state to remember it was logged.
+
+**Evidence.** See the work-completed entry "Does the worker leave a task's command running when SIGKILLed?".
+
+**Affects.** `fleet/worker.py` (its docstring should name the limit), `fleet/queue.py`. While `reap()` waits, why the task is still `in_progress` shows only in the reaping worker's output; the ledger shows the wait as a longer gap between `task.claimed` and `task.reaped`.
+
 ## 2026-11-10: Ctrl-C kills the step's process group
 
 **Decision.** `shell()` in `fleet/run.py` catches `KeyboardInterrupt` while waiting on a step, kills the step's process group with `os.killpg(pgid, SIGKILL)` and re-raises.
