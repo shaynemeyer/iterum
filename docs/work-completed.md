@@ -2,6 +2,18 @@
 
 Items moved here from `todo.md` once done. Newest first.
 
+## `commit_once` logs nothing on an ambiguous failure
+
+Completed 2026-11-10. Moved from `todo.md`:
+
+When an action fails without a `REFUSED` category, `commit_once()` leaves the receipt `in_flight` and writes no event, so the ledger shows `action.claimed` with no outcome. `run_step()` covers this with `step.failed` and `run.halted`, but a direct caller of `commit_once()` leaves no record of why the receipt is stuck. Log an event (for example `action.uncertain`, with the category) before re-raising.
+
+**Before.** On a scratch database, `commit_once()` with an action raising `StepError("timeout", ...)`, and one raising a plain `RuntimeError`, each left the receipt `in_flight` with only `action.claimed` in the ledger. A `rate_limit` refusal logged `action.refused`; a success logged `action.committed`.
+
+**Change.** When the category is not in `REFUSED` (including no category), `commit_once()` logs `action.uncertain` with `category` and `error` (`<exception type>: <message>`) before re-raising. The receipt stays `in_flight`.
+
+**After.** The timeout logged `action.uncertain` with category `timeout` and error `StepError: request timed out`; the `RuntimeError` logged it with no category and `RuntimeError: boom`. Calling `commit_once()` again for the timeout still raised `Uncertain`. The refusal and the success were unchanged. Through `run_step()`, a timeout gave `run.started, step.proposed, action.claimed, action.uncertain, step.failed, run.halted`, raised `StepError`, and left the run `halted`. No code reads `action.*` events.
+
 ## Build the merge gate that checks fences
 
 Completed 2026-11-10. Moved from `todo.md`:

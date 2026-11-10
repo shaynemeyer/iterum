@@ -143,6 +143,19 @@ def commit_once(run_id, seq, intent, params, action):
                     idem_key=key,
                     category=category,
                 )
+        else:
+            # The receipt stays in_flight; this records why, so the ledger does not end at action.claimed.
+            with db.write() as con:
+                db.log(
+                    con,
+                    run_id,
+                    "action.uncertain",
+                    stage="tool_execution",
+                    seq=seq,
+                    idem_key=key,
+                    category=category,
+                    error=f"{type(exc).__name__}: {exc}",
+                )
         raise
 
     with db.write() as con:

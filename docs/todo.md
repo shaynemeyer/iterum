@@ -14,10 +14,6 @@ When `claude_step()` replaces `shell()` in `fleet/run.py`, it must start Claude 
 
 `shell()` starts the command, then writes `steps.pgid`. A kill between the two leaves a running command with no group to check, and a resume can overlap it. The window is one SQLite write. `Popen` cannot report the group before the child starts. The worker's `_shell()` has the same window before `queue.record_pgid()`; a reap there reruns the task alongside the command. Not reproduced; leave it unless it shows up.
 
-## `commit_once` logs nothing on an ambiguous failure
-
-When an action fails without a `REFUSED` category, `commit_once()` leaves the receipt `in_flight` and writes no event, so the ledger shows `action.claimed` with no outcome. `run_step()` covers this with `step.failed` and `run.halted`, but a direct caller of `commit_once()` leaves no record of why the receipt is stuck. Log an event (for example `action.uncertain`, with the category) before re-raising.
-
 ## Check: `run_step` raises `StepError`, not `Uncertain`, for ambiguous failures
 
 Status: open. Revisit when the first caller of `fleet/step.py`'s `run_step()` is written.
