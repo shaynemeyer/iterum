@@ -2,6 +2,18 @@
 
 Items moved here from `todo.md` once done. Newest first.
 
+## Add a "Why you need it" section to the project site
+
+Completed 2026-11-10. Not from `todo.md`: it came from outside feedback on the site.
+
+**Change.** On `gh-pages`, `index.html` gains a section between the stats row and "How it works": three cards, each naming a problem (no record of what an agent did, a run that dies partway, agents overwriting each other) and then what Iterum does about it, plus a line on who it is for. Commit `0cd5158`; the Pages deployment succeeded and the live page shows the section.
+
+**Wording checked against the code.** The feedback draft claimed more than the harness does, so these were changed:
+- "Every action" and "every dollar of spend" became the event kinds that are actually logged: run steps, queue tasks, file claims and merges (`db.log()` calls in `fleet/run.py`, `fleet/queue.py`, `fleet/claim.py`, `fleet/merge.py`). Spend is logged only while `fleet.telemetry` runs.
+- "Fails when anything changes without a recorded event" became knowledge written without an event: `fleet/project.py` only rebuilds the `knowledge` table.
+- "Can't be edited or deleted" became "triggers reject edits and deletes": anyone with write access to `agent.db` can drop the triggers. For the same reason the "auditor" audience was left out.
+- "Picks up where it left off" became "skips the steps already committed": the interrupted step runs again.
+
 ## Write a design note for wiring `claude_step()` into `fleet/run.py`
 
 Completed 2026-11-10. Moved from `todo.md`:
