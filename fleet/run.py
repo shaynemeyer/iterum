@@ -20,7 +20,7 @@ import sys
 import threading
 import time
 
-from fleet import db, recovery
+from fleet import claim, db, recovery
 from fleet.proc import group_alive
 
 HEARTBEAT = 10  # seconds between heartbeat_at updates; fleet.recovery's expiry must be several of these
@@ -102,7 +102,7 @@ def check_resumable(run_id, plan, force=False):
                 f"wait for it to exit, or, if you know it is safe to run the step again:\n"
                 f"  uv run python -u -m fleet.run --resume {run_id} --force"
             )
-    planned = {seq: intent for seq, intent, _ in plan}
+    planned = {seq: intent for seq, intent, *_ in plan}
     for r in recorded:
         if planned.get(r["seq"]) != r["intent"]:
             sys.exit(
@@ -150,7 +150,34 @@ def beat(run_id, stop):
                 raise
 
 
+def claim_files(run_id, plan):
+    """Claim every resource the plan declares, in sorted order, before any step runs. Returns {resource: fence}.
+
+    All up front, because the merge needs claims on committed steps' files too and a
+    resumed process gets new fences. On a refusal it releases what it took and re-raises.
+    """
+    con = db.connect()
+    try:
+        agent = con.execute("SELECT agent FROM runs WHERE run_id=?", (run_id,)).fetchone()["agent"]
+    finally:
+        con.close()
+    fences = {}
+    try:
+        for resource in sorted({r for *_, resources in plan for r in resources}):
+            fences[resource] = claim.acquire(resource, run_id, agent)
+    except claim.Refused:
+        for resource, fence in fences.items():
+            claim.release(resource, run_id, fence)
+        raise
+    return fences
+
+
 def execute(run_id, plan):
+    try:
+        fences = claim_files(run_id, plan)
+    except claim.Refused as e:
+        db.finish_run(run_id, "failed")
+        sys.exit(f"run {run_id} refused before any step ran: {e}")
     mark_running(run_id)
     stop = threading.Event()
     threading.Thread(target=beat, args=(run_id, stop), daemon=True).start()
@@ -158,6 +185,9 @@ def execute(run_id, plan):
         run_steps(run_id, plan)
     finally:
         stop.set()
+    if fences:
+        flags = " ".join(f"--fence {r}={f}" for r, f in fences.items())
+        print(f"land with: uv run python -m fleet.merge <branch> --run-id {run_id} {flags}")
 
 
 def run_steps(run_id, plan):
@@ -165,7 +195,7 @@ def run_steps(run_id, plan):
     if done:
         print(f"resuming {run_id}, {len(done)} step(s) already committed")
 
-    for seq, intent, cmd in plan:
+    for seq, intent, cmd, _ in plan:
         if seq in done:
             print(f"  step {seq}  already committed, skipping")
             continue
@@ -233,23 +263,25 @@ def claude_step(prompt):
 # effect and then sleeps, so a kill can land in the gap between the effect and
 # the commit; step 5 sleeps long enough to be a comfortable kill window.
 PLAN = [
-    (1, "create the work directory", "mkdir -p out && echo ok"),
-    (2, "fetch the file list", "ls fleet > out/filelist.txt && echo ok"),
-    (3, "count the lines", "wc -l < out/filelist.txt > out/count.txt && echo ok"),
-    (4, "the slow one", "echo ok > out/step4.txt && sleep 3"),
-    (5, "write the summary", "sleep 20 && echo summary > out/summary.txt"),
-    (6, "verify", "ls out | wc -l"),
+    (1, "create the work directory", "mkdir -p out && echo ok", ()),
+    (2, "fetch the file list", "ls fleet > out/filelist.txt && echo ok", ()),
+    (3, "count the lines", "wc -l < out/filelist.txt > out/count.txt && echo ok", ()),
+    (4, "the slow one", "echo ok > out/step4.txt && sleep 3", ()),
+    (5, "write the summary", "sleep 20 && echo summary > out/summary.txt", ()),
+    (6, "verify", "ls out | wc -l", ()),
 ]
 
 
 def load_plan(path):
-    """Read a plan from JSON: [[seq, intent, shell_command], ...].
+    """Read a plan from JSON: [[seq, intent, shell_command, [resource, ...]], ...]. The resources are optional.
+
+    Each resource, such as "file:src/a.py", is claimed before any step runs; see claim_files().
 
     A tool whose only input is a literal in its own source is a demonstration.
     Point this at your own steps and the rest of the module does not change.
     """
     raw = json.loads(open(path).read())
-    return [(int(seq), str(intent), str(cmd)) for seq, intent, cmd in raw]
+    return [(int(seq), str(intent), str(cmd), tuple(rest[0]) if rest else ()) for seq, intent, cmd, *rest in raw]
 
 
 if __name__ == "__main__":

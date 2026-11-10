@@ -2,17 +2,17 @@
 
 Decisions not made yet. When one is answered, record it in `decision-log.md`, add any resulting work to `todo.md`, and remove it here.
 
-## May `renew()` revive an expired claim?
+## Who releases a run's claims after its branch lands?
 
-**Context.** `renew()` matches a claim by resource and fence and never checks `expires_at`. An expired holder with no successor can renew, keep its old fence, and pass `require_claim()` without calling `acquire()` again (tested 2026-11-10). No other writer can have landed in between, so this is not an overlap. But between the expiry and the renewal, the `claims` table showed an expired claim for a holder that was still about to write.
+**Context.** `fleet.run` claims every declared file for the whole run, and nothing releases them. After a run's branch landed through `fleet.merge`, both its claims were still live, and every later run touching those files was refused for the rest of the 300-second lease (tested 2026-11-10).
 
-**Options.** Leave it: renewing is then just a way to take the claim back without a new fence. Or add `AND expires_at > now` to the `UPDATE` in `renew()`, so an expired holder must call `acquire()` again and gets a new fence.
+**Options.** `land()` deletes the claims it checked, in the same `db.write()` block as `merge.landed`, so landing and releasing commit together. Or the run releases them itself, which needs it to wait for or learn about the merge. Or a separate command releases a run's claims by hand.
 
-**Blocks.** Nothing yet. The merge gate refuses correctly either way.
+**Blocks.** Running more than one plan against the same files within 300 seconds.
 
-**Revisit when.** Wiring claim renewal into `fleet/run.py` (merge gate, item 4).
+**Revisit when.** Before claim renewal, since renewal would keep unreleased claims alive indefinitely.
 
-**Settled by.** Choosing whether an expired claim can come back to life with its old fence.
+**Settled by.** Choosing what ends a run's hold on its files: landing, or the run saying so.
 
 ## How does a human settle a stuck `in_flight` receipt?
 

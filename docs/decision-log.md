@@ -2,6 +2,30 @@
 
 Decisions and why they were made. Newest first. Entries are never deleted; a decision that is reversed is marked "Superseded by" the entry that replaces it. Open decisions live in `open-questions.md`.
 
+## 2026-11-10: A run declares its files in the plan and claims them all before any step
+
+**Decision.** For merge-gate item 4: a plan step may carry a fourth field, a list of resources such as `"file:a.txt"`. `fleet.run` claims every resource in the plan, in sorted order, before any step runs, and again on resume. A refusal releases what it took, marks the run `failed`, and runs no step. A run that holds claims prints the `fleet.merge` command with its `--fence` flags when it finishes. Plans with three fields still work and claim nothing.
+
+**Context.** A plan step is a shell command, and `claude_step()` (the only way a Claude edit could run through `fleet.run`) is billed and not wired in, so a hook that claims as the agent edits could not be tested without paying. The merge needs claims on every file the run changed, including committed steps, and a resumed process gets new fences by design.
+
+**Alternatives.** Claim each step's files when it is proposed: a resume would still have to re-claim committed steps' files, and two runs could each hold a file the other needs next. Claim through the `gate.py` hook as the agent edits: a timed-out hook does not block, hook processes are short-lived so something else must renew, the fences must be stored for the merge, and a refusal mid-step leaves partial edits. It can come later, once `claude_step()` is wired in.
+
+**Evidence.** On a scratch repo with an agent worktree: a two-step plan claimed `a.txt` and `b.txt`, committed both, and its printed flags landed through `fleet.merge`. With `b.txt` held by another run, a new run was refused with no steps and status `failed`, and its claim on `a.txt` was released. A run that failed at step 2 and was resumed went from fence 3 to 4; the merge refused fence 3 and landed with 4. The built-in drill plan still ran to `done`.
+
+**Affects.** `fleet/run.py`. Claims are not renewed yet, so a run longer than 300 seconds loses them, and nothing releases them after landing (see `open-questions.md`).
+
+## 2026-11-10: `renew()` will refuse an expired claim
+
+**Decision.** For the open question "May `renew()` revive an expired claim?": no. `renew()` will match only an unexpired claim, so a holder that missed renewal must call `acquire()` again and gets a new fence. When the run's renewal is refused, the run stops its step and marks it `failed`. Not implemented yet; it comes with claim renewal in `fleet/run.py`.
+
+**Context.** Renewal will run from `fleet/run.py`'s heartbeat thread. Reviving an expired claim is safe when nobody else took it, but it lets the `claims` table show an expired claim for a holder still about to write, which is what the stricter merge guard was chosen to rule out.
+
+**Alternatives.** Leave `renew()` as it is: an expired holder skips `acquire()` and keeps its old fence.
+
+**Evidence.** None yet beyond the 2026-11-10 test that showed an expired holder could renew and pass `require_claim()`.
+
+**Affects.** `fleet/claim.py` and `fleet/run.py`, when renewal is built.
+
 ## 2026-11-10: The merge gate writes ahead, and reconcile() settles a crash on restart
 
 **Decision.** For merge-gate item 3 (a crash during the update): `land()` logs `merge.started` (with a UUIDv7 `merge_id`, the old and new commits) in its own `db.write()` before the locked block. The locked block logs `merge.landed` or `merge.refused` as before. If `update-ref` fails, the block rolls back and `land()` logs `merge.abandoned` in a new write. `merge.reconcile(repo)`, run when the merge process starts, finds this device's `merge.started` events with no outcome and logs `merge.landed` (if the commit is an ancestor of the target) or `merge.abandoned`, both with `recovered: true`.
