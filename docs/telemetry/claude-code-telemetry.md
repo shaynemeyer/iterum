@@ -46,14 +46,15 @@ export OTEL_LOGS_EXPORT_INTERVAL=1000
 export OTEL_RESOURCE_ATTRIBUTES=iterum.run_id=test123
 ```
 
-To send only events to a local HTTP receiver, which is what the third test did [T3]:
+To send only events to the iterum receiver, use the settings in the repo's `.env.example`. Test T3 used the same transport against a throwaway server [T3]; the shorter interval comes from the kill tests [T5] [T6]:
 
 ```bash
 export CLAUDE_CODE_ENABLE_TELEMETRY=1
 export OTEL_METRICS_EXPORTER=none
 export OTEL_LOGS_EXPORTER=otlp
 export OTEL_EXPORTER_OTLP_LOGS_PROTOCOL=http/json
-export OTEL_EXPORTER_OTLP_LOGS_ENDPOINT=http://127.0.0.1:14318/v1/logs
+export OTEL_EXPORTER_OTLP_LOGS_ENDPOINT=http://127.0.0.1:4318/v1/logs
+export OTEL_LOGS_EXPORT_INTERVAL=1000   # ms; a kill -9 loses at most one interval
 ```
 
 | Variable | Values | Default | Source |
@@ -209,6 +210,17 @@ All ran `claude -p` on Haiku in a scratch directory with Claude Code 2.1.322. T1
 | T4 | Read two files. Logs sent to `fleet.telemetry` with the `.env.example` settings, `iterum.run_id=real1`. | Three requests became three `spend.reported` events under `real1`, each with its own `request_id`. No identity field was stored. A synthetic body sent twice, with a duplicate `request_id` and a record without `iterum.run_id`, wrote each request once and logged the second under `session-<session.id>`. |
 | T5 | Read files one per turn, logs to `fleet.telemetry` at the default 5000 ms interval, SIGKILL at 10 s. | Three requests completed (by `requestId` in the session transcript); 1 reached the ledger. The two that finished 2.3 s and 4.2 s after the first were lost. |
 | T6 | Same as T5 with `OTEL_LOGS_EXPORT_INTERVAL=1000`. | Three requests completed; 3 reached the ledger. |
+
+## What a killed session loses
+
+Claude Code buffers events and posts them once per export interval. A `kill -9` loses everything that finished since the last post. Two runs, each killed at 10 s after three completed requests, show the effect of the interval [T5] [T6]:
+
+| Run | Logs export interval | Requests completed | Reached the ledger | Lost |
+| --- | --- | ---: | ---: | ---: |
+| T5 | 5000 ms (default) | 3 | 1 | 2 |
+| T6 | 1000 ms | 3 | 3 | 0 |
+
+iterum's `.env.example` sets `OTEL_LOGS_EXPORT_INTERVAL=1000`, so a hard kill loses at most about one second of spend. This is one run per setting, and a request still running at the kill appears in neither the transcript nor telemetry.
 
 ## Not yet known
 
