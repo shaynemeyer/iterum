@@ -42,7 +42,7 @@ A fence protects nothing unless whatever accepts the write checks it. An agent c
 
 1. Agents edit only in their own git worktrees.
 2. A single merge process lands each change on the shared branch. It builds the merge outside any transaction. Then, inside one `db.write()` block, it calls `claim.require_claim()` and moves the branch with `git update-ref` and the expected old value, so no newer fence can be issued between the check and the update. Do not hold the write lock for the whole merge: other writers fail after the 5-second busy timeout.
-3. Decide how to recover from a crash during the update. Git and SQLite do not commit together.
+3. Done 2026-11-10: `land()` writes `merge.started` ahead, and `merge.reconcile()` settles a crash when the merge process starts (see the decision log). Still needed: a merge process that calls `reconcile()` at startup and then `land()`.
 4. Wire claims into `fleet/run.py`, and renew them while a step runs. A step longer than `claim.DEFAULT_TTL` (300 seconds) would otherwise lose its lease.
 5. Add a drill for the paused-agent case: Agent A claims a resource and stops, its lease expires, Agent B claims it, then Agent A tries to merge and is refused.
 

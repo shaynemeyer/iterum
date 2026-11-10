@@ -2,6 +2,18 @@
 
 Decisions and why they were made. Newest first. Entries are never deleted; a decision that is reversed is marked "Superseded by" the entry that replaces it. Open decisions live in `open-questions.md`.
 
+## 2026-11-10: The merge gate writes ahead, and reconcile() settles a crash on restart
+
+**Decision.** For merge-gate item 3 (a crash during the update): `land()` logs `merge.started` (with a UUIDv7 `merge_id`, the old and new commits) in its own `db.write()` before the locked block. The locked block logs `merge.landed` or `merge.refused` as before. If `update-ref` fails, the block rolls back and `land()` logs `merge.abandoned` in a new write. `merge.reconcile(repo)`, run when the merge process starts, finds this device's `merge.started` events with no outcome and logs `merge.landed` (if the commit is an ancestor of the target) or `merge.abandoned`, both with `recovered: true`.
+
+**Context.** `update-ref` runs inside the SQLite transaction so no newer fence can be issued between the check and the move. A crash after `update-ref` and before COMMIT moved the branch with no event: reproduced by `os._exit(9)` right after `update-ref`, which left `main` merged and the ledger with no `merge.*` events.
+
+**Alternatives.** Commit SQLite first, then `update-ref` outside the lock: reopens the gap between the check and the move. Accept the gap and treat git as the only record: nothing reads `merge.*` events yet, but `fleet/project.py` would build wrong knowledge once something does. Pair events by commit hash: `commit-tree` timestamps to the second, and two crash runs built the same hash (`18c9637a0a73`). Reconcile at the start of every `land()`: two concurrent `land()` calls would mark each other's in-flight merge abandoned.
+
+**Evidence.** Crash after `update-ref`, then `reconcile()`: `merge.landed` recovered, `main` merged. Crash before `update-ref`: `merge.abandoned` recovered, `main` unchanged. A second `reconcile()` logged nothing. The ten-case scratch script still passed, and its moved-target attempt logged `merge.abandoned` with git's `cannot lock ref` message, so nine `merge.started` events had nine outcomes (the conflict fails before the write-ahead).
+
+**Affects.** `fleet/merge.py`. `reconcile()` assumes one merge process per device and must run before it lands anything. A failed `update-ref` still raises `CalledProcessError` to the caller.
+
 ## 2026-11-10: The merge gate requires a live claim, not just the current fence
 
 **Decision.** For the open question "Should `claim.guard()` also require a live claim?": yes, but through a new `claim.require_claim()`, not by changing `guard()`. It calls `guard()` and then requires a `claims` row with the same resource and fence whose `expires_at` has not passed, and raises `Refused` otherwise. The merge gate calls `require_claim()`.
