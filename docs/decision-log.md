@@ -2,6 +2,18 @@
 
 Decisions and why they were made. Newest first. Entries are never deleted; a decision that is reversed is marked "Superseded by" the entry that replaces it. Open decisions live in `open-questions.md`.
 
+## 2026-11-10: Claude Code spend lands in the ledger, one event per API request
+
+**Decision.** Spend is recorded as ledger events, one per Claude Code `claude_code.api_request` telemetry event. Each event's `run_id` comes from a custom resource attribute, `iterum.run_id`, which `fleet` sets through `OTEL_RESOURCE_ATTRIBUTES` when it starts a session. Sessions `fleet` did not start fall back to `session.id`. The ledger event keeps `request_id`, `cost_usd`, `model` and token counts, and drops `user.email`, `user.id`, `user.account_uuid`, `user.account_id` and `organization.id`. `request_id` is the dedupe key. The `claude_code.cost.usage` metric is not imported. `runs.cost_usd` is not written.
+
+**Context.** `runs.cost_usd` was always 0 because nothing passed a cost to `db.finish_run()`. Claude Code exports cost as OpenTelemetry metrics and events (https://code.claude.com/docs/en/monitoring-usage). The `cost_usd` field is described there as "Estimated cost in USD", so these figures compare agents and are not billing.
+
+**Alternatives.** Update `runs.cost_usd`: `runs` is local to one machine and never synced, so spend would stay on the device that recorded it, and an update keeps no history. Import the `cost.usage` metric: it is a cumulative counter per session, the wrong shape for an append-only ledger, and the events already sum to it.
+
+**Evidence.** Two `claude -p` sessions on Haiku, Claude Code 2.1.322, with console exporters and `OTEL_RESOURCE_ATTRIBUTES=iterum.run_id=<id>`. `iterum.run_id` and `session.id` were on every event and metric datapoint. The four-request session produced four `api_request` events with four distinct `request_id`s; their `cost_usd` summed to 0.00541548, equal to the final `cost.usage` value. `cost_usd_micros` is rounded per request (4125 for 0.00412534), so `cost_usd` is stored instead. The five identity fields were on every record. A third session with `OTEL_LOGS_EXPORTER=otlp`, `OTEL_METRICS_EXPORTER=none`, `OTEL_EXPORTER_OTLP_LOGS_PROTOCOL=http/json` and `OTEL_EXPORTER_OTLP_LOGS_ENDPOINT=http://127.0.0.1:14318/v1/logs` posted three `application/json` requests to `/v1/logs`, received by a standard-library `http.server`; the `api_request` record carried `iterum.run_id`, `request_id`, `cost_usd` (`doubleValue`) and the token counts (`intValue`).
+
+**Affects.** A receiver in `fleet` (not written yet) that takes OTLP logs as `http/json` with the standard library alone, and `claude_step()` when it is wired in. Not yet tested: a session using more than one model, and how much a killed session loses before export.
+
 ## 2026-11-10: Queue failures are tagged with the stage where they happened
 
 **Decision.** `_spend_attempt()` always logs the cause of a spent attempt in its own stage: `task.failed` as `tool_execution`, `task.reaped` as `coordination`. When no attempts are left, `task.dead_lettered` follows as `scheduling`. `fleet/view.py` counts `failed`, `halted`, `dead_letter`, `refused` and `reaped` kinds as failures.
