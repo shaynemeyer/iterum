@@ -105,6 +105,14 @@ CREATE TABLE IF NOT EXISTS fences (
   high     INTEGER NOT NULL
 );
 
+-- INSERT OR REPLACE fires these only with PRAGMA recursive_triggers (db.connect).
+CREATE TRIGGER IF NOT EXISTS fences_no_delete BEFORE DELETE ON fences
+BEGIN SELECT RAISE(ABORT, 'fences rows are never deleted'); END;
+
+CREATE TRIGGER IF NOT EXISTS fences_only_up BEFORE UPDATE ON fences
+WHEN NEW.high <= OLD.high OR NEW.resource IS NOT OLD.resource
+BEGIN SELECT RAISE(ABORT, 'fences.high only counts up'); END;
+
 -- ============ the work queue ============
 CREATE TABLE IF NOT EXISTS tasks (
   task_id      INTEGER PRIMARY KEY AUTOINCREMENT,

@@ -2,6 +2,37 @@
 
 Items moved here from `todo.md` once done. Newest first.
 
+## Enforce the `fences` rules in the database
+
+Completed 2026-11-10. Moved from `todo.md`:
+
+Status: open. Do this before anything relies on `fleet/claim.py`, which writes `fences` through `acquire()`.
+
+`fleet/schema.sql` says `fences` rows are never deleted and `high` only counts up, but nothing enforces it. A reset is silent: a stale agent's fence can match or beat the new one.
+
+1. Add these after the `fences` table in `fleet/schema.sql`:
+
+   ```sql
+   CREATE TRIGGER IF NOT EXISTS fences_no_delete BEFORE DELETE ON fences
+   BEGIN SELECT RAISE(ABORT, 'fences rows are never deleted'); END;
+
+   CREATE TRIGGER IF NOT EXISTS fences_only_up BEFORE UPDATE ON fences
+   WHEN NEW.high <= OLD.high OR NEW.resource IS NOT OLD.resource
+   BEGIN SELECT RAISE(ABORT, 'fences.high only counts up'); END;
+   ```
+
+2. Add `con.execute("PRAGMA recursive_triggers = ON")` to `connect()` in `fleet/db.py`. Without it, `INSERT OR REPLACE` resets a fence without firing either trigger (tested against the schema in memory, SQLite 3.50.4). `steps` is the only table written with `REPLACE` today and has no triggers, so nothing else changes.
+
+`claim.acquire()` already raises the fence in the same `db.write()` block as the `claims` update, and issued 1, 2, 3, 4 with these triggers and the `PRAGMA` in place.
+
+These guard against bugs, not a hostile agent: anything with shell access can still drop the triggers or connect without the `PRAGMA`.
+
+**Before.** On a scratch database, `UPDATE fences SET high=1` lowered a fence of 5, `INSERT OR REPLACE` reset it to 0, and `DELETE` removed it. None raised.
+
+**Change.** Both triggers are in `fleet/schema.sql` after `fences`, and `connect()` in `fleet/db.py` sets `PRAGMA recursive_triggers = ON`. The item above says `steps` is the only table written with `REPLACE`; `leases` is too (`fleet/queue.py`). Neither has triggers, so the `PRAGMA` changes nothing for them.
+
+**After.** Lowering, setting an equal value, renaming the resource, `INSERT OR REPLACE` and `DELETE` each raised `IntegrityError`; raising 5 to 6 worked. `db.init()` ran twice without error. `claim.acquire()` across a reclaim by the same holder, a release, and an expired lease taken over by another agent issued 1, 2, 3, 4, and `guard()` refused fence 3 and accepted 4. The `fleet.run` drill committed all six steps, and `fleet.kill_drill` passed.
+
 ## A SIGKILLed worker's task command overlaps the rescuer's rerun
 
 Completed 2026-11-10. Moved from `todo.md`:

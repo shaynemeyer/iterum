@@ -20,6 +20,7 @@ def connect():
     con.execute("PRAGMA journal_mode = WAL")
     con.execute("PRAGMA busy_timeout = 5000")
     con.execute("PRAGMA foreign_keys = ON")
+    con.execute("PRAGMA recursive_triggers = ON")
     return con
 
 
