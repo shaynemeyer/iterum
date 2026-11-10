@@ -2,6 +2,18 @@
 
 Decisions and why they were made. Newest first. Entries are never deleted; a decision that is reversed is marked "Superseded by" the entry that replaces it. Open decisions live in `open-questions.md`.
 
+## 2026-11-10: Spend events are `spend.reported`, stage `governance`
+
+**Decision.** `fleet/telemetry.py` logs each Claude Code `api_request` as kind `spend.reported` with stage `governance`. The payload keeps `request_id`, `model`, `cost_usd`, the token counts, `duration_ms` and `session_id`. The `run_id` is `iterum.run_id`, or `session-<session.id>` when that is missing. A `request_id` already in the ledger is skipped, checked with `json_extract` inside the same `db.write()`.
+
+**Context.** The earlier entry today chose ledger events for spend but left the kind, the stage and the receiver open.
+
+**Alternatives.** Kind `claude.api_request`: every other kind is a noun and a past-tense verb (`run.started`, `step.committed`, `task.reaped`), and it named the source rather than what happened. Stage `scheduling`: it is queue bookkeeping, used only in `fleet/queue.py`. Stage `governance` already names the hooks and approvals layer in `fleet/doctor.py`, and is not in `STAGES`, so `fleet.view stages` does not count spend as a failure.
+
+**Evidence.** A synthetic OTLP body posted twice to `fleet.telemetry` on a scratch database wrote two events and skipped the duplicate and the repeat; the `user_prompt` record and a fake `user.email` were not stored, and a string `intValue` was read as a number. A real `claude -p` session on Haiku sent three requests, which became three `spend.reported` events under `iterum.run_id`. `fleet.view trace` shows them; `fleet.view stages` leaves them out.
+
+**Affects.** `fleet/telemetry.py`, `.env.example`, `docs/telemetry/claude-code-telemetry.md`. The dedupe query scans every `spend.reported` event; add an index if it gets slow.
+
 ## 2026-11-10: Claude Code spend lands in the ledger, one event per API request
 
 **Decision.** Spend is recorded as ledger events, one per Claude Code `claude_code.api_request` telemetry event. Each event's `run_id` comes from a custom resource attribute, `iterum.run_id`, which `fleet` sets through `OTEL_RESOURCE_ATTRIBUTES` when it starts a session. Sessions `fleet` did not start fall back to `session.id`. The ledger event keeps `request_id`, `cost_usd`, `model` and token counts, and drops `user.email`, `user.id`, `user.account_uuid`, `user.account_id` and `organization.id`. `request_id` is the dedupe key. The `claude_code.cost.usage` metric is not imported. `runs.cost_usd` is not written.

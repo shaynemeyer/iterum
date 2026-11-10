@@ -24,6 +24,7 @@ uv run python -m fleet.dlq [redrive <task_id>]            # list dead-lettered t
 uv run python -m fleet.conflicts [resolve <task_id> "<decision>"]   # list conflicts waiting for a person, or settle one
 uv run python -u -m fleet.kill_drill                      # SIGKILL a worker mid-task and check recovery (about 40s)
 uv run python -m fleet.view [trace <run_id> | stages [days]]   # live sessions and runs, one run's trace, or failures per stage
+uv run python -u -m fleet.telemetry [--port 4318]                # receive Claude Code telemetry; settings in .env.example
 ```
 
 `fleet` has no `__init__.py` (a namespace package), so its modules must run with `-m`: `python fleet/run.py` fails with `ModuleNotFoundError`. `doctor.py` imports nothing from `fleet` and runs as a script; `seed-ledger.py` adds the repo root to `sys.path` itself.
@@ -62,5 +63,7 @@ ITERUM_DB=/tmp/scratch.db ITERUM_DEVICE=test uv run python -u -m fleet.run
 `fleet/sync.py` shares only `events` across devices: each device appends its own events to `events-<ITERUM_DEVICE>.jsonl` (export never removes lines) and imports every file with `ON CONFLICT(uid) DO NOTHING`. `uid` (UUIDv7) is the global identity; `event_id` is local and differs per device. `runs`, `steps` and the coordination tables are never synced.
 
 `fleet/queue.py` is the work queue over `tasks` and `leases`. `claim()` issues a fence per task, and a worker must present it, with a live lease, to `heartbeat()`, `finish()`, `fail()` or `release_back()`; a stale worker gets `Fenced` or `Refused` and changes nothing. A dead-lettered task halts everything waiting on it, and `redrive()` restores those tasks. `fleet/worker.py` runs the loop and does the reaping itself, so there is no separate reaper process. Ledger events use `task-<device>-<task_id>` as `run_id`, because `task_id` is local and events sync. `finish()` stores what `do_work` returns in `tasks.result`, read back with `queue.results()`. `claim()` skips tasks of kind `queue.HUMAN_KIND`; only `queue.resolve()` closes those.
+
+`fleet/telemetry.py` receives Claude Code's OTLP logs as `http/json` on `/v1/logs` and logs each `claude_code.api_request` as a `spend.reported` event, stage `governance`, under `iterum.run_id` (or `session-<session.id>`). It stores no identity fields and skips a `request_id` already logged. Metrics are not imported; `runs.cost_usd` is not written.
 
 The schema defines more tables (`budgets`, `evals`, `approvals`) than the code uses yet.

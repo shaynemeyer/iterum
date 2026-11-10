@@ -1,8 +1,8 @@
 # Claude Code Telemetry
 
-Claude Code can export what a session does, including the cost of every API request, through OpenTelemetry. This document covers what it emits, how to turn it on, which fields arrive, what is private by default, and how the iterum fleet plans to record spend from it.
+Claude Code can export what a session does, including the cost of every API request, through OpenTelemetry. This document covers what it emits, how to turn it on, which fields arrive, what is private by default, and how the iterum fleet records spend from it.
 
-Every claim carries a tag: **[Docs]** for the monitoring documentation, **[T1]**–**[T3]** for three local tests. See [Sources](#sources).
+Every claim carries a tag: **[Docs]** for the monitoring documentation, **[T1]**–**[T4]** for four local tests. See [Sources](#sources).
 
 Claude Code 2.1.322. Tests run 2026-11-10.
 
@@ -174,47 +174,49 @@ Content is off by default. Identity is on [Docs].
 
 **On by default:** user email, user and account ids, and organization id. In tests T1 and T2, all five identity fields were on every single record [T1]. Anything that stores or forwards these records should decide which of these fields to keep before writing anything.
 
-## How iterum will record spend
+## How iterum records spend
 
-Decision recorded 2026-11-10 in [decision-log.md](../decision-log.md). Spend becomes ledger events, one per `api_request`. The ledger's `events` table is the only one that syncs between devices, and it is append-only, which matches one record per request. The receiver is not built yet.
+Decision recorded 2026-11-10 in [decision-log.md](../decision-log.md). Spend becomes ledger events, one per `api_request`. The ledger's `events` table is the only one that syncs between devices, and it is append-only, which matches one record per request.
+
+`fleet/telemetry.py` is the receiver. Start it with `uv run python -m fleet.telemetry` (port 4318), and give Claude Code the settings in `.env.example`. Each `api_request` becomes one `spend.reported` event with stage `governance`, which `fleet.view stages` leaves out because spending is not a failure. The payload keeps `request_id`, `model`, `cost_usd`, token counts, `duration_ms` and `session_id`.
 
 ```mermaid
 flowchart LR
     RUN["fleet run<br/>claude_step()"]
     CC["Claude Code<br/>session"]
-    RX["fleet receiver<br/>stdlib http.server<br/>(planned)"]
+    RX["fleet.telemetry<br/>stdlib http.server"]
     DB["agent.db<br/>events (append-only)"]
     OTHER["other devices"]
     RUN -- "starts with<br/>iterum.run_id=RUN_ID" --> CC
     CC == "POST /v1/logs<br/>http/json, every 5 s" ==> RX
     RX -- "db.log()<br/>api_request only,<br/>identity dropped,<br/>seen request_id skipped" --> DB
     DB -- fleet.sync --> OTHER
-    style RX stroke-dasharray: 5 4
 ```
 
-`claude_step()` sets `OTEL_RESOURCE_ATTRIBUTES=iterum.run_id=<run_id>` in the session's environment, so every cost record names the run that paid for it. Sessions that fleet did not start fall back to `session.id`. The receiver is not written yet; the transport it relies on was tested with a throwaway server [T3].
+`claude_step()` is not wired in yet. Once it is, it sets `OTEL_RESOURCE_ATTRIBUTES=iterum.run_id=<run_id>` in the session's environment, so every cost record names the run that paid for it. Sessions that fleet did not start are logged under `session-<session.id>` [T4].
 
 Two options were rejected. Writing `runs.cost_usd` would keep spend on one machine, because `runs` never syncs, and an update keeps no history. Importing the `cost.usage` metric would store a running total that the events already add up to.
 
-## The three tests
+## The tests
 
-All three ran `claude -p` on Haiku in a scratch directory with Claude Code 2.1.322. Together they cost about $0.013.
+All four ran `claude -p` on Haiku in a scratch directory with Claude Code 2.1.322. Together they cost about $0.018.
 
 | Test | Setup | Result |
 | --- | --- | --- |
 | T1 | One request. Console exporters for metrics and logs, 1 s intervals, `iterum.run_id=test123`. | `iterum.run_id` and `session.id` on every record. One `api_request` with `cost_usd` 0.00412534, `cost_usd_micros` 4125. Five identity fields on every record. |
 | T2 | Read three files, one Read call per turn. Same exporters, `iterum.run_id=multi1`. | Four `api_request` events, four distinct `request_id`s. Costs summed to 0.00541548, equal to the counter's last datapoint. |
 | T3 | Metrics `none`. Logs `otlp` over `http/json` to a standard-library `http.server` on 127.0.0.1:14318. | Three POSTs to `/v1/logs`, all `application/json`. The `api_request` record carried `iterum.run_id`, `request_id` and `cost_usd`. Nothing else was sent. |
+| T4 | Read two files. Logs sent to `fleet.telemetry` with the `.env.example` settings, `iterum.run_id=real1`. | Three requests became three `spend.reported` events under `real1`, each with its own `request_id`. No identity field was stored. A synthetic body sent twice, with a duplicate `request_id` and a record without `iterum.run_id`, wrote each request once and logged the second under `session-<session.id>`. |
 
 ## Not yet known
 
-- **What a killed session loses.** Events are buffered and exported every 5 s by default. The docs say nothing about flushing on exit or kill. A `kill -9` test is planned against the real receiver.
-- **Sessions with more than one model,** such as a subagent on a different model. All three tests used one model.
-- **Whether `request_id` is guaranteed unique.** It was unique in four of four requests. The docs were not checked on this point.
+- **What a killed session loses.** Events are buffered and exported every 5 s by default. The docs say nothing about flushing on exit or kill. A `kill -9` test against `fleet.telemetry` is in `todo.md`.
+- **Sessions with more than one model,** such as a subagent on a different model. All four tests used one model.
+- **Whether `request_id` is guaranteed unique.** It was unique in every request seen so far (seven across T2 and T4). The docs were not checked on this point.
 - **How exact the figures are.** The field is labeled "Estimated cost in USD". Treat the numbers as a way to compare agents, not as billing.
 
 ## Sources
 
 1. **[Docs]** [Monitoring usage, Claude Code docs](https://code.claude.com/docs/en/monitoring-usage). Read on 2026-11-10 through an automated fetch. The configuration table, exporter and protocol values, export intervals, attribute rules and privacy settings were read word for word. A middle part of the page, covering example configurations and part of the event reference, came back only as a summary, so nothing here relies on that part alone.
-2. **[T1] [T2] [T3]** Local runs on 2026-11-10, Claude Code 2.1.322, described above. Raw output stayed on the test machine because it contains account identifiers.
+2. **[T1] [T2] [T3] [T4]** Local runs on 2026-11-10, Claude Code 2.1.322, described above. Raw output stayed on the test machine because it contains account identifiers.
 3. [decision-log.md](../decision-log.md), entry "Claude Code spend lands in the ledger, one event per API request" (2026-11-10).
