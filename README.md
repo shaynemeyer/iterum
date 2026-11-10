@@ -6,7 +6,7 @@
 
 A small Python harness for running a fleet of [Claude Code](https://code.claude.com/docs) agents, built on one SQLite system of record: `agent.db`.
 
-The goal is a durable memory of what your agents did, instead of losing it when a session ends: events go into an append-only ledger that you can audit, rebuild state from and sync across machines. Today the ledger records the harness audit and the steps of resumable runs.
+The goal is a durable memory of what your agents did, instead of losing it when a session ends: events go into an append-only ledger that you can audit, rebuild state from and sync across machines. Today the ledger records the harness audit, the steps of resumable runs, queue tasks, file claims, merges and Claude Code spend.
 
 *Iterum* is Latin for "again". Because the ledger is the source of truth, state can always be rebuilt from it.
 
@@ -18,7 +18,7 @@ The goal is a durable memory of what your agents did, instead of losing it when 
 
 | Contract | Tables | Rule |
 | --- | --- | --- |
-| Control state | `runs`, `steps` | Mutable: what is true right now |
+| Control state | `runs`, `steps`, `receipts`, `tasks`, `leases`, `claims`, `fences` | Mutable: what is true right now, on this machine |
 | Event ledger | `events` | Append-only: what happened, in order |
 | Derived knowledge | `knowledge` | Rebuildable from the ledger at any time |
 
@@ -33,8 +33,20 @@ Every event carries a UUIDv7 `uid` and the `device` that wrote it, so ledgers fr
 | `fleet/schema.sql` | Tables for runs, events, knowledge, claims, the task queue, budgets, evals and approvals |
 | `fleet/project.py` | Rebuilds `knowledge` from `events`; exits 1 on DRIFT |
 | `fleet/run.py` | Runs a multi-step plan that can be killed and resumed; each step is recorded before it runs |
+| `fleet/recovery.py` | Lists runs that died and halts ones retried too often |
+| `fleet/step.py`, `fleet/idem.py` | Retries a step only when its failure class allows; at-most-once side effects with receipts |
+| `fleet/queue.py`, `fleet/worker.py` | A work queue with dependencies, leases, fences and a dead-letter queue, and the worker loop that drains it |
+| `fleet/dlq.py`, `fleet/conflicts.py` | Lists dead-lettered tasks and puts one back on the queue; lists conflicts waiting for a person and settles one |
+| `fleet/claim.py` | Claims on files: leases that expire, with fences that make expiry safe |
+| `fleet/merge.py` | Lands a branch only while every changed file has a live claim |
+| `fleet/gate.py` | A `PreToolUse` hook that refuses an edit to a file another run has claimed; not registered here, wire it up yourself |
+| `fleet/telemetry.py` | Receives Claude Code telemetry and records each API request's cost; settings in [`.env.example`](.env.example) |
+| `fleet/view.py` | Read-only views: live sessions and runs, one run's trace, failures per stage |
 | `fleet/sync.py` | `sync` shares events across devices through a private git repo; `export` and `import` run single steps |
+| `fleet/*_drill.py`, `fleet/drill.sh` | Drills that kill or crash the harness and check it recovers; `drill.sh` contends SQLite writers ([docs/drill.md](docs/drill.md)) |
 | `scripts/seed-ledger.py` | Records the harness audit in the ledger |
+
+[CLAUDE.md](CLAUDE.md) lists every command.
 
 ## Setup
 
@@ -74,6 +86,9 @@ It exports this device's events, commits only that file, pulls, pushes, imports 
 | `ITERUM_DEVICE` | required | Names this device in every event |
 | `ITERUM_DB` | `agent.db` | Path to the database |
 | `ITERUM_SYNC_DIR` | `~/private-data/iterum` | Private folder for exported events |
+| `ITERUM_CLAIM_TTL` | `300` | Seconds a `fleet.run` file claim lasts between renewals |
+| `ITERUM_IDLE_SECONDS` | `60` | Heartbeat age after which a `running` run counts as dead |
+| `ITERUM_MAX_ATTEMPTS` | `3` | Attempts at one step before `fleet.recovery` halts the run |
 
 `agent.db` and `harness-audit.json` hold local data and are git-ignored. Keep the sync folder in a private repo.
 
