@@ -2,6 +2,20 @@
 
 Items moved here from `todo.md` once done. Newest first.
 
+## Wire claims into `fleet/run.py` and renew them
+
+Completed 2026-11-10. Moved from `todo.md` (merge-gate item 4):
+
+Wire claims into `fleet/run.py`, and renew them while a step runs. A step longer than `claim.DEFAULT_TTL` (300 seconds) would otherwise lose its lease.
+   - Done 2026-11-10: plans declare resources and `fleet.run` claims them all before any step (see the decision log).
+   - Still to do: renew the claims from the heartbeat thread, with `renew()` refusing an expired claim and a refused renewal failing the step. Claims are released on landing (see the decision log).
+
+**Before.** With a new `ITERUM_CLAIM_TTL` of 20 seconds (default `claim.DEFAULT_TTL`, 300), a plan with one 35-second step logged no `claim.renewed` events, and `fleet.merge` refused its branch: "the claim under fence 1 was released or has expired". With a 60-second step, the claim expired after about 20 seconds, another run took `b.txt` at 22 seconds, and the first run still wrote `b2`, committed, and finished `done`. `renew()` also accepted an expired claim.
+
+**Change.** `renew()` matches only an unexpired claim. `fleet/run.py`'s heartbeat thread renews every claim the run holds once half of `CLAIM_TTL` has passed since the last renewal. A refused renewal records the reason, kills the proposed step's process group, and ends the thread. `run_steps()` checks for a lost claim after proposing each step and after it runs, so the step and the run are marked `failed` with "claim lost: ...".
+
+**After.** The 35-second step logged 3 renewals and its branch landed. For the takeover, `run.py` was paused with SIGSTOP 1 second in; another run took `b.txt` at 22 seconds; on SIGCONT the renewal was refused, the step's `sleep 60` was killed (exit -9), the step and the run were `failed` with "claim lost: file:b.txt: the claim under fence 1 expired or is no longer yours", and `b.txt` in the worktree was unchanged. `renew()` refused an expired claim. The built-in drill plan, `fleet.merge_drill` and the declared-claims script still passed.
+
 ## Refuse an empty merge
 
 Completed 2026-11-10. Moved from `todo.md` (a bullet under merge-gate item 4):

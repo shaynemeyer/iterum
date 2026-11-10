@@ -149,14 +149,18 @@ def require_claim(con, resource, fence):
 
 
 def renew(resource, run_id, fence, ttl=DEFAULT_TTL):
-    """Extend the lease held under fence. Raises Refused if it is no longer the current claim."""
+    """Extend the live lease held under fence. Raises Refused if it expired or is no longer the current claim.
+
+    An expired holder must acquire() again and take a new fence, even if nobody else has claimed the resource.
+    """
+    now = time.time()
     with db.write() as con:
         cur = con.execute(
-            "UPDATE claims SET expires_at=? WHERE resource=? AND fence=?",
-            (time.time() + ttl, resource, fence),
+            "UPDATE claims SET expires_at=? WHERE resource=? AND fence=? AND expires_at>?",
+            (now + ttl, resource, fence, now),
         )
         if cur.rowcount == 0:
-            raise Refused(f"{resource} is no longer yours")
+            raise Refused(f"{resource}: the claim under fence {fence} expired or is no longer yours")
         db.log(
             con,
             run_id,

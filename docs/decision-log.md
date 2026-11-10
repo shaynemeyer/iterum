@@ -2,6 +2,18 @@
 
 Decisions and why they were made. Newest first. Entries are never deleted; a decision that is reversed is marked "Superseded by" the entry that replaces it. Open decisions live in `open-questions.md`.
 
+## 2026-11-10: A run renews its claims at half the TTL and stops its step when a renewal is refused
+
+**Decision.** `fleet/run.py`'s heartbeat thread renews the run's claims once half of `CLAIM_TTL` (`ITERUM_CLAIM_TTL`, default 300 seconds) has passed since the last renewal, not on every 10-second beat. A refused renewal kills the running step's process group, and the step and run are marked `failed` with "claim lost". This implements the decision above that `renew()` refuses an expired claim.
+
+**Context.** Renewing on every beat would write a `claim.renewed` event per claim every 10 seconds, the same kind of repeated event avoided for skipped reaps. A run whose claim was taken can no longer land, so letting its step carry on only edits files someone else now holds.
+
+**Alternatives.** Renew every beat: 30 events per claim per 300 seconds instead of 2. Let the step finish and fail only at the merge: the step keeps writing to a file another run holds.
+
+**Evidence.** See the work-completed entry "Wire claims into `fleet/run.py` and renew them".
+
+**Affects.** `fleet/run.py`, `fleet/claim.py`. `ITERUM_CLAIM_TTL` must be several `HEARTBEAT`s (10 seconds), or a renewal can come too late. A process paused for less than the TTL keeps its claims.
+
 ## 2026-11-10: Landing a merge releases the claims it was given
 
 **Decision.** For the open question "Who releases a run's claims after its branch lands?": `land()` releases every claim passed in `fences`, not only the changed files', in the same `db.write()` block as `merge.landed`, through a new `claim.release_in(con, ...)` (the body of `release()`). A refusal, conflict or moved target keeps the claims so the caller can retry. `merge.started` now records the fences, and `reconcile()` releases them when it settles a crashed merge as landed.

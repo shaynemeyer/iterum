@@ -24,6 +24,7 @@ from fleet import claim, db, recovery
 from fleet.proc import group_alive
 
 HEARTBEAT = 10  # seconds between heartbeat_at updates; fleet.recovery's expiry must be several of these
+CLAIM_TTL = float(os.environ.get("ITERUM_CLAIM_TTL", claim.DEFAULT_TTL))  # seconds; must be several HEARTBEATs
 
 
 def shell(cmd, run_id, seq):
@@ -134,20 +135,51 @@ def mark_running(run_id):
         )
 
 
-def beat(run_id, stop):
-    """Refresh heartbeat_at every HEARTBEAT seconds until stop is set. Runs in its own thread.
+def beat(run_id, stop, fences, lost):
+    """Refresh heartbeat_at every HEARTBEAT seconds, and renew the run's claims once half CLAIM_TTL has passed, until stop is set. Runs in its own thread.
 
+    A refused renewal appends the reason to lost, kills the running step's process group and ends the thread.
     A locked database skips one beat, since losing the thread would make a live run look dead.
     """
+    renewed_at = time.time()
     while not stop.wait(HEARTBEAT):
         try:
             with db.write() as con:
                 con.execute(
                     "UPDATE runs SET heartbeat_at=? WHERE run_id=?", (time.time(), run_id)
                 )
+            if fences and time.time() - renewed_at >= CLAIM_TTL / 2:
+                for resource, fence in fences.items():
+                    claim.renew(resource, run_id, fence, CLAIM_TTL)
+                renewed_at = time.time()
         except sqlite3.OperationalError as e:
             if e.sqlite_errorcode != sqlite3.SQLITE_BUSY:
                 raise
+        except claim.Refused as e:
+            lost.append(str(e))
+            kill_running_step(run_id)
+            return
+
+
+def kill_running_step(run_id):
+    """Kill the process group of the run's proposed step, if it has one still alive."""
+    con = db.connect()
+    try:
+        row = con.execute(
+            "SELECT pgid FROM steps WHERE run_id=? AND status='proposed' AND pgid IS NOT NULL", (run_id,)
+        ).fetchone()
+    finally:
+        con.close()
+    if row and group_alive(row["pgid"]):
+        os.killpg(row["pgid"], signal.SIGKILL)
+
+
+def fail_if_lost(run_id, seq, lost):
+    """Fail the step and the run if the heartbeat thread lost a claim."""
+    if lost:
+        error = f"claim lost: {lost[0]}"
+        record_failure(run_id, seq, error)
+        raise RuntimeError(error)
 
 
 def claim_files(run_id, plan):
@@ -164,7 +196,7 @@ def claim_files(run_id, plan):
     fences = {}
     try:
         for resource in sorted({r for *_, resources in plan for r in resources}):
-            fences[resource] = claim.acquire(resource, run_id, agent)
+            fences[resource] = claim.acquire(resource, run_id, agent, CLAIM_TTL)
     except claim.Refused:
         for resource, fence in fences.items():
             claim.release(resource, run_id, fence)
@@ -180,9 +212,10 @@ def execute(run_id, plan):
         sys.exit(f"run {run_id} refused before any step ran: {e}")
     mark_running(run_id)
     stop = threading.Event()
-    threading.Thread(target=beat, args=(run_id, stop), daemon=True).start()
+    lost = []  # the heartbeat thread appends why it lost a claim
+    threading.Thread(target=beat, args=(run_id, stop, fences, lost), daemon=True).start()
     try:
-        run_steps(run_id, plan)
+        run_steps(run_id, plan, lost)
     finally:
         stop.set()
     if fences:
@@ -190,7 +223,7 @@ def execute(run_id, plan):
         print(f"land with: uv run python -m fleet.merge <branch> --run-id {run_id} {flags}")
 
 
-def run_steps(run_id, plan):
+def run_steps(run_id, plan, lost):
     done = committed_seqs(run_id)
     if done:
         print(f"resuming {run_id}, {len(done)} step(s) already committed")
@@ -211,11 +244,14 @@ def run_steps(run_id, plan):
                 con, run_id, "step.proposed", stage="planning", seq=seq, intent=intent
             )
 
+        fail_if_lost(run_id, seq, lost)
         try:
             result = shell(cmd, run_id, seq)  # <-- the side effect
         except RuntimeError as e:
+            fail_if_lost(run_id, seq, lost)  # a step killed for a lost claim reports why
             record_failure(run_id, seq, str(e))
             raise
+        fail_if_lost(run_id, seq, lost)  # the step may have finished before the kill reached it
 
         # ---- record the commit AFTER ----
         with db.write() as con:
