@@ -2,6 +2,18 @@
 
 Decisions and why they were made. Newest first. Entries are never deleted; a decision that is reversed is marked "Superseded by" the entry that replaces it. Open decisions live in `open-questions.md`.
 
+## 2026-11-10: Claude Code exports telemetry logs every second
+
+**Decision.** `.env.example` sets `OTEL_LOGS_EXPORT_INTERVAL=1000`, down from the documented default of 5000 ms.
+
+**Context.** Claude Code buffers events between exports. A session killed with SIGKILL loses every `api_request` that finished since the last export, so `fleet/telemetry.py` never sees that spend.
+
+**Alternatives.** Keep the default: in the test below it lost two of three requests. Go below one second: one second already lost nothing in the test, and each step down adds POSTs for no measured gain.
+
+**Evidence.** Two runs against `fleet.telemetry` on a scratch database, each a Haiku session killed at 10 s after three completed requests (by `requestId` in its transcript). At 5000 ms, 1 of 3 arrived; at 1000 ms, 3 of 3. One run per setting.
+
+**Affects.** `.env.example`, `docs/telemetry/claude-code-telemetry.md`. A busy session sends at most one small POST per second to the local receiver. A request in flight at the kill is still unrecorded.
+
 ## 2026-11-10: Spend events are `spend.reported`, stage `governance`
 
 **Decision.** `fleet/telemetry.py` logs each Claude Code `api_request` as kind `spend.reported` with stage `governance`. The payload keeps `request_id`, `model`, `cost_usd`, the token counts, `duration_ms` and `session_id`. The `run_id` is `iterum.run_id`, or `session-<session.id>` when that is missing. A `request_id` already in the ledger is skipped, checked with `json_extract` inside the same `db.write()`.

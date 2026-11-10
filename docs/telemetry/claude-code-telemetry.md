@@ -2,7 +2,7 @@
 
 Claude Code can export what a session does, including the cost of every API request, through OpenTelemetry. This document covers what it emits, how to turn it on, which fields arrive, what is private by default, and how the iterum fleet records spend from it.
 
-Every claim carries a tag: **[Docs]** for the monitoring documentation, **[T1]**–**[T4]** for four local tests. See [Sources](#sources).
+Every claim carries a tag: **[Docs]** for the monitoring documentation, **[T1]**–**[T6]** for six local tests. See [Sources](#sources).
 
 Claude Code 2.1.322. Tests run 2026-11-10.
 
@@ -178,7 +178,7 @@ Content is off by default. Identity is on [Docs].
 
 Decision recorded 2026-11-10 in [decision-log.md](../decision-log.md). Spend becomes ledger events, one per `api_request`. The ledger's `events` table is the only one that syncs between devices, and it is append-only, which matches one record per request.
 
-`fleet/telemetry.py` is the receiver. Start it with `uv run python -m fleet.telemetry` (port 4318), and give Claude Code the settings in `.env.example`. Each `api_request` becomes one `spend.reported` event with stage `governance`, which `fleet.view stages` leaves out because spending is not a failure. The payload keeps `request_id`, `model`, `cost_usd`, token counts, `duration_ms` and `session_id`.
+`fleet/telemetry.py` is the receiver. Start it with `uv run python -m fleet.telemetry` (port 4318), and give Claude Code the settings in `.env.example`, which also shortens the logs export interval to 1000 ms (see [T5]–[T6]). Each `api_request` becomes one `spend.reported` event with stage `governance`, which `fleet.view stages` leaves out because spending is not a failure. The payload keeps `request_id`, `model`, `cost_usd`, token counts, `duration_ms` and `session_id`.
 
 ```mermaid
 flowchart LR
@@ -199,7 +199,7 @@ Two options were rejected. Writing `runs.cost_usd` would keep spend on one machi
 
 ## The tests
 
-All four ran `claude -p` on Haiku in a scratch directory with Claude Code 2.1.322. Together they cost about $0.018.
+All ran `claude -p` on Haiku in a scratch directory with Claude Code 2.1.322. T1–T4 together cost about $0.018.
 
 | Test | Setup | Result |
 | --- | --- | --- |
@@ -207,16 +207,18 @@ All four ran `claude -p` on Haiku in a scratch directory with Claude Code 2.1.32
 | T2 | Read three files, one Read call per turn. Same exporters, `iterum.run_id=multi1`. | Four `api_request` events, four distinct `request_id`s. Costs summed to 0.00541548, equal to the counter's last datapoint. |
 | T3 | Metrics `none`. Logs `otlp` over `http/json` to a standard-library `http.server` on 127.0.0.1:14318. | Three POSTs to `/v1/logs`, all `application/json`. The `api_request` record carried `iterum.run_id`, `request_id` and `cost_usd`. Nothing else was sent. |
 | T4 | Read two files. Logs sent to `fleet.telemetry` with the `.env.example` settings, `iterum.run_id=real1`. | Three requests became three `spend.reported` events under `real1`, each with its own `request_id`. No identity field was stored. A synthetic body sent twice, with a duplicate `request_id` and a record without `iterum.run_id`, wrote each request once and logged the second under `session-<session.id>`. |
+| T5 | Read files one per turn, logs to `fleet.telemetry` at the default 5000 ms interval, SIGKILL at 10 s. | Three requests completed (by `requestId` in the session transcript); 1 reached the ledger. The two that finished 2.3 s and 4.2 s after the first were lost. |
+| T6 | Same as T5 with `OTEL_LOGS_EXPORT_INTERVAL=1000`. | Three requests completed; 3 reached the ledger. |
 
 ## Not yet known
 
-- **What a killed session loses.** Events are buffered and exported every 5 s by default. The docs say nothing about flushing on exit or kill. A `kill -9` test against `fleet.telemetry` is in `todo.md`.
-- **Sessions with more than one model,** such as a subagent on a different model. All four tests used one model.
+- **A request in flight when a session is killed.** A SIGKILL loses what finished since the last export: two of three requests at 5000 ms, none at 1000 ms, one run each [T5] [T6]. A request still running at the kill appears in neither the transcript nor telemetry. A graceful exit was not tested.
+- **Sessions with more than one model,** such as a subagent on a different model. All tests used one model.
 - **Whether `request_id` is guaranteed unique.** It was unique in every request seen so far (seven across T2 and T4). The docs were not checked on this point.
 - **How exact the figures are.** The field is labeled "Estimated cost in USD". Treat the numbers as a way to compare agents, not as billing.
 
 ## Sources
 
 1. **[Docs]** [Monitoring usage, Claude Code docs](https://code.claude.com/docs/en/monitoring-usage). Read on 2026-11-10 through an automated fetch. The configuration table, exporter and protocol values, export intervals, attribute rules and privacy settings were read word for word. A middle part of the page, covering example configurations and part of the event reference, came back only as a summary, so nothing here relies on that part alone.
-2. **[T1] [T2] [T3] [T4]** Local runs on 2026-11-10, Claude Code 2.1.322, described above. Raw output stayed on the test machine because it contains account identifiers.
+2. **[T1]–[T6]** Local runs on 2026-11-10, Claude Code 2.1.322, described above. Raw output stayed on the test machine because it contains account identifiers.
 3. [decision-log.md](../decision-log.md), entry "Claude Code spend lands in the ledger, one event per API request" (2026-11-10).
