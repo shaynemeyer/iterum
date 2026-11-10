@@ -1,8 +1,12 @@
 """Land an agent's branch on the shared branch, only while it holds a live claim on every file it changed."""
 
+import argparse
+import fcntl
 import json
 import subprocess
+import sys
 import uuid
+from pathlib import Path
 
 from fleet import claim, db
 
@@ -102,3 +106,40 @@ def reconcile(repo):
             fields = {k: p[k] for k in ("merge_id", "branch", "target", "commit")}
             db.log(con, row["run_id"], kind, stage="coordination", recovered=True, **fields)
             print(f"{kind}: {p['branch']} -> {p['target']} ({p['commit'][:12]})")
+
+
+def checked_out(repo, target):
+    """True if any worktree of repo has target checked out. update-ref would leave its index behind."""
+    lines = _git(repo, "worktree", "list", "--porcelain").splitlines()
+    return f"branch refs/heads/{target}" in lines
+
+
+def main():
+    parser = argparse.ArgumentParser(prog="uv run python -m fleet.merge")
+    parser.add_argument("branch")
+    parser.add_argument("--run-id", required=True)
+    parser.add_argument("--fence", action="append", default=[], metavar="RESOURCE=FENCE",
+                        help="one per changed file, e.g. file:src/a.py=3")
+    parser.add_argument("--repo", default=".")
+    parser.add_argument("--target", default="main")
+    args = parser.parse_args()
+    fences = {r: int(f) for r, f in (s.rsplit("=", 1) for s in args.fence)}
+
+    if checked_out(args.repo, args.target):
+        sys.exit(f"refused: {args.target} is checked out in a worktree; landing would leave its index behind")
+    db.init()
+    lock = Path(_git(args.repo, "rev-parse", "--path-format=absolute", "--git-common-dir")) / "iterum-merge.lock"
+    with open(lock, "w") as f:
+        fcntl.flock(f, fcntl.LOCK_EX)  # one merge process per repo, so reconcile() sees no merge in flight
+        reconcile(args.repo)
+        try:
+            new = land(args.repo, args.branch, args.run_id, fences, args.target)
+        except (Conflict, claim.Refused, claim.Fenced) as e:
+            sys.exit(f"refused: {e}")
+        except subprocess.CalledProcessError as e:
+            sys.exit(f"refused: {e.stderr.strip()}")
+    print(f"landed {args.branch} on {args.target} as {new[:12]}")
+
+
+if __name__ == "__main__":
+    main()

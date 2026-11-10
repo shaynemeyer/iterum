@@ -25,6 +25,7 @@ uv run python -m fleet.conflicts [resolve <task_id> "<decision>"]   # list confl
 uv run python -u -m fleet.kill_drill                      # SIGKILL a worker mid-task and check recovery (about 50s)
 uv run python -m fleet.view [trace <run_id> | stages [days]]   # live sessions and runs, one run's trace, or failures per stage
 uv run python -u -m fleet.telemetry [--port 4318]                # receive Claude Code telemetry; settings in .env.example
+uv run python -m fleet.merge <branch> --run-id R --fence file:path=N [--repo .] [--target main]   # land a branch if every changed file has a live claim
 ```
 
 `fleet` has no `__init__.py` (a namespace package), so its modules must run with `-m`: `python fleet/run.py` fails with `ModuleNotFoundError`. `doctor.py` imports nothing from `fleet` and runs as a script; `seed-ledger.py` adds the repo root to `sys.path` itself.
@@ -64,7 +65,7 @@ ITERUM_DB=/tmp/scratch.db ITERUM_DEVICE=test uv run python -u -m fleet.run
 
 `fleet/queue.py` is the work queue over `tasks` and `leases`. `claim()` issues a fence per task, and a worker must present it, with a live lease, to `heartbeat()`, `finish()`, `fail()` or `release_back()`; a stale worker gets `Fenced` or `Refused` and changes nothing. A dead-lettered task halts everything waiting on it, and `redrive()` restores those tasks. `fleet/worker.py` runs the loop and does the reaping itself, so there is no separate reaper process. The default `do_work` runs each command in its own process group, stored in `leases.pgid`; `reap()` leaves an expired lease alone while that group is alive (`fleet/proc.py`), and `_shell()` kills the group if it exits early. Ledger events use `task-<device>-<task_id>` as `run_id`, because `task_id` is local and events sync. `finish()` stores what `do_work` returns in `tasks.result`, read back with `queue.results()`. `claim()` skips tasks of kind `queue.HUMAN_KIND`; only `queue.resolve()` closes those.
 
-`fleet/merge.py` is the merge gate. `land()` builds the merge with `git merge-tree --write-tree`, then in one `db.write()` block calls `claim.require_claim()` for every changed file and moves the target with `git update-ref` and the expected old value. It logs `merge.started` first; `reconcile()`, run before any `land()` when the merge process starts, settles a merge a crash left without an outcome. The target branch must not be checked out in any working tree: `update-ref` leaves that tree's index behind.
+`fleet/merge.py` is the merge gate. `land()` builds the merge with `git merge-tree --write-tree`, then in one `db.write()` block calls `claim.require_claim()` for every changed file and moves the target with `git update-ref` and the expected old value. It logs `merge.started` first; `reconcile()`, run by `main()` under an exclusive lock before `land()`, settles a merge a crash left without an outcome. The target branch must not be checked out in any working tree: `update-ref` leaves that tree's index behind.
 
 `fleet/telemetry.py` receives Claude Code's OTLP logs as `http/json` on `/v1/logs` and logs each `claude_code.api_request` as a `spend.reported` event, stage `governance`, under `iterum.run_id` (or `session-<session.id>`). It stores no identity fields and skips a `request_id` already logged. Metrics are not imported; `runs.cost_usd` is not written.
 
