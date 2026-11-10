@@ -198,8 +198,8 @@ If the computer is rebuilt from scratch, follow [Part 2](#part-2-add-another-com
 | --- | --- |
 | `events` | Yes |
 | `knowledge` | Rebuilt on each computer from the events |
-| `runs`, `steps` | No: they're updated in place, so they can't be merged this way |
-| `claims`, `fences`, `leases`, `tasks`, `budgets`, `approvals`, `evals` | No: they coordinate work on one computer |
+| `runs`, `steps`, `receipts` | No: they're updated in place, so they can't be merged this way |
+| `claims`, `fences`, `leases`, `tasks`, `budgets`, `approvals`, `evals`, `eval_results` | No: they coordinate work on one computer |
 
 ## Troubleshooting
 

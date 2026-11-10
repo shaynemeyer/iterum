@@ -43,6 +43,8 @@ ITERUM_DB=/tmp/scratch.db ITERUM_DEVICE=test uv run python -u -m fleet.run
 - `ITERUM_DEVICE`: required for anything that writes an event; `db.log()` raises without it.
 - `ITERUM_CLAIM_TTL`: seconds a `fleet.run` claim lasts between renewals, default 300.
 - `ITERUM_DB`: database path, default `agent.db` relative to the current directory.
+- `ITERUM_IDLE_SECONDS`: heartbeat age after which a `running` run counts as dead, default 60; the default for `fleet.recovery --idle-seconds` and for `--resume`.
+- `ITERUM_MAX_ATTEMPTS`: the default for `fleet.recovery --max-attempts`, default 3.
 - `ITERUM_SYNC_DIR`: sync folder, default `~/private-data/iterum`; must sit inside a git repo with a remote for `sync`.
 
 ## Architecture
@@ -69,6 +71,8 @@ ITERUM_DB=/tmp/scratch.db ITERUM_DEVICE=test uv run python -u -m fleet.run
 `fleet/queue.py` is the work queue over `tasks` and `leases`. `claim()` issues a fence per task, and a worker must present it, with a live lease, to `heartbeat()`, `finish()`, `fail()` or `release_back()`; a stale worker gets `Fenced` or `Refused` and changes nothing. A dead-lettered task halts everything waiting on it, and `redrive()` restores those tasks. `fleet/worker.py` runs the loop and does the reaping itself, so there is no separate reaper process. The default `do_work` runs each command in its own process group, stored in `leases.pgid`; `reap()` leaves an expired lease alone while that group is alive (`fleet/proc.py`), and `_shell()` kills the group if it exits early. `fleet.run` and `fleet.worker` turn SIGTERM into `KeyboardInterrupt` (`proc.stop_on_sigterm()`), so a polite stop kills the command as Ctrl-C does; both then exit with -2, not -15. Ledger events use `task-<device>-<task_id>` as `run_id`, because `task_id` is local and events sync. `finish()` stores what `do_work` returns in `tasks.result`, read back with `queue.results()`. `claim()` skips tasks of kind `queue.HUMAN_KIND`; only `queue.resolve()` closes those.
 
 `fleet/merge.py` is the merge gate. `land()` builds the merge with `git merge-tree --write-tree`, then in one `db.write()` block calls `claim.require_claim()` for every changed file and moves the target with `git update-ref` and the expected old value; landing releases every claim it was given, in that block. A merge that would not change the target's files raises `Empty`. It logs `merge.started` first; `reconcile()`, run by `main()` under an exclusive lock before `land()`, settles a merge a crash left without an outcome. The target branch must not be checked out in any working tree: `update-ref` leaves that tree's index behind.
+
+`fleet/gate.py` is a `PreToolUse` hook that refuses (exit 2) an edit to a file another run has claimed, and exits 2 on any failure of its own, since any other exit code lets the edit through. It needs an absolute `ITERUM_DB` and a `FLEET_RUN_ID`, and runs as a script. Nothing in this repo registers it, deliberately: a checked-in `.claude/settings.json` would run it against anyone who clones the repo.
 
 `fleet/telemetry.py` receives Claude Code's OTLP logs as `http/json` on `/v1/logs` and logs each `claude_code.api_request` as a `spend.reported` event, stage `governance`, under `iterum.run_id` (or `session-<session.id>`). It stores no identity fields and skips a `request_id` already logged. Metrics are not imported; `runs.cost_usd` is not written.
 
