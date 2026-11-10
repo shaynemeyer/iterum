@@ -171,15 +171,20 @@ def renew(resource, run_id, fence, ttl=DEFAULT_TTL):
 def release(resource, run_id, fence):
     """Drop the claim held under fence. A stale fence changes nothing and logs nothing."""
     with db.write() as con:
-        cur = con.execute(
-            "DELETE FROM claims WHERE resource=? AND fence=?", (resource, fence)
+        release_in(con, resource, run_id, fence)
+
+
+def release_in(con, resource, run_id, fence):
+    """release() inside the caller's db.write() block, so the release commits with the caller's write."""
+    cur = con.execute(
+        "DELETE FROM claims WHERE resource=? AND fence=?", (resource, fence)
+    )
+    if cur.rowcount == 1:
+        db.log(
+            con,
+            run_id,
+            "claim.released",
+            stage="coordination",
+            resource=resource,
+            fence=fence,
         )
-        if cur.rowcount == 1:
-            db.log(
-                con,
-                run_id,
-                "claim.released",
-                stage="coordination",
-                resource=resource,
-                fence=fence,
-            )

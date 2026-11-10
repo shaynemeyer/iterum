@@ -46,6 +46,7 @@ def changed_resources(repo, old, branch):
 def land(repo, branch, run_id, fences, target="main"):
     """Merge branch into target if fences (resource -> fence) holds a live claim on every changed file.
 
+    Landing releases every claim in fences, in the same block. A refusal keeps them, so the caller can retry.
     Raises Conflict, Refused or Fenced, or CalledProcessError if target moved since the build.
     """
     old, new = build(repo, target, branch)
@@ -53,7 +54,7 @@ def land(repo, branch, run_id, fences, target="main"):
     # Write-ahead: a crash after update-ref but before the block commits leaves this for reconcile().
     merge_id = str(uuid.uuid7())  # the commit hash can repeat: commit-tree timestamps to the second
     with db.write() as con:
-        db.log(con, run_id, "merge.started", stage="coordination", merge_id=merge_id, branch=branch, target=target, old=old, commit=new)
+        db.log(con, run_id, "merge.started", stage="coordination", merge_id=merge_id, branch=branch, target=target, old=old, commit=new, fences=fences)
     refused = None
     try:
         with db.write() as con:
@@ -67,6 +68,8 @@ def land(repo, branch, run_id, fences, target="main"):
                 db.log(con, run_id, "merge.refused", stage="coordination", merge_id=merge_id, branch=branch, target=target, commit=new, reason=str(e))
             else:
                 db.log(con, run_id, "merge.landed", stage="coordination", merge_id=merge_id, branch=branch, target=target, commit=new, resources=needed)
+                for resource, fence in fences.items():
+                    claim.release_in(con, resource, run_id, fence)
                 # Inside the block: no newer fence can be issued between the check and the move.
                 _git(repo, "update-ref", f"refs/heads/{target}", new, old)
     except subprocess.CalledProcessError as e:
@@ -94,7 +97,7 @@ def _unsettled(con):
 def reconcile(repo):
     """Settle merges a crash left without an outcome. Run when the merge process starts, before any land().
 
-    A merge commit already in its target landed; any other was abandoned.
+    A merge commit already in its target landed, and its claims are released; any other was abandoned.
     """
     with db.write() as con:
         for row in _unsettled(con):
@@ -105,6 +108,9 @@ def reconcile(repo):
             kind = "merge.landed" if ancestor.returncode == 0 else "merge.abandoned"
             fields = {k: p[k] for k in ("merge_id", "branch", "target", "commit")}
             db.log(con, row["run_id"], kind, stage="coordination", recovered=True, **fields)
+            if kind == "merge.landed":
+                for resource, fence in p.get("fences", {}).items():  # merge.started had no fences before 2026-11-10
+                    claim.release_in(con, resource, row["run_id"], fence)
             print(f"{kind}: {p['branch']} -> {p['target']} ({p['commit'][:12]})")
 
 

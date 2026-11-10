@@ -90,6 +90,15 @@ class Drill:
         self.check(f"{label}: main merges {branch}", self.git("rev-parse", "main^2") == self.git("rev-parse", branch), True)
 
 
+def _claims():
+    """[(resource, run_id), ...] for every claim row, sorted."""
+    con = db.connect()
+    try:
+        return [tuple(r) for r in con.execute("SELECT resource, run_id FROM claims ORDER BY resource")]
+    finally:
+        con.close()
+
+
 def _merge_events():
     con = db.connect()
     try:
@@ -105,7 +114,9 @@ def _refusals(d):
     d.git("worktree", "add", "-q", "--detach", str(d.wt), "main")
 
     d.branch("live", {"a.txt": "a2\n"})
-    d.landed("live claim", "live", "run-a", {"file:a.txt": claim.acquire("file:a.txt", "run-a", "A")})
+    d.landed("live claim", "live", "run-a", {"file:a.txt": claim.acquire("file:a.txt", "run-a", "A"),
+                                             "file:e.txt": claim.acquire("file:e.txt", "run-a", "A")})
+    d.check("live claim: every presented claim released", _claims(), [])
 
     d.branch("unclaimed", {"b.txt": "b2\n"})
     d.refused("no fence", "unclaimed", "run-b", {})
@@ -121,6 +132,7 @@ def _refusals(d):
 
     d.branch("clash", {"a.txt": "other\n"}, base=d.git("rev-list", "--max-parents=0", "main"))
     d.refused("conflict", "clash", "run-a", {"file:a.txt": claim.acquire("file:a.txt", "run-a", "A")})
+    d.check("conflict: claim still held", ("file:a.txt", "run-a") in _claims(), True)
 
     d.branch("rename", {}, renames=[("c.txt", "d.txt")])
     new_path = claim.acquire("file:d.txt", "run-a", "A")
@@ -154,6 +166,7 @@ def _crash(d):
     d.landed("next merge after the crash", "next", "run-a", {"file:a.txt": claim.acquire("file:a.txt", "run-a", "A")})
     recovered = [(k, p["branch"]) for k, p in _merge_events() if p.get("recovered")]
     d.check("crash settled by the next merge", recovered, [("merge.landed", "crashes")])
+    d.check("crash settled: its claim released", ("file:b.txt", "run-c") in _claims(), False)
 
 
 def _moved(d):

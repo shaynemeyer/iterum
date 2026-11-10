@@ -2,18 +2,6 @@
 
 Decisions not made yet. When one is answered, record it in `decision-log.md`, add any resulting work to `todo.md`, and remove it here.
 
-## Who releases a run's claims after its branch lands?
-
-**Context.** `fleet.run` claims every declared file for the whole run, and nothing releases them. After a run's branch landed through `fleet.merge`, both its claims were still live, and every later run touching those files was refused for the rest of the 300-second lease (tested 2026-11-10).
-
-**Options.** `land()` deletes the claims it checked, in the same `db.write()` block as `merge.landed`, so landing and releasing commit together. Or the run releases them itself, which needs it to wait for or learn about the merge. Or a separate command releases a run's claims by hand.
-
-**Blocks.** Running more than one plan against the same files within 300 seconds.
-
-**Revisit when.** Before claim renewal, since renewal would keep unreleased claims alive indefinitely.
-
-**Settled by.** Choosing what ends a run's hold on its files: landing, or the run saying so.
-
 ## How does a human settle a stuck `in_flight` receipt?
 
 **Context.** An ambiguous failure leaves the receipt `in_flight`, and every later attempt raises `Uncertain` (see the decision log). Today the only way out is editing `agent.db` by hand.

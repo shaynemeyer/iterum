@@ -2,6 +2,18 @@
 
 Decisions and why they were made. Newest first. Entries are never deleted; a decision that is reversed is marked "Superseded by" the entry that replaces it. Open decisions live in `open-questions.md`.
 
+## 2026-11-10: Landing a merge releases the claims it was given
+
+**Decision.** For the open question "Who releases a run's claims after its branch lands?": `land()` releases every claim passed in `fences`, not only the changed files', in the same `db.write()` block as `merge.landed`, through a new `claim.release_in(con, ...)` (the body of `release()`). A refusal, conflict or moved target keeps the claims so the caller can retry. `merge.started` now records the fences, and `reconcile()` releases them when it settles a crashed merge as landed.
+
+**Context.** After a run's branch landed, its claims stayed live and every later run on those files was refused for the rest of the 300-second lease. The merge process is the only place that knows a change landed; `fleet.run` finishes before the merge and may never see it.
+
+**Alternatives.** The run releases its own claims: it would have to wait for or poll the merge. A separate release command: one more step to forget. Release only the changed files: a claimed but unchanged file stays held until expiry.
+
+**Evidence.** Three new `fleet.merge_drill` checks failed on the old code (claims for `a.txt` and an unchanged `e.txt` still held after landing; the crashed merge's `b.txt` claim still held after `reconcile()`), while "conflict: claim still held" passed. After the change all 31 checks passed. The `fleet.run` end-to-end script showed no claims after its branch landed. Before this change the drill had 28 checks, not the 31 reported when it was added.
+
+**Affects.** `fleet/claim.py`, `fleet/merge.py`, `fleet/merge_drill.py`. A run that keeps editing the same files after landing must `acquire()` again. A `merge.started` from before this change has no fences, and `reconcile()` releases nothing for it.
+
 ## 2026-11-10: A run declares its files in the plan and claims them all before any step
 
 **Decision.** For merge-gate item 4: a plan step may carry a fourth field, a list of resources such as `"file:a.txt"`. `fleet.run` claims every resource in the plan, in sorted order, before any step runs, and again on resume. A refusal releases what it took, marks the run `failed`, and runs no step. A run that holds claims prints the `fleet.merge` command with its `--fence` flags when it finishes. Plans with three fields still work and claim nothing.
