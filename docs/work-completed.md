@@ -2,6 +2,28 @@
 
 Items moved here from `todo.md` once done. Newest first.
 
+## Does the worker leave a task's command running when SIGKILLed?
+
+Completed 2026-11-10. Moved from `todo.md`:
+
+Found while fixing the same gap in `fleet/run.py` (see `work-completed.md`). `fleet/worker.py` runs shell tasks in their own process group and kills it only on a timeout, from inside the worker. A SIGKILLed worker cannot, so its task's command probably keeps running while the lease expires and another worker reclaims the task. Not checked: reproduce with `fleet.kill_drill` and a task that outlives the lease before changing anything.
+
+**Outcome: yes.** On a scratch database, one task ran `echo $$ >> pids; echo start >> runs; sleep 45; echo end >> runs`. Its command writes only to files, never stdout. Times are seconds after the victim worker's Python process was SIGKILLed, sampled every 5 seconds:
+
+- +1s: the victim was dead; the task's group (`sh` and `sleep 45`) was alive, and the task stayed `in_progress`.
+- +36s: a rescuer worker had reaped the expired lease, and the task was `ready`.
+- +41s: the rescuer had started a second copy in a new group. `runs` read `start start`, and the first group was still alive.
+- +46s: the first copy had finished (`start start end`).
+- +87s: the task was `done`, and `runs` read `start start end end`.
+
+The two copies overlapped for at least 5 seconds. The ledger shows `task.added, task.claimed, task.reaped, task.claimed, task.done`, the same clean sequence `fleet.kill_drill` expects, so nothing records the overlap.
+
+`fleet.kill_drill` passes because its task sleeps 2 seconds, so the leftover command ends long before the 30-second lease expires.
+
+Not tested: whether a command that writes to stdout after the worker dies is killed by SIGPIPE.
+
+The fix is a new todo, "A SIGKILLed worker's task command overlaps the rescuer's rerun".
+
 ## A killed run.py leaves its step's command running
 
 Completed 2026-11-10. Moved from `todo.md`:

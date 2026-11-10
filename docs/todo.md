@@ -14,9 +14,11 @@ When `claude_step()` replaces `shell()` in `fleet/run.py`, it must start Claude 
 
 `shell()` starts the command, then writes `steps.pgid`. A kill between the two leaves a running command with no group to check, and a resume can overlap it. The window is one SQLite write. `Popen` cannot report the group before the child starts. Not reproduced; leave it unless it shows up.
 
-## Does the worker leave a task's command running when SIGKILLed?
+## A SIGKILLed worker's task command overlaps the rescuer's rerun
 
-Found while fixing the same gap in `fleet/run.py` (see `work-completed.md`). `fleet/worker.py` runs shell tasks in their own process group and kills it only on a timeout, from inside the worker. A SIGKILLed worker cannot, so its task's command probably keeps running while the lease expires and another worker reclaims the task. Not checked: reproduce with `fleet.kill_drill` and a task that outlives the lease before changing anything.
+Reproduced 2026-11-10 (see `work-completed.md`). `_shell()` in `fleet/worker.py` kills the task's process group only on a timeout, from inside the worker, and stores the group id nowhere, so nothing else can check it. A command that outlives the 30-second lease is still running when another worker reaps the task and starts it again.
+
+Possible fix, untested: the same shape as `fleet/run.py`. Store the group id with the lease, and have `queue.reap()` leave a task alone while that group still has a process in it (`os.killpg(pgid, 0)`). It would inherit the `pgid` write window above. `fleet.kill_drill` cannot catch this: its task sleeps 2 seconds, well inside the lease, so it needs a case whose command outlives the lease.
 
 ## `commit_once` logs nothing on an ambiguous failure
 
