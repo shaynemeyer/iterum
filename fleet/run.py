@@ -18,7 +18,7 @@ import sys
 import threading
 import time
 
-from fleet import db
+from fleet import db, recovery
 
 HEARTBEAT = 10  # seconds between heartbeat_at updates; fleet.recovery's expiry must be several of these
 
@@ -45,10 +45,13 @@ def committed_seqs(run_id):
 
 
 def check_resumable(run_id, plan, force=False):
-    """Exit unless run_id exists, is not done, is not halted (unless force), and every recorded step matches the plan by seq."""
+    """Exit unless run_id exists, is not done, is not halted or still alive (unless force), and every recorded step matches the plan by seq.
+
+    Alive means running with a heartbeat younger than recovery.IDLE_SECONDS, the same rule fleet.recovery uses.
+    """
     con = db.connect()
     try:
-        run = con.execute("SELECT status FROM runs WHERE run_id=?", (run_id,)).fetchone()
+        run = con.execute("SELECT status, heartbeat_at FROM runs WHERE run_id=?", (run_id,)).fetchone()
         recorded = con.execute(
             "SELECT seq, intent FROM steps WHERE run_id=? ORDER BY seq",
             (run_id,),
@@ -64,6 +67,14 @@ def check_resumable(run_id, plan, force=False):
             f"run {run_id} was halted for review; resume it only after a human has looked:\n"
             f"  uv run python -u -m fleet.run --resume {run_id} --force"
         )
+    if run["status"] == "running" and run["heartbeat_at"] and not force:
+        age = time.time() - run["heartbeat_at"]
+        if age < recovery.IDLE_SECONDS:
+            sys.exit(
+                f"run {run_id} may still be alive: its heartbeat is {age:.0f}s old.\n"
+                f"wait until it is older than {recovery.IDLE_SECONDS}s, or, if you know the process is gone:\n"
+                f"  uv run python -u -m fleet.run --resume {run_id} --force"
+            )
     planned = {seq: intent for seq, intent, _ in plan}
     for r in recorded:
         if planned.get(r["seq"]) != r["intent"]:

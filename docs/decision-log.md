@@ -2,6 +2,18 @@
 
 Decisions and why they were made. Newest first. Entries are never deleted; a decision that is reversed is marked "Superseded by" the entry that replaces it. Open decisions live in `open-questions.md`.
 
+## 2026-11-10: `--resume` treats a fresh heartbeat as a live run
+
+**Decision.** `check_resumable()` refuses a `running` run whose `heartbeat_at` is younger than `recovery.IDLE_SECONDS` (`ITERUM_IDLE_SECONDS`, default 60). `--force` overrides it.
+
+**Context.** `--resume` checked only the status, so it started a second `run.py` on a run whose first process was still alive, and both ran the remaining steps.
+
+**Alternatives.** A separate expiry for resume: two numbers that mean "dead" could disagree, so `fleet.recovery` would list a run that `--resume` refuses, or the reverse. No override: a person who knows the process is gone would have to wait out the expiry; `--force` already means "a human has looked" for `halted` runs.
+
+**Evidence.** See the work-completed entry "`--resume` refuses a run that may still be alive" for before and after runs on scratch databases.
+
+**Affects.** `fleet/run.py`, `CLAUDE.md`. `run.py` now imports `fleet.recovery`. A run without a heartbeat is not checked. Note `fleet.recovery --idle-seconds` changes only recovery's cutoff; resume reads the environment variable.
+
 ## 2026-11-10: Claude Code exports telemetry logs every second
 
 **Decision.** `.env.example` sets `OTEL_LOGS_EXPORT_INTERVAL=1000`, down from the documented default of 5000 ms.
