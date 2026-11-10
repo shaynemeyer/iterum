@@ -288,6 +288,22 @@ footer img { width: 72px; height: auto; }
   </div>
 </div>
 
+<section id="why">
+  <div class="wrap">
+    <p class="eyebrow">Why you need it</p>
+    <h2>Agents move fast. Your records should keep up.</h2>
+    <div class="grid">
+      <div class="card reveal"><p class="tables">"What did it actually do?"</p><h3>A record you can check</h3>
+        <p>Agents change state faster than you can review it, and a change nobody recorded only shows up when it breaks something. Iterum records every run step, queue task, file claim and merge as an event in an append-only ledger, where triggers reject edits and deletes. A drift check fails when knowledge is written without an event to explain it.</p></div>
+      <div class="card reveal"><p class="tables">"It crashed at step 14."</p><h3>Resume, don't restart</h3>
+        <p>A long run fails partway through, and you either start over or guess where it stopped. Iterum writes each step down before it runs, so a resumed run skips the steps already committed and runs the rest.</p></div>
+      <div class="card reveal"><p class="tables">"Two machines, two agents, one repo."</p><h3>No stepping on each other</h3>
+        <p>Parallel agents overwrite each other's work, and a stalled worker can wake up and write over newer changes. Iterum gives workers time-limited leases and refuses a stale worker's writes, and merges a branch only while its run still holds a claim on every file it changed.</p></div>
+    </div>
+    <p class="sub" style="margin-top:32px;font-size:1rem"><b>Who it's for:</b> developers who run Claude Code agents on more than one machine, or for more than a few minutes at a time, and want to see what those agents did, for themselves or their team.</p>
+  </div>
+</section>
+
 <section id="how">
   <div class="wrap">
     <p class="eyebrow">How it works</p>
