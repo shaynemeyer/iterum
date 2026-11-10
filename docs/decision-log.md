@@ -2,6 +2,30 @@
 
 Decisions and why they were made. Newest first. Entries are never deleted; a decision that is reversed is marked "Superseded by" the entry that replaces it. Open decisions live in `open-questions.md`.
 
+## 2026-11-10: Ctrl-C kills the step's process group
+
+**Decision.** `shell()` in `fleet/run.py` catches `KeyboardInterrupt` while waiting on a step, kills the step's process group with `os.killpg(pgid, SIGKILL)` and re-raises.
+
+**Context.** Running each step in its own group (next entry down) took the command out of the terminal's foreground process group, so Ctrl-C stopped `run.py` but left the command running, unlike before.
+
+**Alternatives.** Leave it, and let the resume guard wait for the command: Ctrl-C would no longer stop what it visibly stopped before. SIGTERM to the group instead of SIGKILL: gives the command a chance to clean up, but `fleet/worker.py` already uses SIGKILL on a timeout, and one rule is simpler.
+
+**Evidence.** See the work-completed entry "A killed run.py leaves its step's command running", paragraph "Ctrl-C".
+
+**Affects.** `fleet/run.py`. Covers Ctrl-C only; SIGTERM and SIGKILL still leave the command running, and the resume guard covers those.
+
+## 2026-11-10: `--resume` refuses while a step's process group is alive
+
+**Decision.** `fleet/run.py` runs each step's command in its own process group, stores the group id in `steps.pgid`, and `check_resumable()` refuses (unless `--force`) while an uncommitted step's group has any process left.
+
+**Context.** A SIGKILLed `run.py` leaves its step's command running. The heartbeat check does not help once the command keeps running past the expiry: a resume then ran the step a second time alongside it.
+
+**Alternatives.** Kill the leftover group on resume: a stored group id can be reused by an unrelated process, and killing it would be wrong; a refusal only costs a wait or `--force`. Longer expiry: any fixed value is beaten by a long enough step. The worker's approach (kill the group on timeout, from the worker): the dying process cannot run it.
+
+**Evidence.** See the work-completed entry "A killed run.py leaves its step's command running".
+
+**Affects.** `fleet/run.py`, `fleet/schema.sql`, `fleet/db.py`, `CLAUDE.md`. A kill between starting the command and writing `pgid` leaves no group to check; that window is one SQLite write. Ctrl-C no longer reaches the command on its own; see the next entry up. `os.killpg` is POSIX only.
+
 ## 2026-11-10: `--resume` treats a fresh heartbeat as a live run
 
 **Decision.** `check_resumable()` refuses a `running` run whose `heartbeat_at` is younger than `recovery.IDLE_SECONDS` (`ITERUM_IDLE_SECONDS`, default 60). `--force` overrides it.

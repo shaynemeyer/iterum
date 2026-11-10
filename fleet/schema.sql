@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS steps (
                ('proposed','committed','failed','skipped')),
   started_at REAL NOT NULL,
   ended_at   REAL,
+  pgid       INTEGER,               -- process group of the step's command; may outlive a killed run.py
   PRIMARY KEY (run_id, seq)
 );
 

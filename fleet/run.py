@@ -12,6 +12,8 @@ output that is piped or redirected is lost and you conclude the wrapper did noth
 
 import argparse
 import json
+import os
+import signal
 import sqlite3
 import subprocess
 import sys
@@ -23,12 +25,27 @@ from fleet import db, recovery
 HEARTBEAT = 10  # seconds between heartbeat_at updates; fleet.recovery's expiry must be several of these
 
 
-def shell(cmd):
-    """One step's side effect. Returns a short result string."""
-    p = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+def shell(cmd, run_id, seq):
+    """One step's side effect. Returns a short result string.
+
+    The command gets its own process group, recorded on the step, so a resume can
+    tell whether a killed run.py left it running. Being outside the terminal's
+    foreground group, it misses Ctrl-C, so a KeyboardInterrupt kills the group here.
+    """
+    p = subprocess.Popen(
+        cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+        start_new_session=True,
+    )
+    with db.write() as con:
+        con.execute("UPDATE steps SET pgid=? WHERE run_id=? AND seq=?", (p.pid, run_id, seq))
+    try:
+        stdout, stderr = p.communicate()
+    except KeyboardInterrupt:
+        os.killpg(p.pid, signal.SIGKILL)
+        raise
     if p.returncode != 0:
-        raise RuntimeError(f"step failed with exit {p.returncode}: {p.stderr.strip()}")
-    return p.stdout.strip()[:200]
+        raise RuntimeError(f"step failed with exit {p.returncode}: {stderr.strip()}")
+    return stdout.strip()[:200]
 
 
 def committed_seqs(run_id):
@@ -44,16 +61,28 @@ def committed_seqs(run_id):
     return {r["seq"] for r in rows}
 
 
+def group_alive(pgid):
+    """True if any process is left in this process group. EPERM means it exists but is not ours."""
+    try:
+        os.killpg(pgid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    return True
+
+
 def check_resumable(run_id, plan, force=False):
     """Exit unless run_id exists, is not done, is not halted or still alive (unless force), and every recorded step matches the plan by seq.
 
-    Alive means running with a heartbeat younger than recovery.IDLE_SECONDS, the same rule fleet.recovery uses.
+    Alive means running with a heartbeat younger than recovery.IDLE_SECONDS, the same rule fleet.recovery uses,
+    or an uncommitted step whose command's process group still exists.
     """
     con = db.connect()
     try:
         run = con.execute("SELECT status, heartbeat_at FROM runs WHERE run_id=?", (run_id,)).fetchone()
         recorded = con.execute(
-            "SELECT seq, intent FROM steps WHERE run_id=? ORDER BY seq",
+            "SELECT seq, intent, status, pgid FROM steps WHERE run_id=? ORDER BY seq",
             (run_id,),
         ).fetchall()
     finally:
@@ -73,6 +102,14 @@ def check_resumable(run_id, plan, force=False):
             sys.exit(
                 f"run {run_id} may still be alive: its heartbeat is {age:.0f}s old.\n"
                 f"wait until it is older than {recovery.IDLE_SECONDS}s, or, if you know the process is gone:\n"
+                f"  uv run python -u -m fleet.run --resume {run_id} --force"
+            )
+    for r in recorded:
+        if r["status"] != "committed" and r["pgid"] and not force and group_alive(r["pgid"]):
+            sys.exit(
+                f"run {run_id} step {r['seq']} may still be running: process group {r['pgid']} exists.\n"
+                f"  ps -o pid,command -g {r['pgid']}\n"
+                f"wait for it to exit, or, if you know it is safe to run the step again:\n"
                 f"  uv run python -u -m fleet.run --resume {run_id} --force"
             )
     planned = {seq: intent for seq, intent, _ in plan}
@@ -155,7 +192,7 @@ def run_steps(run_id, plan):
             )
 
         try:
-            result = shell(cmd)  # <-- the side effect
+            result = shell(cmd, run_id, seq)  # <-- the side effect
         except RuntimeError as e:
             record_failure(run_id, seq, str(e))
             raise
