@@ -2,6 +2,18 @@
 
 Decisions and why they were made. Newest first. Entries are never deleted; a decision that is reversed is marked "Superseded by" the entry that replaces it. Open decisions live in `open-questions.md`.
 
+## 2026-11-10: How `claude_step()` will be wired into `fleet.run`
+
+**Decision.** The five decisions at the end of `claude-step-design.md`: a prompt step is `{"prompt": ...}` in a plan step's third field; resume refuses an uncommitted prompt step without `--force`; prompt steps need `--allow-claude` with a required `--max-budget-usd` and run with `--max-turns 10`; no `commit_once()` in the first version; default `claude -p` with `gate.py` via `--settings`, not `--bare`.
+
+**Context.** Every call is billed to the user. A rerun prompt is billed again and may repeat edits. No command settles a stuck `in_flight` receipt yet. `--bare` skips settings hooks and accepts only `ANTHROPIC_API_KEY` (`claude --help`, Claude Code 2.1.322; https://code.claude.com/docs/en/headless).
+
+**Alternatives.** A separate kind field; rerunning prompt steps like shell steps; a default budget; `commit_once()` now; `--bare`. Reasons in the note.
+
+**Evidence.** `claude-step-design.md`; flags checked against `claude --help` and https://code.claude.com/docs/en/cli-reference. Not yet verified: `is_error` in the envelope, the gate hook under `--settings` in `-p` mode, a disallowed tool's behavior in `-p` mode.
+
+**Affects.** `fleet/run.py` once implemented. Nothing changed yet.
+
 ## 2026-11-10: fleet.run prints dead runs when it starts; halting stays manual
 
 **Decision.** For the open question "Who runs `fleet.recovery`?": every `fleet.run` start, fresh or `--resume`, calls `notice_dead_runs()` after `db.init()`. It lists each `running` run whose heartbeat is older than `ITERUM_IDLE_SECONDS`, counts `failed` runs without listing them, and prints the `fleet.recovery` command. It only reads; halting stays a manual `fleet.recovery` step.

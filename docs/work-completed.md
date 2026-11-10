@@ -2,6 +2,20 @@
 
 Items moved here from `todo.md` once done. Newest first.
 
+## Write a design note for wiring `claude_step()` into `fleet/run.py`
+
+Completed 2026-11-10. Moved from `todo.md`:
+
+**Write a design note for wiring `claude_step()` into `fleet/run.py`, before any code.** Every call is billed to the user, so get the note agreed first. Drafted in `claude-step-design.md` (proposed, not agreed). It should answer:
+   - How a plan marks a step as a prompt rather than a shell command, and how resume and `check_resumable()` treat it.
+   - How the step is made opt-in (a flag or plan field), so the built-in plan and drills never spend.
+   - The `iterum.run_id` todo below (start Claude Code with `.env.example` settings plus `OTEL_RESOURCE_ATTRIBUTES=iterum.run_id=<run_id>`).
+   - Whether it runs through `commit_once()`, which brings in the open questions on settling `in_flight` receipts, `REFUSED` Claude Code errors, and which actions can prove nothing ran.
+   - Where the edits happen: in the run's own branch, under its declared claims, so they land through `fleet.merge`.
+   - A test plan that spends as little as possible (one short prompt), run only with the user's go-ahead.
+
+**Outcome.** `claude-step-design.md`, agreed with the five decisions at its end (see the decision log). No code changed and no `claude` call was made. Flags were checked against `claude --help` (2.1.322) and the CLI reference and headless docs. Writing it turned up that `fleet.merge` already keeps unclaimed edits off the target whether or not `gate.py` runs in the session, which settled `-p` over `--bare`.
+
 ## Who runs `fleet.recovery`?
 
 Completed 2026-11-10. Moved from `todo.md`:
