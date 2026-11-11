@@ -78,7 +78,18 @@ def record(entries):
 
 
 class Receiver(BaseHTTPRequestHandler):
-    """Accepts POST /v1/logs; every other path is 404."""
+    """Accepts POST /v1/logs, and GET /v1/logs for the database it writes to; every other path is 404."""
+
+    def do_GET(self):
+        """Answer {"db": <resolved path>}, so fleet.run can check it reads the same ledger."""
+        if self.path != "/v1/logs":
+            self.send_error(404)
+            return
+        body = json.dumps({"db": str(db.DB.resolve())}).encode()
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.end_headers()
+        self.wfile.write(body)
 
     def do_POST(self):
         if self.path != "/v1/logs":
