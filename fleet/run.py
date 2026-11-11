@@ -25,18 +25,20 @@ from fleet.proc import group_alive, stop_on_sigterm
 
 HEARTBEAT = 10  # seconds between heartbeat_at updates; fleet.recovery's expiry must be several of these
 CLAIM_TTL = float(os.environ.get("ITERUM_CLAIM_TTL", claim.DEFAULT_TTL))  # seconds; must be several HEARTBEATs
+MAX_TURNS = 10  # a prompt step's --max-turns; a guess until the first paid run
 
 
-def shell(cmd, run_id, seq):
-    """One step's side effect. Returns a short result string.
+def _spawn(args, run_id, seq, env=None):
+    """Run one step's process and return (returncode, stdout, stderr).
 
-    The command gets its own process group, recorded on the step, so a resume can
+    The process gets its own process group, recorded on the step, so a resume can
     tell whether a killed run.py left it running. Being outside the terminal's
     foreground group, it misses Ctrl-C, so a KeyboardInterrupt kills the group here.
+    A string is run by the shell; a list is run directly.
     """
     p = subprocess.Popen(
-        cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
-        start_new_session=True,
+        args, shell=isinstance(args, str), stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        text=True, start_new_session=True, env=env,
     )
     with db.write() as con:
         con.execute("UPDATE steps SET pgid=? WHERE run_id=? AND seq=?", (p.pid, run_id, seq))
@@ -45,8 +47,14 @@ def shell(cmd, run_id, seq):
     except KeyboardInterrupt:
         os.killpg(p.pid, signal.SIGKILL)
         raise
-    if p.returncode != 0:
-        raise RuntimeError(f"step failed with exit {p.returncode}: {stderr.strip()}")
+    return p.returncode, stdout, stderr
+
+
+def shell(cmd, run_id, seq):
+    """One shell step's side effect. Returns a short result string."""
+    code, stdout, stderr = _spawn(cmd, run_id, seq)
+    if code != 0:
+        raise RuntimeError(f"step failed with exit {code}: {stderr.strip()}")
     return stdout.strip()[:200]
 
 
@@ -219,7 +227,7 @@ def run_branch(target):
     return branch
 
 
-def execute(run_id, plan, branch=None, target="main"):
+def execute(run_id, plan, branch=None, target="main", cap_usd=None):
     try:
         fences = claim_files(run_id, plan)
     except claim.Refused as e:
@@ -230,7 +238,7 @@ def execute(run_id, plan, branch=None, target="main"):
     lost = []  # the heartbeat thread appends why it lost a claim
     threading.Thread(target=beat, args=(run_id, stop, fences, lost), daemon=True).start()
     try:
-        run_steps(run_id, plan, lost)
+        run_steps(run_id, plan, lost, cap_usd)
     finally:
         stop.set()
     if fences:
@@ -258,7 +266,12 @@ def stop_at_ceiling(run_id, seq):
     )
 
 
-def run_steps(run_id, plan, lost):
+def is_prompt(cmd):
+    """True for a prompt step, {"prompt": ...}; False for a shell command string."""
+    return isinstance(cmd, dict)
+
+
+def run_steps(run_id, plan, lost, cap_usd=None):
     done = committed_seqs(run_id)
     if done:
         print(f"resuming {run_id}, {len(done)} step(s) already committed")
@@ -283,7 +296,10 @@ def run_steps(run_id, plan, lost):
 
         fail_if_lost(run_id, seq, lost)
         try:
-            result = shell(cmd, run_id, seq)  # <-- the side effect
+            if is_prompt(cmd):  # <-- the side effect
+                result = claude_step(cmd["prompt"], run_id, seq, cap_usd)
+            else:
+                result = shell(cmd, run_id, seq)
         except RuntimeError as e:
             fail_if_lost(run_id, seq, lost)  # a step killed for a lost claim reports why
             record_failure(run_id, seq, str(e))
@@ -311,24 +327,33 @@ def run_steps(run_id, plan, lost):
     print(f"run {run_id} done")
 
 
-def claude_step(prompt):
-    """The swap-in that points this wrapper at real work.
-
-    THIS COSTS MONEY. It shells out to your own Claude Code and every call is
-    billed to you. It is not a drop-in for shell(): the plan's third field must
-    be a prompt instead of a shell command, and this returns the whole JSON
-    envelope instead of a string. Log env["result"] as the step's result, and
-    keep env["session_id"] so a later call can pass it to `claude -p --resume`.
-    """
-    p = subprocess.run(
-        ["claude", "-p", prompt, "--output-format", "json"],
-        capture_output=True,
-        text=True,
-    )
-    env = json.loads(p.stdout)
-    if env["is_error"] or p.returncode != 0:  # never branch on subtype
-        raise RuntimeError(env.get("result") or "claude failed")
+def claude_env(run_id):
+    """os.environ plus iterum.run_id in OTEL_RESOURCE_ATTRIBUTES, so telemetry logs spend under this run."""
+    env = dict(os.environ)
+    attrs = env.get("OTEL_RESOURCE_ATTRIBUTES")
+    env["OTEL_RESOURCE_ATTRIBUTES"] = f"{attrs},iterum.run_id={run_id}" if attrs else f"iterum.run_id={run_id}"
     return env
+
+
+def claude_step(prompt, run_id, seq, cap_usd):
+    """One prompt step: `claude -p`. Returns a short result string.
+
+    THIS COSTS MONEY. Every call is billed to you. Only reached with --allow-claude,
+    whose cap goes to --max-budget-usd, a client-side estimate that spend can pass.
+    Fails on a non-zero exit or "is_error": true; never on subtype, which can read
+    "success" on an error (docs/claude-step-design.md).
+    """
+    argv = [
+        "claude", "-p", prompt, "--output-format", "json",
+        "--max-turns", str(MAX_TURNS), "--max-budget-usd", str(cap_usd),
+    ]
+    code, stdout, stderr = _spawn(argv, run_id, seq, env=claude_env(run_id))
+    if code != 0:
+        raise RuntimeError(f"claude failed with exit {code}: {(stdout or stderr).strip()[:200]}")
+    envelope = json.loads(stdout)
+    if envelope["is_error"]:
+        raise RuntimeError(f"claude reported an error: {envelope.get('result')}")
+    return str(envelope.get("result", ""))[:200]
 
 
 # The drill plan. Shell commands on purpose, so you can run the kill-and-resume
@@ -366,15 +391,19 @@ def notice_dead_runs():
 
 
 def load_plan(path):
-    """Read a plan from JSON: [[seq, intent, shell_command, [resource, ...]], ...]. The resources are optional.
+    """Read a plan from JSON: [[seq, intent, command, [resource, ...]], ...]. The resources are optional.
 
-    Each resource, such as "file:src/a.py", is claimed before any step runs; see claim_files().
+    A command is a shell command string, or {"prompt": "..."} for a prompt step run by
+    claude_step(). Each resource, such as "file:src/a.py", is claimed before any step runs; see claim_files().
 
     A tool whose only input is a literal in its own source is a demonstration.
     Point this at your own steps and the rest of the module does not change.
     """
     raw = json.loads(open(path).read())
-    return [(int(seq), str(intent), str(cmd), tuple(rest[0]) if rest else ()) for seq, intent, cmd, *rest in raw]
+    return [
+        (int(seq), str(intent), cmd if is_prompt(cmd) else str(cmd), tuple(rest[0]) if rest else ())
+        for seq, intent, cmd, *rest in raw
+    ]
 
 
 if __name__ == "__main__":
@@ -383,9 +412,12 @@ if __name__ == "__main__":
     parser.add_argument("--resume", metavar="RUN_ID", help="resume this run")
     parser.add_argument("--force", action="store_true", help="resume a halted run")
     parser.add_argument("--target", default="main", help="the branch fleet.merge lands on; a plan that declares files may not run on it")
+    parser.add_argument("--allow-claude", metavar="USD", type=float, help="run prompt steps, each capped at this many USD (billed)")
     args = parser.parse_args()
     stop_on_sigterm()
     plan = load_plan(args.plan) if args.plan else PLAN
+    if args.allow_claude is None and any(is_prompt(cmd) for _, _, cmd, _ in plan):
+        sys.exit("this plan has prompt steps, which are billed to you. Pass --allow-claude <usd>, the cap for each step.")
     branch = run_branch(args.target) if any(resources for *_, resources in plan) else None
 
     db.init()  # a fresh agent.db has no tables yet; safe to repeat
@@ -401,4 +433,4 @@ if __name__ == "__main__":
     else:
         run_id = db.start_run("worker-1", args.plan or "six step demo")
         print(f"run {run_id} started")
-    execute(run_id, plan, branch, args.target)
+    execute(run_id, plan, branch, args.target, args.allow_claude)
