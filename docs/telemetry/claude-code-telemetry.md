@@ -2,7 +2,7 @@
 
 Claude Code can export what a session does, including the cost of every API request, through OpenTelemetry. This document covers what it emits, how to turn it on, which fields arrive, what is private by default, and how the iterum fleet records spend from it.
 
-Every claim carries a tag: **[Docs]** for the monitoring documentation, **[T1]**–**[T6]** for six local tests. See [Sources](#sources).
+Every claim carries a tag: **[Docs]** for the monitoring documentation, **[T1]**–**[T7]** for seven local tests. See [Sources](#sources).
 
 Claude Code 2.1.322. Tests run 2026-11-10.
 
@@ -194,13 +194,13 @@ flowchart LR
     DB -- fleet.sync --> OTHER
 ```
 
-`claude_step()` sets `OTEL_RESOURCE_ATTRIBUTES=iterum.run_id=<run_id>` in the session's environment, so every cost record names the run that paid for it (wired in 2026-11-11; not yet seen in a paid run). Sessions that fleet did not start are logged under `session-<session.id>` [T4].
+`claude_step()` sets `OTEL_RESOURCE_ATTRIBUTES=iterum.run_id=<run_id>` in the session's environment, so every cost record names the run that paid for it (wired in 2026-11-11; seen in the first paid run, [T7]). Sessions that fleet did not start are logged under `session-<session.id>` [T4].
 
 Two options were rejected. Writing `runs.cost_usd` would keep spend on one machine, because `runs` never syncs, and an update keeps no history. Importing the `cost.usage` metric would store a running total that the events already add up to.
 
 ## The tests
 
-All ran `claude -p` on Haiku in a scratch directory with Claude Code 2.1.322. T1–T4 together cost about $0.018.
+All ran `claude -p` on Haiku in a scratch directory with Claude Code 2.1.322. T1–T4 together cost about $0.018; T7 cost $0.0172.
 
 | Test | Setup | Result |
 | --- | --- | --- |
@@ -210,6 +210,7 @@ All ran `claude -p` on Haiku in a scratch directory with Claude Code 2.1.322. T1
 | T4 | Read two files. Logs sent to `fleet.telemetry` with the `.env.example` settings, `iterum.run_id=real1`. | Three requests became three `spend.reported` events under `real1`, each with its own `request_id`. No identity field was stored. A synthetic body sent twice, with a duplicate `request_id` and a record without `iterum.run_id`, wrote each request once and logged the second under `session-<session.id>`. |
 | T5 | Read files one per turn, logs to `fleet.telemetry` at the default 5000 ms interval, SIGKILL at 10 s. | Three requests completed (by `requestId` in the session transcript); 1 reached the ledger. The two that finished 2.3 s and 4.2 s after the first were lost. |
 | T6 | Same as T5 with `OTEL_LOGS_EXPORT_INTERVAL=1000`. | Three requests completed; 3 reached the ledger. |
+| T7 | The first paid `fleet.run` prompt step (`claude-step-design.md` section 6): Haiku 5.5, `.env.example` settings, a normal exit. | Three `spend.reported` events under the run's id, the last written 0.28 s before `claude_step()` logged `claude.finished`. Their `cost_usd` summed to 0.01722868, equal to the envelope's `total_cost_usd`. |
 
 ## What a killed session loses
 
@@ -224,7 +225,7 @@ iterum's `.env.example` sets `OTEL_LOGS_EXPORT_INTERVAL=1000`, so a hard kill lo
 
 ## Not yet known
 
-- **A request in flight when a session is killed.** A SIGKILL loses what finished since the last export: two of three requests at 5000 ms, none at 1000 ms, one run each [T5] [T6]. A request still running at the kill appears in neither the transcript nor telemetry. A graceful exit was not tested.
+- **A request in flight when a session is killed.** A SIGKILL loses what finished since the last export: two of three requests at 5000 ms, none at 1000 ms, one run each [T5] [T6]. A request still running at the kill appears in neither the transcript nor telemetry. A normal exit lost nothing in one run [T7]: every request was in the ledger before `claude_step()` returned.
 - **Sessions with more than one model,** such as a subagent on a different model. All tests used one model.
 - **Whether `request_id` is guaranteed unique.** It was unique in every request seen so far (seven across T2 and T4). The docs were not checked on this point.
 - **How exact the figures are.** The field is labeled "Estimated cost in USD". Treat the numbers as a way to compare agents, not as billing.
@@ -232,5 +233,5 @@ iterum's `.env.example` sets `OTEL_LOGS_EXPORT_INTERVAL=1000`, so a hard kill lo
 ## Sources
 
 1. **[Docs]** [Monitoring usage, Claude Code docs](https://code.claude.com/docs/en/monitoring-usage). Read on 2026-11-10 through an automated fetch. The configuration table, exporter and protocol values, export intervals, attribute rules and privacy settings were read word for word. A middle part of the page, covering example configurations and part of the event reference, came back only as a summary, so nothing here relies on that part alone.
-2. **[T1]–[T6]** Local runs on 2026-11-10, Claude Code 2.1.322, described above. Raw output stayed on the test machine because it contains account identifiers.
+2. **[T1]–[T7]** Local runs on 2026-11-10 (T1–T6) and 2026-11-11 (T7), Claude Code 2.1.322, described above. Raw output stayed on the test machine because it contains account identifiers.
 3. [decision-log.md](../decision-log.md), entry "Claude Code spend lands in the ledger, one event per API request" (2026-11-10).

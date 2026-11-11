@@ -2,6 +2,20 @@
 
 Items moved here from `todo.md` once done. Newest first.
 
+## The paid run of `claude_step()`
+
+Completed 2026-11-11. Moved from `todo.md`:
+
+1. **The paid run of `claude_step()`, only with the user's go-ahead.** Follow section 6's paid-run list, and include the check below that a normal `claude -p` exit sends its last spend. Then recapture the spend-ceiling drill with real requests. (The recapture stays in `todo.md` as its own decision.)
+
+### Check that a normal `claude -p` exit sends its last spend
+
+Tests T5 and T6 in `telemetry/claude-code-telemetry.md` covered `kill -9` only. In the planned paid run, check that every `api_request` of a session that exits normally is in the ledger by the time `claude_step()` returns. If it is, `stop_at_ceiling()` sees a finished step's spend. If not, wait one `OTEL_LOGS_EXPORT_INTERVAL` before the check, after prompt steps only.
+
+**Result.** One Haiku 5.5 run, $0.0172. Six of seven checks passed; the success envelope was seen only through `claude.finished`'s fields. The gate hook runs in `-p` mode through `--settings` and refused the claimed file. The last `spend.reported` was written 0.28 s before `claude.finished`, so no wait is needed (one run, T7 in the telemetry note). Details: `claude-step-design.md` section 6.
+
+**Change.** Commits `b17b8d3` (optional `"model"` in a prompt step), `84a67f8` (`claude.finished` event), `9fce11b` (CLAUDE.md), `855f0ef` (results in the design note).
+
 ## Implement `claude_step()` in `fleet/run.py`, up to the paid run
 
 Completed 2026-11-11, except the paid run, which stays in `todo.md`. Moved from `todo.md`:

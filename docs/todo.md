@@ -4,15 +4,11 @@ Done items move to `work-completed.md`. Undecided questions live in `open-questi
 
 ## Next: what to work on, in order
 
-Status: open, written 2026-11-10 after the merge gate was finished. The fence and merge-gate work is in `work-completed.md` and the decision log. `claude_step()` is now wired into `fleet/run.py` (2026-11-11), and its paid run comes first. Most open questions wait on that run or on `commit_once()`.
+Status: open, written 2026-11-10 after the merge gate was finished. The fence and merge-gate work is in `work-completed.md` and the decision log. `claude_step()` is wired into `fleet/run.py` and passed its first paid run (2026-11-11, `work-completed.md`). Most open questions wait on `commit_once()`.
 
 How this work has been done, and should continue: one small step at a time; reproduce a problem before fixing it; check each change against the three drills (`fleet.merge_drill`, a few seconds; `fleet.claims_drill` and `fleet.kill_drill`, about 50 seconds each, runnable in parallel) and the built-in `fleet.run` plan on a scratch `ITERUM_DB`; when a drill gains a check, break the code once to see it fail, and undo the break by reversing the edit, not with `git checkout` (that also discards uncommitted work).
 
-1. **The paid run of `claude_step()`, only with the user's go-ahead.** Everything else in `claude-step-design.md` is implemented and passed the free checks (see `work-completed.md`). Follow section 6's paid-run list, and include the check below that a normal `claude -p` exit sends its last spend. Then recapture the spend-ceiling drill with real requests.
-
-## Check that a normal `claude -p` exit sends its last spend
-
-Tests T5 and T6 in `telemetry/claude-code-telemetry.md` covered `kill -9` only. In the planned paid run, check that every `api_request` of a session that exits normally is in the ledger by the time `claude_step()` returns. If it is, `stop_at_ceiling()` sees a finished step's spend. If not, wait one `OTEL_LOGS_EXPORT_INTERVAL` before the check, after prompt steps only.
+1. **Decide whether to recapture the spend-ceiling drill with real requests.** Billed, so only with the user's go-ahead. The first paid run cost $0.0172 for one small Haiku step (`claude-step-design.md` section 6).
 
 ## The `pgid` write window
 

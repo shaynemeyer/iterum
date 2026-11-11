@@ -10,7 +10,17 @@ Decisions not made yet. When one is answered, record it in `decision-log.md`, ad
 
 **Blocks.** Nothing.
 
-**Settled by.** The paid run: whether a default `-p` session edits outside the worktree, and whether the gate hook still runs under `--restricted` through `--settings`.
+**Settled by.** Whether a default `-p` session edits outside the worktree, and whether the gate hook still runs under `--restricted` through `--settings`. The first paid run (2026-11-11, `claude-step-design.md` section 6) edited only the two files its prompt named, inside the worktree, which says nothing about a prompt that reaches further; it did not try `--restricted`.
+
+## Should `claude.finished` keep the whole result envelope?
+
+**Context.** `claude_step()` logs only `exit_code`, `session_id`, `total_cost_usd`, `num_turns`, `is_error` and `permission_denials`. The first paid run (2026-11-11) therefore kept no full copy of a success envelope for `claude-step-design.md`. Its `num_turns` was 5 against 3 API requests in telemetry, for reasons not known.
+
+**Options.** Log the whole parsed envelope; log a few more named fields; or leave it.
+
+**Blocks.** Nothing.
+
+**Settled by.** Whether anything needs the other fields. The `result` text can be long, so logging it whole has a cost.
 
 ## What should the spend ceiling do when the telemetry receiver is down?
 
@@ -80,6 +90,6 @@ Decisions not made yet. When one is answered, record it in `decision-log.md`, ad
 
 **Options.** Leave as is; add some to `REFUSED`; or let `claude_step()` decide per failure, based on whether any tool ran.
 
-**Blocks.** Nothing yet. `claude_step()` is wired in (2026-11-11) but does not go through `commit_once()`, so a prompt step writes no receipt.
+**Blocks.** Nothing yet. `claude_step()` is wired in (2026-11-11) but does not go through `commit_once()`, so a prompt step writes no receipt. The first paid run succeeded, so it gave no failure to inspect.
 
 **Settled by.** Wiring `claude_step()` in and inspecting real failed runs: where the final error appears (the `result` message or the last `api_retry` event) and whether tools ran before it.
