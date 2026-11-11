@@ -2,6 +2,16 @@
 
 Items moved here from `todo.md` once done. Newest first.
 
+## The first real task: one feature in a Next.js app
+
+Completed 2026-11-11. Moved from `todo.md`:
+
+1. **Run the harness on one real task.** Every other item here, and every open question, waits on a trigger that only real use produces (a plan step that must not run twice, concurrent paid runs, a reproduced `pgid` window). Plan: `nextjs-first-run.md`, a Next.js app scaffolded by hand, then one feature per run (a Haiku prompt step, a build step, a commit step, `fleet.merge`). About a few cents a run at the first paid run's $0.0172 per small step; confirm the plan and the cap with the user before anything is billed. Record what it surfaces here or in `open-questions.md`.
+
+**Run.** A Next.js app scaffolded by hand (bun, Next 16.4.6). A free dry run with shell steps on a scratch database passed first. Then run `111d83b085ae`: a Haiku prompt step replaced the home page's `<h1>` text with "Hello from iterum", `bun run build` passed, the change was committed on a branch, and `fleet.merge` landed it on `main`.
+
+**Result.** 3 turns of 10, $0.0171 under a $0.10 cap and a $0.50 ceiling; the receiver's 3 `spend.reported` events summed to the same. No file missed, nothing refused, no step run twice: no trigger for option B. The plan doc's corrections (bun, starting `fleet.run` from the app's repo with `PYTHONPATH` and an absolute `ITERUM_DB`) are in `nextjs-first-run.md`. Continuing is `todo.md` item 1.
+
 ## Recapture the spend-ceiling drill with real requests (not done)
 
 Closed 2026-11-11 without doing it. Moved from `todo.md`:
