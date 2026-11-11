@@ -86,7 +86,9 @@ Committing the edits is a following shell step in the plan (example in 1), not n
 - The file is edited and committed by the next step, and `fleet.merge` lands it.
 - An edit to a file claimed by another run is refused by `gate.py` (whether the hook runs under `--settings` in `-p` mode is **unverified** until this).
 - `spend.reported` events appear under the run's id, not `session-<id>`.
-- The real envelope's fields. The docs list `result`, `session_id` and `total_cost_usd`, but not `is_error`, which the current code branches on; **unverified** until seen.
+- The envelope of a run that worked: `"is_error": false` and exit 0. Only a failed run's envelope has been seen (below).
+
+**Seen 2026-11-11, free.** The CLI envelope does carry `is_error`, and `subtype` cannot be trusted. `claude -p "say ok" --bare --output-format json` with no `ANTHROPIC_API_KEY` (Claude Code 2.1.322) made no API call (`"total_cost_usd": 0`), exited 1, wrote nothing to stderr, and printed one JSON object to stdout with `"is_error": true`, `"subtype": "success"`, `"terminal_reason": "api_error"` and `"result": "Not logged in · Please run /login"`. So `claude_step()` is right to branch on `is_error` and the exit code, never on `subtype`.
 
 ## Decisions (agreed 2026-11-10)
 

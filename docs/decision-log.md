@@ -14,6 +14,8 @@ Decisions and why they were made. Newest first. Entries are never deleted; a dec
 
 **Affects.** `fleet/run.py` once implemented. Nothing changed yet.
 
+**Update 2026-11-11.** `is_error` is now verified: a free failing run (`claude -p --bare` with no API key, Claude Code 2.1.322) printed `"is_error": true` alongside `"subtype": "success"` and exited 1. Details in `claude-step-design.md`. The other two items remain unverified.
+
 ## 2026-11-10: fleet.run prints dead runs when it starts; halting stays manual
 
 **Decision.** For the open question "Who runs `fleet.recovery`?": every `fleet.run` start, fresh or `--resume`, calls `notice_dead_runs()` after `db.init()`. It lists each `running` run whose heartbeat is older than `ITERUM_IDLE_SECONDS`, counts `failed` runs without listing them, and prints the `fleet.recovery` command. It only reads; halting stays a manual `fleet.recovery` step.
