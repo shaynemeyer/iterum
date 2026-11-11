@@ -2,6 +2,18 @@
 
 Decisions and why they were made. Newest first. Entries are never deleted; a decision that is reversed is marked "Superseded by" the entry that replaces it. Open decisions live in `open-questions.md`.
 
+## 2026-11-11: `commit_once()` stays out of `fleet/run.py` for now
+
+**Decision.** Option A in `commit-once-design.md`: `fleet/run.py` keeps its own write-ahead and resume rules, and `commit_once()` is not wired in. Option B, opt-in per step, waits for a plan with a step that must not run twice, and then needs the settle command first. `fleet/step.py` stays, unused. Next: catch a changed command on resume.
+
+**Context.** Nothing calls `fleet/idem.py` or `fleet/step.py`. Through `commit_once()`, a shell step that is killed or exits non-zero has no category, so its receipt stays `in_flight` and resume halts until a person settles it, and no command does that yet. Today such a step reruns, which is safe for every current plan step. Prompt steps already need `--force`.
+
+**Alternatives.** Every step through `commit_once()` (option C): every kill and failing command would need a person, and the built-in drill's kill-and-resume would halt. Opt-in per step now (option B): no plan needs it yet. Removing `fleet/step.py`: unused, but documented in this log and `todo.md`.
+
+**Evidence.** Reading the code at `425cd63` (`commit-once-design.md` sections 1-3). `fleet.merge` already lands at most once: `git update-ref` with the expected old value, and `reconcile()` from `merge.started` (`fleet/merge.py`).
+
+**Affects.** No code. The open questions that waited on wiring `commit_once()` in stay open; they matter again under option B.
+
 ## 2026-11-11: A run with prompt steps refuses to start when the ceiling could not see their spend
 
 **Decision.** When a plan has prompt steps and a ceiling is set, `fleet.run` refuses to start or resume (`check_receiver()`) unless three things hold: `CLAUDE_CODE_ENABLE_TELEMETRY=1` and `OTEL_EXPORTER_OTLP_LOGS_ENDPOINT` are set in its environment; a GET to that endpoint answers; and the receiver's database, which `fleet.telemetry` now returns from `GET /v1/logs`, is the run's own (`db.DB.resolve()`). With no prompt steps or no ceiling, nothing is checked.

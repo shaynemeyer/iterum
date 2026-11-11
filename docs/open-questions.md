@@ -38,7 +38,7 @@ Decisions not made yet. When one is answered, record it in `decision-log.md`, ad
 
 **Options.** A command in `fleet.recovery` that lists `in_flight` receipts and marks one `failed` ("checked, it did not happen") or `ok` ("checked, it did"), writing the change and a `db.log()` event in one `db.write()`. Or a separate module.
 
-**Blocks.** Wiring `commit_once()` into `fleet/run.py`.
+**Blocks.** Wiring `commit_once()` into `fleet/run.py`, which waits (decision log, 2026-11-11: option B in `commit-once-design.md`, opt-in per step, comes first).
 
 **Revisit when.** Before `commit_once()` or `run_step()` is wired into `fleet/run.py` or `claude_step()`. Until then nothing writes receipts.
 
