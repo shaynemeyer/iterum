@@ -22,16 +22,6 @@ Decisions not made yet. When one is answered, record it in `decision-log.md`, ad
 
 **Settled by.** Whether anything needs the other fields. The `result` text can be long, so logging it whole has a cost.
 
-## What should the spend ceiling do when the telemetry receiver is down?
-
-**Context.** `fleet/governor.py` counts only `spend.reported` events, which exist only while `fleet.telemetry` is running. If it is down, a paid run spends without the ceiling seeing it.
-
-**Options.** With `--allow-claude` and a ceiling set, `fleet.run` refuses to start unless the receiver answers. Or it warns and runs. A receiver that dies mid-run is missed either way, unless the heartbeat thread checks it too.
-
-**Blocks.** Paid runs. `claude_step()` is wired in (2026-11-11), so a prompt step run while the receiver is down spends without the ceiling seeing it; shell steps spend nothing.
-
-**Settled by.** Choosing refuse or warn, and how `fleet.run` checks the receiver.
-
 ## Can concurrent runs share one spend ceiling?
 
 **Context.** Two runs that check `governor.headroom()` at the same moment can both start a step and together pass the ceiling by two steps' spend. `budgets` is local to one machine, so each device has its own ceiling, while the spend it counts includes synced events from every device.

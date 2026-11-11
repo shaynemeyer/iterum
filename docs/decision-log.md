@@ -2,6 +2,18 @@
 
 Decisions and why they were made. Newest first. Entries are never deleted; a decision that is reversed is marked "Superseded by" the entry that replaces it. Open decisions live in `open-questions.md`.
 
+## 2026-11-11: A run with prompt steps refuses to start when the ceiling could not see their spend
+
+**Decision.** When a plan has prompt steps and a ceiling is set, `fleet.run` refuses to start or resume (`check_receiver()`) unless three things hold: `CLAUDE_CODE_ENABLE_TELEMETRY=1` and `OTEL_EXPORTER_OTLP_LOGS_ENDPOINT` are set in its environment; a GET to that endpoint answers; and the receiver's database, which `fleet.telemetry` now returns from `GET /v1/logs`, is the run's own (`db.DB.resolve()`). With no prompt steps or no ceiling, nothing is checked.
+
+**Context.** `fleet/governor.py` counts only `spend.reported` events, which only `fleet.telemetry` writes. Reading `fleet/telemetry.py` and `claude_env()` showed two more ways to be blind besides a receiver that is down: the receiver writes to its own `ITERUM_DB`, which can differ from the run's; and `claude_env()` adds only `OTEL_RESOURCE_ATTRIBUTES`, so without the `.env.example` settings Claude Code exports nothing. The first paid run (`claude-step-design.md` section 6) worked only because those settings were sourced first.
+
+**Alternatives.** Warn and run: the ceiling would stop counting without anyone noticing. Only check the port: misses both cases above. Send a zero-cost `api_request` through the receiver as an end-to-end probe: proves the whole path, but writes a permanent fake `spend.reported` event to the append-only ledger, which syncs. Count `claude.finished`'s `total_cost_usd` when no `spend.reported` arrived: it matched telemetry in one run, but a session killed mid-step logs no `claude.finished`, and mixing two sources risks counting a step twice.
+
+**Evidence.** Tests on scratch databases with a fake `claude`: no ceiling and a shell-only plan run without settings; missing settings, a refused connection, and a receiver on another database are each refused with the fix; a receiver given the `/tmp/...` form of the run's `/private/tmp/...` path passes, since both sides compare resolved paths; a resume is refused the same way. The three drills and the built-in plan pass.
+
+**Affects.** `fleet/run.py`, `fleet/telemetry.py`. Still missed: a receiver that dies, or a session that stops exporting, after the run starts.
+
 ## 2026-11-11: `claude_step()` details settled while implementing it
 
 **Decision.** Five details beyond the 2026-11-10 entry below. (1) The session's tools are limited with `--tools Read,Edit,Write`, plus `--permission-mode acceptEdits` and `--permission-prompts none`. (2) The gate hook's `ITERUM_DB` (made absolute) and `FLEET_RUN_ID` go in the hook's own command, run with `fleet.run`'s Python. (3) Resume needs `--force` for a prompt step that is `failed`, not only `proposed`. (4) Every prompt step must declare at least one file. (5) A prompt step starts only if the fleet's headroom covers its whole cap; there is no `min(cap, headroom)`.
