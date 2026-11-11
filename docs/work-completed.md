@@ -14,6 +14,10 @@ Completed 2026-11-10. Not from `todo.md`: it came from outside feedback on the s
 - "Can't be edited or deleted" became "triggers reject edits and deletes": anyone with write access to `agent.db` can drop the triggers. For the same reason the "auditor" audience was left out.
 - "Picks up where it left off" became "skips the steps already committed": the interrupted step runs again.
 
+**Follow-ups, same day.**
+- A "Why" link to the section in the desktop nav and the phone menu (`eea3891`).
+- A terminal clip under the cards of the drift check catching a silent write (`f713a71`): MATCH, an `UPDATE knowledge` marking `layer:governance` implemented with no event, then DRIFT with exit 1. The output was captured from a scratch database, not written by hand; the rebuild also set the claim back to `nothing`. The clip's lines start when it scrolls into view. It has no nav item, since the "Why" link already reaches it.
+
 ## Write a design note for wiring `claude_step()` into `fleet/run.py`
 
 Completed 2026-11-10. Moved from `todo.md`:
