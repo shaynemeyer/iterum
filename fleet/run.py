@@ -20,7 +20,7 @@ import sys
 import threading
 import time
 
-from fleet import claim, db, recovery
+from fleet import claim, db, governor, recovery
 from fleet.proc import group_alive, stop_on_sigterm
 
 HEARTBEAT = 10  # seconds between heartbeat_at updates; fleet.recovery's expiry must be several of these
@@ -239,6 +239,25 @@ def execute(run_id, plan, branch=None, target="main"):
         print(f"land with: uv run python -m fleet.merge {branch} --run-id {run_id}{to} {flags}")
 
 
+def stop_at_ceiling(run_id, seq):
+    """Halt the run, resumably, if the fleet's reported spend has reached its ceiling.
+
+    Checked before a step is proposed, so a halted run has no step in flight.
+    The spend of the step just finished may not be reported yet, so a run can pass
+    the ceiling by up to one step's spend.
+    """
+    left = governor.headroom()
+    if left > 0:
+        return
+    governor.halt_resumable(run_id, f"headroom {left:.4f} USD before step {seq}")
+    sys.exit(
+        f"run {run_id} stopped before step {seq}: fleet spend is at its ceiling (headroom {left:.4f} USD).\n"
+        "raise the ceiling, then resume with the same plan:\n"
+        "  uv run python -m fleet.governor set <usd>\n"
+        f"  uv run python -u -m fleet.run --resume {run_id} [--plan yourplan.json]"
+    )
+
+
 def run_steps(run_id, plan, lost):
     done = committed_seqs(run_id)
     if done:
@@ -248,6 +267,8 @@ def run_steps(run_id, plan, lost):
         if seq in done:
             print(f"  step {seq}  already committed, skipping")
             continue
+
+        stop_at_ceiling(run_id, seq)
 
         # ---- write BEFORE the side effect ----
         with db.write() as con:
