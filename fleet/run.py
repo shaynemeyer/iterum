@@ -317,7 +317,7 @@ def run_steps(run_id, plan, lost, cap_usd=None):
         fail_if_lost(run_id, seq, lost)
         try:
             if is_prompt(cmd):  # <-- the side effect
-                result = claude_step(cmd["prompt"], run_id, seq, cap_usd)
+                result = claude_step(cmd["prompt"], run_id, seq, cap_usd, cmd.get("model"))
             else:
                 result = shell(cmd, run_id, seq)
         except RuntimeError as e:
@@ -370,8 +370,11 @@ def gate_settings(run_id):
     return json.dumps({"hooks": {"PreToolUse": [hook]}})
 
 
-def claude_step(prompt, run_id, seq, cap_usd):
+def claude_step(prompt, run_id, seq, cap_usd, model=None):
     """One prompt step: `claude -p`. Returns a short result string.
+
+    model, if given, goes to --model (an alias or a full name such as "claude-haiku-5-5");
+    without it the session uses the user's default model.
 
     THIS COSTS MONEY. Every call is billed to you. Only reached with --allow-claude,
     whose cap goes to --max-budget-usd, a client-side estimate that spend can pass.
@@ -382,6 +385,7 @@ def claude_step(prompt, run_id, seq, cap_usd):
         "claude", "-p", prompt, "--output-format", "json",
         "--max-turns", str(MAX_TURNS), "--max-budget-usd", str(cap_usd),
         *CLAUDE_TOOLS, "--settings", gate_settings(run_id),
+        *(["--model", model] if model else []),
     ]
     code, stdout, stderr = _spawn(argv, run_id, seq, env=claude_env(run_id))
     if code != 0:
@@ -446,7 +450,7 @@ def check_prompt_steps(plan, cap_usd):
 def load_plan(path):
     """Read a plan from JSON: [[seq, intent, command, [resource, ...]], ...]. The resources are optional.
 
-    A command is a shell command string, or {"prompt": "..."} for a prompt step run by
+    A command is a shell command string, or {"prompt": "...", "model": "..."} ("model" optional) for a prompt step run by
     claude_step(). Each resource, such as "file:src/a.py", is claimed before any step runs; see claim_files().
 
     A tool whose only input is a literal in its own source is a demonstration.
