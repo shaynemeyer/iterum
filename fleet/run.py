@@ -13,12 +13,14 @@ output that is piped or redirected is lost and you conclude the wrapper did noth
 import argparse
 import json
 import os
+import shlex
 import signal
 import sqlite3
 import subprocess
 import sys
 import threading
 import time
+from pathlib import Path
 
 from fleet import claim, db, governor, recovery
 from fleet.proc import group_alive, stop_on_sigterm
@@ -349,6 +351,21 @@ def claude_env(run_id):
     return env
 
 
+def gate_settings(run_id):
+    """--settings JSON that runs fleet/gate.py before every Edit or Write, as this run.
+
+    ITERUM_DB and FLEET_RUN_ID are set in the hook's own command, so the hook does not
+    depend on inheriting claude's environment. gate.py refuses an edit to a file another
+    run has claimed; fleet.merge still checks every changed file if the hook does not run.
+    """
+    command = shlex.join([
+        "env", f"ITERUM_DB={db.DB.resolve()}", f"FLEET_RUN_ID={run_id}",
+        sys.executable, str(Path(__file__).with_name("gate.py").resolve()),
+    ])
+    hook = {"matcher": "Edit|Write", "hooks": [{"type": "command", "command": command}]}
+    return json.dumps({"hooks": {"PreToolUse": [hook]}})
+
+
 def claude_step(prompt, run_id, seq, cap_usd):
     """One prompt step: `claude -p`. Returns a short result string.
 
@@ -360,7 +377,7 @@ def claude_step(prompt, run_id, seq, cap_usd):
     argv = [
         "claude", "-p", prompt, "--output-format", "json",
         "--max-turns", str(MAX_TURNS), "--max-budget-usd", str(cap_usd),
-        *CLAUDE_TOOLS,
+        *CLAUDE_TOOLS, "--settings", gate_settings(run_id),
     ]
     code, stdout, stderr = _spawn(argv, run_id, seq, env=claude_env(run_id))
     if code != 0:
