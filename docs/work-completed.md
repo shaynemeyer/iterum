@@ -2,6 +2,18 @@
 
 Items moved here from `todo.md` once done. Newest first.
 
+## Catch a changed command on resume
+
+Completed 2026-11-11. Moved from `todo.md`:
+
+1. **Catch a changed command on resume.** `check_resumable()` compares intents, not commands. Record each step's command hash in `step.proposed` and refuse a resume when it differs. Reproduce the gap first (`commit-once-design.md`, decision 4).
+
+**Before.** A step killed mid-command and resumed under the same intent with a different command ran the new command without a refusal, and the run finished `done`.
+
+**Change.** Commit `aadd955`. `step.proposed` records `command_hash`; resume refuses a changed command unless the step failed. Refusing a failed step too broke `fleet.claims_drill`'s fix-and-resume part, which led to the exception (decision log, 2026-11-11).
+
+**After.** The same reproduction is refused, naming the step's status and the plan's command. Seven cases and the three drills pass.
+
 ## The paid run of `claude_step()`
 
 Completed 2026-11-11. Moved from `todo.md`:

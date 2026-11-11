@@ -23,7 +23,7 @@ Nothing calls either module (`git grep`, 2026-11-11). No receipt has been writte
 - Resume skips committed steps and reruns the rest. A shell step killed after its side effect but before `committed` therefore runs twice; the built-in drill's step 4 exists to show that gap (`fleet/run.py`, comment above `PLAN`).
 - Resume refuses while the run's heartbeat is young or an uncommitted step's process group is alive, unless `--force`.
 - Resume refuses an uncommitted prompt step unless `--force` (`claude-step-design.md`, decision 2).
-- Resume compares recorded intents with the plan's. Commands are not in the ledger, so a changed command under the same intent is not caught.
+- Resume compares recorded intents with the plan's. Commands were not in the ledger, so a changed command under the same intent was not caught; since `aadd955` (decision 4) resume refuses it unless the step failed.
 - Claims and `fleet.merge` keep edits to declared files.
 
 So shell steps are at-least-once today, and prompt steps are at-most-once by a person's `--force`.
@@ -34,7 +34,7 @@ So shell steps are at-least-once today, and prompt steps are at-most-once by a p
 | --- | --- | --- |
 | Shell step killed mid-command | Resume reruns it | Receipt `in_flight`: resume raises `Uncertain` until a person settles it |
 | Shell step exits non-zero | Step and run `failed`; resume reruns it | No category, so ambiguous: receipt `in_flight`, same as above |
-| Shell step's command changed, same intent, on resume | Not caught | `ParamMismatch`, if `params` is the command |
+| Shell step's command changed, same intent, on resume | Not caught (refused since `aadd955`, unless the step failed) | `ParamMismatch`, if `params` is the command |
 | Crash after the receipt is `ok`, before `step.committed` | Resume reruns it | Resume returns the stored result, no rerun |
 | Two processes run the same step at once | Prevented by heartbeat, process group and claim checks | Also prevented by the receipt's primary key |
 | Prompt step fails | Resume needs `--force` | Almost every failure is ambiguous (`claude-step-design.md` section 4): receipt `in_flight` |
@@ -60,4 +60,4 @@ The first two rows are the cost: every kill and every failing shell command woul
 1. **Option A.** No plan has a step that must not run twice yet. The one action here that must not repeat, landing a branch, already has its own guard: `fleet.merge` moves the target with `git update-ref` and the expected old value, so a second attempt is refused, and `reconcile()` settles a merge a crash interrupted from its `merge.started` event. Revisit with option B when a plan needs a step such as a push, a deploy or a message.
 2. **`fleet/step.py` stays**, unused. It is small, and the decision log and `todo.md` describe it. Option B would not necessarily use it: B needs `commit_once()`, and retries are a separate choice.
 3. **Under B, the settle command comes first**, as its own step. Without it the first stuck receipt can only be cleared by editing `agent.db` by hand.
-4. **Next: catch a changed command on resume.** Record each step's command hash in `step.proposed` and refuse a resume when it differs. Start by reproducing the gap.
+4. **Catch a changed command on resume.** Done 2026-11-11 (`aadd955`): `step.proposed` records a `command_hash`, and resume refuses a changed command unless the step failed (decision log, 2026-11-11).

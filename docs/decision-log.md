@@ -2,6 +2,18 @@
 
 Decisions and why they were made. Newest first. Entries are never deleted; a decision that is reversed is marked "Superseded by" the entry that replaces it. Open decisions live in `open-questions.md`.
 
+## 2026-11-11: Resume refuses a changed command, unless the step failed
+
+**Decision.** `step.proposed` records a `command_hash` (the first 16 hex digits of a SHA-256 over the JSON of the shell string or the whole prompt object). `check_resumable()` refuses a resume when a recorded step's latest hash differs from the plan's command, unless that step's status is `failed`. Events logged before the hash existed carry none and are not checked.
+
+**Context.** Resume compared intents only. Reproduced on a scratch database: a step `echo v1 > marker.txt && sleep 30`, killed mid-command, resumed without `--force` under the same intent with `echo v2 > marker.txt`, committed, and the run finished `done` with the marker reading `v2`; the ledger showed two identical `step.proposed` events. A first version refused any changed command, and `fleet.claims_drill` failed: its resume part fixes a failing step's command (`exit 1`) under the same intent, a workflow the repo supports.
+
+**Alternatives.** Refuse every changed command and allow it with `--force`: `--force` also skips the live-heartbeat and live-process-group checks, which fixing a typo should not need. Check only committed steps: leaves the reproduced gap open, since the killed step was `proposed`. Store commands in `steps`: a schema change, where a hash in the existing event needs none.
+
+**Evidence.** Seven cases on scratch databases: a killed step with a changed command, a committed step with a changed command, and a cut-off prompt step with a changed model are refused; the original plan resumes; a failed step with a fixed command resumes and runs it; a prompt step with its original plan reaches the existing `--force` refusal; a run with no hashes resumes. The three drills (`claims_drill` included) and the built-in plan pass.
+
+**Affects.** `fleet/run.py`.
+
 ## 2026-11-11: `commit_once()` stays out of `fleet/run.py` for now
 
 **Decision.** Option A in `commit-once-design.md`: `fleet/run.py` keeps its own write-ahead and resume rules, and `commit_once()` is not wired in. Option B, opt-in per step, waits for a plan with a step that must not run twice, and then needs the settle command first. `fleet/step.py` stays, unused. Next: catch a changed command on resume.

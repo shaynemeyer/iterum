@@ -13,6 +13,7 @@ Flags were checked against `claude --help` for Claude Code 2.1.322 and against t
 - Resume refuses a `failed` prompt step without `--force`, as well as a `proposed` one.
 - Every prompt step must declare at least one file.
 - A prompt step starts only if the fleet's headroom covers its whole cap (`fleet/governor.py`).
+- Resume refuses a prompt step whose prompt object (prompt or model) changed, unless the step failed; it hashes the whole object like a shell command (`aadd955`, decision log 2026-11-11).
 - A prompt step may name its model, `{"prompt": "...", "model": "..."}`, passed as `--model`; without it the session uses the user's default model.
 - `claude_step()` logs `claude.finished` after every `claude` exit: `exit_code` and the envelope's `session_id`, `total_cost_usd`, `num_turns`, `is_error` and `permission_denials`.
 
