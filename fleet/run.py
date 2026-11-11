@@ -26,6 +26,9 @@ from fleet.proc import group_alive, stop_on_sigterm
 HEARTBEAT = 10  # seconds between heartbeat_at updates; fleet.recovery's expiry must be several of these
 CLAIM_TTL = float(os.environ.get("ITERUM_CLAIM_TTL", claim.DEFAULT_TTL))  # seconds; must be several HEARTBEATs
 MAX_TURNS = 10  # a prompt step's --max-turns; a guess until the first paid run
+# Only the file tools exist in a prompt step's session; edits need no approval, and anything that
+# would ask is denied, since nobody is there to answer (`claude --help`, Claude Code 2.1.322).
+CLAUDE_TOOLS = ["--tools", "Read,Edit,Write", "--permission-mode", "acceptEdits", "--permission-prompts", "none"]
 
 
 def _spawn(args, run_id, seq, env=None):
@@ -357,6 +360,7 @@ def claude_step(prompt, run_id, seq, cap_usd):
     argv = [
         "claude", "-p", prompt, "--output-format", "json",
         "--max-turns", str(MAX_TURNS), "--max-budget-usd", str(cap_usd),
+        *CLAUDE_TOOLS,
     ]
     code, stdout, stderr = _spawn(argv, run_id, seq, env=claude_env(run_id))
     if code != 0:
