@@ -4,9 +4,14 @@ Spend is the sum of `cost_usd` over the `spend.reported` events that
 fleet.telemetry logs, one per Claude Code API request (docs/decision-log.md,
 2026-11-10). The governor keeps no count of its own: events sync across
 devices, and `budgets.spent_usd` does not, so it is left unused.
+
+    uv run python -m fleet.governor
+    uv run python -m fleet.governor set <usd>
 """
 
+import argparse
 import time
+from datetime import datetime
 
 from fleet import db, telemetry
 
@@ -32,18 +37,24 @@ def spent(con, since):
     ).fetchone()[0]
 
 
-def headroom():
-    """USD left under the ceiling; infinite when no ceiling is set, negative once over."""
+def status():
+    """(limit_usd, spent_usd, window_start) for the fleet, or None when no ceiling is set."""
     con = db.connect()
     try:
         row = con.execute(
             "SELECT limit_usd, window_start FROM budgets WHERE scope=?", (SCOPE,)
         ).fetchone()
         if not row:
-            return float("inf")
-        return row["limit_usd"] - spent(con, row["window_start"])
+            return None
+        return row["limit_usd"], spent(con, row["window_start"]), row["window_start"]
     finally:
         con.close()
+
+
+def headroom():
+    """USD left under the ceiling; infinite when no ceiling is set, negative once over."""
+    s = status()
+    return float("inf") if s is None else s[0] - s[1]
 
 
 def halt_resumable(run_id, reason):
@@ -54,3 +65,32 @@ def halt_resumable(run_id, reason):
             (time.time(), run_id),
         )
         db.log(con, run_id, "run.budget_exhausted", stage="governance", reason=reason)
+
+
+def show():
+    """Print the ceiling, the spend counted against it, and the headroom."""
+    s = status()
+    if s is None:
+        print("no ceiling set")
+        return
+    limit_usd, spent_usd, since = s
+    print(
+        f"ceiling {limit_usd:.2f}  spent {spent_usd:.4f}  headroom {limit_usd - spent_usd:.4f} USD"
+        f"  (since {datetime.fromtimestamp(since):%Y-%m-%d %H:%M})"
+    )
+
+
+def main():
+    parser = argparse.ArgumentParser(prog="uv run python -m fleet.governor")
+    commands = parser.add_subparsers(dest="command")
+    commands.add_parser("set").add_argument("usd", type=float)
+    args = parser.parse_args()
+
+    db.init()  # a fresh agent.db has no tables yet; safe to repeat
+    if args.command == "set":
+        set_ceiling(args.usd)
+    show()
+
+
+if __name__ == "__main__":
+    main()
