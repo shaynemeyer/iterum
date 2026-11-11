@@ -12,6 +12,7 @@ output that is piped or redirected is lost and you conclude the wrapper did noth
 """
 
 import argparse
+import hashlib
 import json
 import os
 import shlex
@@ -81,6 +82,9 @@ def committed_seqs(run_id):
 def check_resumable(run_id, plan, force=False):
     """Exit unless run_id exists, is not done, is not halted or still alive (unless force), and every recorded step matches the plan by seq.
 
+    Matching means the same intent, and the same command unless the step failed: a failed step's command may be fixed,
+    but a step cut off mid-command, or committed, must keep the command it was started with (step.proposed's command_hash).
+
     Alive means running with a heartbeat younger than recovery.IDLE_SECONDS, the same rule fleet.recovery uses,
     or an uncommitted step whose command's process group still exists.
     An uncommitted prompt step also needs force: it may have edited files, and a rerun is billed again.
@@ -92,6 +96,7 @@ def check_resumable(run_id, plan, force=False):
             "SELECT seq, intent, status, pgid FROM steps WHERE run_id=? ORDER BY seq",
             (run_id,),
         ).fetchall()
+        started_with = recorded_command_hashes(con, run_id)
     finally:
         con.close()
     if not run:
@@ -130,6 +135,15 @@ def check_resumable(run_id, plan, force=False):
                 f"  uv run python -u -m fleet.run --resume {run_id} --plan yourplan.json"
             )
     commands = {seq: cmd for seq, _, cmd, _ in plan}
+    for r in recorded:  # a failed step may be fixed; a cut-off or committed one may not change
+        seq = r["seq"]
+        if r["status"] != "failed" and seq in started_with and started_with[seq] != command_hash(commands[seq]):
+            sys.exit(
+                f"run {run_id} step {seq} ({r['status']}) has the same intent but a different command than it was started with.\n"
+                f"  plan: {commands[seq]!r}\n"
+                "only a failed step's command may change. Resume it with the same plan you started it with:\n"
+                f"  uv run python -u -m fleet.run --resume {run_id} --plan yourplan.json"
+            )
     for r in recorded:
         if r["status"] != "committed" and is_prompt(commands[r["seq"]]) and not force:
             sys.exit(
@@ -139,6 +153,21 @@ def check_resumable(run_id, plan, force=False):
                 "then resume, which runs the step again:\n"
                 f"  uv run python -u -m fleet.run --resume {run_id} --plan yourplan.json --allow-claude <usd> --force"
             )
+
+
+def command_hash(cmd):
+    """A short hash of a step's command: the shell string, or the whole prompt object."""
+    return hashlib.sha256(json.dumps(cmd, sort_keys=True).encode()).hexdigest()[:16]
+
+
+def recorded_command_hashes(con, run_id):
+    """{seq: command_hash} from each step's latest step.proposed. Events from before the hash existed are left out."""
+    rows = con.execute(
+        "SELECT seq, json_extract(payload, '$.command_hash') AS h FROM events"
+        " WHERE run_id=? AND kind='step.proposed' ORDER BY event_id",
+        (run_id,),
+    ).fetchall()
+    return {r["seq"]: r["h"] for r in rows if r["h"]}
 
 
 def record_failure(run_id, seq, error):
@@ -312,7 +341,8 @@ def run_steps(run_id, plan, lost, cap_usd=None):
                 (run_id, seq, intent, time.time()),
             )
             db.log(
-                con, run_id, "step.proposed", stage="planning", seq=seq, intent=intent
+                con, run_id, "step.proposed", stage="planning", seq=seq, intent=intent,
+                command_hash=command_hash(cmd),
             )
 
         fail_if_lost(run_id, seq, lost)
