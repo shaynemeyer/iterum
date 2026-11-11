@@ -14,6 +14,14 @@ How this work has been done, and should continue: one small step at a time; repr
 
 When `claude_step()` replaces `shell()` in `fleet/run.py`, it must start Claude Code with the `.env.example` settings plus `OTEL_RESOURCE_ATTRIBUTES=iterum.run_id=<run_id>`, so spend lands under the run instead of `session-<session.id>`.
 
+## Reserve each prompt step's cap against the ceiling
+
+When `claude_step()` is wired in, `stop_at_ceiling()` in `fleet/run.py` should start a prompt step only if `governor.headroom()` is at least the step's `--max-budget-usd` cap, and pass `claude` `--max-budget-usd min(cap, headroom)`. Today it checks only `headroom > 0`, so a run can pass the ceiling by up to one step's spend. Claude Code's cap is a "client-side cost estimate" and "Spend can pass the cap" (`claude-step-design.md` section 2), so this narrows the overshoot to how far Claude Code itself passes its cap; it does not remove it.
+
+## Check that a normal `claude -p` exit sends its last spend
+
+Tests T5 and T6 in `telemetry/claude-code-telemetry.md` covered `kill -9` only. In the planned paid run, check that every `api_request` of a session that exits normally is in the ledger by the time `claude_step()` returns. If it is, `stop_at_ceiling()` sees a finished step's spend. If not, wait one `OTEL_LOGS_EXPORT_INTERVAL` before the check, after prompt steps only.
+
 ## The `pgid` write window
 
 `shell()` starts the command, then writes `steps.pgid`. A kill between the two leaves a running command with no group to check, and a resume can overlap it. The window is one SQLite write. `Popen` cannot report the group before the child starts. The worker's `_shell()` has the same window before `queue.record_pgid()`; a reap there reruns the task alongside the command. Not reproduced; leave it unless it shows up.

@@ -2,6 +2,18 @@
 
 Decisions and why they were made. Newest first. Entries are never deleted; a decision that is reversed is marked "Superseded by" the entry that replaces it. Open decisions live in `open-questions.md`.
 
+## 2026-11-11: The spend ceiling reads `spend.reported` events and halts a run before a step
+
+**Decision.** `fleet/governor.py` has no counter of its own. A run's spend is the sum of `cost_usd` over `spend.reported` events whose `ts` is at or after the ceiling's `window_start`; `budgets` holds only the ceiling (`limit_usd`, `window_start`), and `spent_usd` is left unused. `fleet.run` checks `governor.headroom()` before proposing each step and, at or below zero, marks the run `budget_exhausted` and exits; a resume checks again. `fleet/rates.json` and `scripts/check-rates.py` were dropped (moved to the gitignored `docs/.local-only/rates/`).
+
+**Context.** The first draft metered spend with `charge()` and priced tokens with `rates.json`. It wrote `runs.cost_usd`, which `db.finish_run()` resets to 0 at the end of every run (reproduced on a scratch database), and which the 2026-11-10 spend entry below had already rejected. `price()` returned `None` for full model IDs such as `claude-opus-5-5`, because `rates.json` was keyed by family.
+
+**Alternatives.** A second counter in `budgets.spent_usd`: it does not sync, and can disagree with the ledger. Pricing tokens with `rates.json`: it misses cache writes and reads, Haiku 5.5's rate above 100,000 tokens, batch, fast mode, data residency and older model versions (`pricing.md`). Counting the `claude -p` envelope's `total_cost_usd` too: it would count the same requests twice. Killing a step when the ceiling is crossed: a killed `claude -p` session is an ambiguous failure that needs `--force` to resume (`claude-step-design.md` section 4).
+
+**Evidence.** Scratch databases, 2026-11-11: spend before the ceiling was set is not counted, a repeated `request_id` is skipped, and a three-step shell plan whose second step recorded $1.50 against a $1.00 ceiling halted before step 3, halted again on resume, and finished after `fleet.governor set 5`. A run with no ceiling set was not affected. `fleet/sync.py` imports `ts` unchanged, so synced spend counts.
+
+**Affects.** `fleet/governor.py`, `fleet/run.py`, `pricing.md`. Spend counts only while `fleet.telemetry` runs. A run can pass the ceiling by up to one step's spend (see `todo.md`, "Reserve each prompt step's cap against the ceiling").
+
 ## 2026-11-10: How `claude_step()` will be wired into `fleet.run`
 
 **Decision.** The five decisions at the end of `claude-step-design.md`: a prompt step is `{"prompt": ...}` in a plan step's third field; resume refuses an uncommitted prompt step without `--force`; prompt steps need `--allow-claude` with a required `--max-budget-usd` and run with `--max-turns 10`; no `commit_once()` in the first version; default `claude -p` with `gate.py` via `--settings`, not `--bare`.

@@ -2,6 +2,26 @@
 
 Decisions not made yet. When one is answered, record it in `decision-log.md`, add any resulting work to `todo.md`, and remove it here.
 
+## What should the spend ceiling do when the telemetry receiver is down?
+
+**Context.** `fleet/governor.py` counts only `spend.reported` events, which exist only while `fleet.telemetry` is running. If it is down, a paid run spends without the ceiling seeing it.
+
+**Options.** With `--allow-claude` and a ceiling set, `fleet.run` refuses to start unless the receiver answers. Or it warns and runs. A receiver that dies mid-run is missed either way, unless the heartbeat thread checks it too.
+
+**Blocks.** Nothing until `claude_step()` is wired in; shell steps spend nothing.
+
+**Settled by.** Choosing refuse or warn, and how `fleet.run` checks the receiver.
+
+## Can concurrent runs share one spend ceiling?
+
+**Context.** Two runs that check `governor.headroom()` at the same moment can both start a step and together pass the ceiling by two steps' spend. `budgets` is local to one machine, so each device has its own ceiling, while the spend it counts includes synced events from every device.
+
+**Options.** Accept and document it. Reserve each step's cap in a table under `BEGIN IMMEDIATE`, which still covers one machine only. Rely on a limit enforced by the biller, such as an API spend limit in the Anthropic Console (not checked yet: what it offers, and whether it applies to Claude Code sessions).
+
+**Blocks.** Nothing until more than one paid run goes at once.
+
+**Settled by.** Running concurrent paid runs, or checking what the Console's limits cover.
+
 ## How does a human settle a stuck `in_flight` receipt?
 
 **Context.** An ambiguous failure leaves the receipt `in_flight`, and every later attempt raises `Uncertain` (see the decision log). Today the only way out is editing `agent.db` by hand.

@@ -2,6 +2,14 @@
 
 Items moved here from `todo.md` once done. Newest first.
 
+## A fleet-wide spend ceiling in `fleet/governor.py`
+
+Completed 2026-11-11. Not from `todo.md`: it began as a review of a draft `governor.py`.
+
+**Change.** `fleet/governor.py` sums `cost_usd` from `spend.reported` events against a ceiling in `budgets` (`0a70c82`). `uv run python -m fleet.governor [set <usd>]` shows or sets it, and `pricing.md` now describes this instead of `rates.json` (`4ed9fa9`). `fleet.run` halts a run as `budget_exhausted` before proposing a step once the ceiling is reached, and a resume checks again (`f14f7c4`). Why: decision log, 2026-11-11.
+
+**Checked.** On scratch databases; see the decision log entry's evidence. After the `fleet/run.py` change, `fleet.merge_drill`, `fleet.claims_drill` and `fleet.kill_drill` all passed on scratch databases.
+
 ## Add a "Why you need it" section to the project site
 
 Completed 2026-11-10. Not from `todo.md`: it came from outside feedback on the site.
