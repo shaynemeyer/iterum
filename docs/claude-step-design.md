@@ -1,6 +1,6 @@
 # Design note: wiring `claude_step()` into `fleet/run.py`
 
-Status: agreed 2026-11-10 (see "Decisions" at the end). Implemented 2026-11-11 and checked with a fake `claude` (see "Implemented"); the paid run is still to do. Every `claude` call is billed to the user.
+Status: agreed 2026-11-10 (see "Decisions" at the end). Implemented 2026-11-11, checked with a fake `claude` (see "Implemented") and with one paid run the same day (see "Seen 2026-11-11, paid" in section 6). Every `claude` call is billed to the user.
 
 Flags were checked against `claude --help` for Claude Code 2.1.322 and against the [CLI reference](https://code.claude.com/docs/en/cli-reference) and [headless docs](https://code.claude.com/docs/en/headless). Anything not checked is marked **unverified**.
 
@@ -13,8 +13,10 @@ Flags were checked against `claude --help` for Claude Code 2.1.322 and against t
 - Resume refuses a `failed` prompt step without `--force`, as well as a `proposed` one.
 - Every prompt step must declare at least one file.
 - A prompt step starts only if the fleet's headroom covers its whole cap (`fleet/governor.py`).
+- A prompt step may name its model, `{"prompt": "...", "model": "..."}`, passed as `--model`; without it the session uses the user's default model.
+- `claude_step()` logs `claude.finished` after every `claude` exit: `exit_code` and the envelope's `session_id`, `total_cost_usd`, `num_turns`, `is_error` and `permission_denials`.
 
-Checked with a fake `claude` on `PATH`: the six free checks in section 6 pass, and the real `claude` (2.1.322) accepts every flag and the `--settings` JSON without an API call (`--bare`, no `ANTHROPIC_API_KEY`). Not yet checked: everything in the paid run.
+Checked with a fake `claude` on `PATH`: the six free checks in section 6 pass, and the real `claude` (2.1.322) accepts every flag and the `--settings` JSON without an API call (`--bare`, no `ANTHROPIC_API_KEY`). The paid run's results are in section 6.
 
 ## 1. How a plan marks a prompt step, and how resume treats it
 
@@ -66,14 +68,14 @@ A prompt step must declare its files, so the existing rules apply: the run is on
 
 Committing the edits is a following shell step in the plan (example in 1), not new code in `fleet.run`.
 
-**Tools and permissions.** Proposed: `--permission-mode acceptEdits` and `--allowedTools Read,Edit,Write`, no Bash. The headless page: "Use `--allowedTools` to let Claude use certain tools without prompting." What a disallowed tool does in `-p` mode is **unverified**; the CLI reference says a call needing approval in a manual-mode `-p` run "is denied unless something approves it".
+**Tools and permissions.** Proposed: `--permission-mode acceptEdits` and `--allowedTools Read,Edit,Write`, no Bash. The headless page: "Use `--allowedTools` to let Claude use certain tools without prompting." What a disallowed tool does in `-p` mode is **unverified** (the paid run used `--tools`, and the session called only Read and Edit; see section 6); the CLI reference says a call needing approval in a manual-mode `-p` run "is denied unless something approves it".
 
 **Keeping edits inside the claims.** Two checks exist. `fleet.merge` refuses to land a branch if any changed file lacks a live claim (`claim.require_claim()` in `land()`), whatever the session did; this holds in either mode. `fleet/gate.py` refuses an edit to a file another run has claimed earlier, during the session, but only as a `PreToolUse` hook. The two ways to run headless differ on the hook and on billing:
 
 | | Default `-p` | `--bare` |
 | --- | --- | --- |
 | Loads `~/.claude` hooks, plugins, CLAUDE.md, the project's `.claude/settings.json` and `.mcp.json` | Yes ("discovers and loads them as an interactive session would", headless page) | No |
-| Runs `gate.py` passed through `--settings` | Expected, **unverified** | No: `--bare` help says it skips "hooks (those defined in settings and by installed plugins...)" |
+| Runs `gate.py` passed through `--settings` | Yes (paid run, section 6) | No: `--bare` help says it skips "hooks (those defined in settings and by installed plugins...)" |
 | Auth | Subscription login | "strictly ANTHROPIC_API_KEY" (help text); "bare mode doesn't use your subscription login" (headless page) |
 
 **Decided: default `-p`**, with `gate.py` passed through `--settings`. It uses the subscription, and the merge gate backs it up if the hook does not load. `--bare` would need an API key and drop the early check. `--setting-sources` and `--strict-mcp-config` may narrow what the default loads; **unverified**.
@@ -92,11 +94,25 @@ Committing the edits is a following shell step in the plan (example in 1), not n
 **One paid run, only with the user's go-ahead.** On a throwaway branch with one claimed file, a one-sentence prompt, a cheap `--model`, `--max-turns 3` and a `--max-budget-usd` cap of a few cents, with `fleet.telemetry` running. Check:
 
 - The file is edited and committed by the next step, and `fleet.merge` lands it.
-- An edit to a file claimed by another run is refused by `gate.py` (whether the hook runs under `--settings` in `-p` mode is **unverified** until this).
+- An edit to a file claimed by another run is refused by `gate.py` (whether the hook runs under `--settings` in `-p` mode was **unverified** until this).
 - `spend.reported` events appear under the run's id, not `session-<id>`.
 - The envelope of a run that worked: `"is_error": false` and exit 0. Only a failed run's envelope has been seen (below).
 
 **Seen 2026-11-11, free.** The CLI envelope does carry `is_error`, and `subtype` cannot be trusted. `claude -p "say ok" --bare --output-format json` with no `ANTHROPIC_API_KEY` (Claude Code 2.1.322) made no API call (`"total_cost_usd": 0`), exited 1, wrote nothing to stderr, and printed one JSON object to stdout with `"is_error": true`, `"subtype": "success"`, `"terminal_reason": "api_error"` and `"result": "Not logged in · Please run /login"`. So `claude_step()` is right to branch on `is_error` and the exit code, never on `subtype`.
+
+**Seen 2026-11-11, paid.** One run of the plan above, with Claude Code 2.1.322: model `claude-haiku-5-5`, `--allow-claude 0.05`, a $0.10 fleet ceiling, `--max-turns 10` (not 3), `fleet.telemetry` running. The prompt asked to fix a typo in `a.txt`, claimed by the run, and in `b.txt`, claimed by another run.
+
+| Check | Result |
+| --- | --- |
+| Edit and land | Pass. `a.txt` was edited, committed by the next shell step, and `fleet.merge` landed it on `main`. |
+| Gate in `-p` mode | Pass. `gate.py` ran as a `PreToolUse` hook through `--settings`: the Edit to `b.txt` got a `PreToolUse:Edit hook error`, `b.txt` was unchanged, and `claude.finished`'s `permission_denials` lists that Edit. The session finished normally and said in its result that the hook blocked the edit. |
+| Tools limited | Pass, as far as one run shows. The transcript has four tool calls, two Read and two Edit. This shows what the session used, not what it was offered. |
+| Spend under the run | Pass. Three `spend.reported` events, all under the run's id, none `session-<id>`. |
+| Telemetry complete | Pass. Their `cost_usd` sums to 0.01722868, equal to `claude.finished`'s `total_cost_usd`. |
+| Normal exit sends its spend | Pass. The last `spend.reported` was written 0.28 s before `claude.finished`. |
+| Success envelope | Partly. `exit_code 0`, `"is_error": false`, `num_turns 5`. The full envelope was not kept: `claude.finished` stores only its fields. |
+
+Cost: $0.0172 by Claude Code's estimate, of which $0.0152 was the first request writing 75,146 tokens to the cache. `num_turns` was 5 against 3 API requests in telemetry; the reason is not known.
 
 ## Decisions (agreed 2026-11-10)
 
