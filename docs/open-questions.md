@@ -2,13 +2,23 @@
 
 Decisions not made yet. When one is answered, record it in `decision-log.md`, add any resulting work to `todo.md`, and remove it here.
 
+## Should prompt steps run with `--restricted`?
+
+**Context.** `claude --help` (2.1.322) lists `--restricted`: it removes code-running tools and WebFetch unless `--tools` names them, "ignores user, project and local settings files (managed settings and --settings still apply...)", "confines the file tools to the working directories", and refuses `bypassPermissions`. Prompt steps today run default `-p` with `--tools Read,Edit,Write` (decision log, 2026-11-11), which loads the user's settings and does not confine edits to the worktree; `fleet.merge` still refuses unclaimed files.
+
+**Options.** Add `--restricted` to `CLAUDE_TOOLS` in `fleet/run.py`. Or keep default `-p`, as decided 2026-11-10, so the session loads the user's settings like an interactive one.
+
+**Blocks.** Nothing.
+
+**Settled by.** The paid run: whether a default `-p` session edits outside the worktree, and whether the gate hook still runs under `--restricted` through `--settings`.
+
 ## What should the spend ceiling do when the telemetry receiver is down?
 
 **Context.** `fleet/governor.py` counts only `spend.reported` events, which exist only while `fleet.telemetry` is running. If it is down, a paid run spends without the ceiling seeing it.
 
 **Options.** With `--allow-claude` and a ceiling set, `fleet.run` refuses to start unless the receiver answers. Or it warns and runs. A receiver that dies mid-run is missed either way, unless the heartbeat thread checks it too.
 
-**Blocks.** Nothing until `claude_step()` is wired in; shell steps spend nothing.
+**Blocks.** Paid runs. `claude_step()` is wired in (2026-11-11), so a prompt step run while the receiver is down spends without the ceiling seeing it; shell steps spend nothing.
 
 **Settled by.** Choosing refuse or warn, and how `fleet.run` checks the receiver.
 
@@ -70,6 +80,6 @@ Decisions not made yet. When one is answered, record it in `decision-log.md`, ad
 
 **Options.** Leave as is; add some to `REFUSED`; or let `claude_step()` decide per failure, based on whether any tool ran.
 
-**Blocks.** Nothing yet. `claude_step()` is not wired in.
+**Blocks.** Nothing yet. `claude_step()` is wired in (2026-11-11) but does not go through `commit_once()`, so a prompt step writes no receipt.
 
 **Settled by.** Wiring `claude_step()` in and inspecting real failed runs: where the final error appears (the `result` message or the last `api_retry` event) and whether tools ran before it.

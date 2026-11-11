@@ -2,6 +2,18 @@
 
 Decisions and why they were made. Newest first. Entries are never deleted; a decision that is reversed is marked "Superseded by" the entry that replaces it. Open decisions live in `open-questions.md`.
 
+## 2026-11-11: `claude_step()` details settled while implementing it
+
+**Decision.** Five details beyond the 2026-11-10 entry below. (1) The session's tools are limited with `--tools Read,Edit,Write`, plus `--permission-mode acceptEdits` and `--permission-prompts none`. (2) The gate hook's `ITERUM_DB` (made absolute) and `FLEET_RUN_ID` go in the hook's own command, run with `fleet.run`'s Python. (3) Resume needs `--force` for a prompt step that is `failed`, not only `proposed`. (4) Every prompt step must declare at least one file. (5) A prompt step starts only if the fleet's headroom covers its whole cap; there is no `min(cap, headroom)`.
+
+**Context.** `claude-step-design.md` section 5 proposed `--allowedTools Read,Edit,Write`. Whether a hook inherits Claude Code's environment is unverified. A `claude -p` session can fail after editing files. Without declared files, `gate.py` allows every edit and the run is not forced off `--target`.
+
+**Alternatives.** (1) `--allowedTools`: per `claude --help` (2.1.322) it is a "list of tool names to allow", which pre-approves them but leaves every other tool, Bash included, in the session; `--tools` "Specify the list of available tools from the built-in set". `--restricted` would also confine file tools to the working directories but ignores user, project and local settings, against the 2026-11-10 choice of default `-p`; left as an open question. (2) Setting the variables in `claude`'s environment only. (5) Starting a step with headroom above zero and `--max-budget-usd min(cap, headroom)`: a session could run out of budget mid-edit, an ambiguous failure that needs `--force`.
+
+**Evidence.** `claude --help`, Claude Code 2.1.322. The real `claude` accepted every flag and the `--settings` JSON with `--bare` and no `ANTHROPIC_API_KEY` (`"total_cost_usd": 0`, `"duration_api_ms": 0`); a bad `--permission-mode` and broken settings JSON were rejected, so the flags were parsed, not ignored. Fake-`claude` checks: `work-completed.md`, 2026-11-11.
+
+**Affects.** `fleet/run.py`. Unverified until the paid run: what the flags do in a real session, and whether the hook runs in `-p` mode.
+
 ## 2026-11-11: The spend ceiling reads `spend.reported` events and halts a run before a step
 
 **Decision.** `fleet/governor.py` has no counter of its own. A run's spend is the sum of `cost_usd` over `spend.reported` events whose `ts` is at or after the ceiling's `window_start`; `budgets` holds only the ceiling (`limit_usd`, `window_start`), and `spent_usd` is left unused. `fleet.run` checks `governor.headroom()` before proposing each step and, at or below zero, marks the run `budget_exhausted` and exits; a resume checks again. `fleet/rates.json` and `scripts/check-rates.py` were dropped (moved to the gitignored `docs/.local-only/rates/`).

@@ -1,12 +1,20 @@
 # Design note: wiring `claude_step()` into `fleet/run.py`
 
-Status: agreed 2026-11-10 (see "Decisions" at the end). Every `claude` call is billed to the user.
+Status: agreed 2026-11-10 (see "Decisions" at the end). Implemented 2026-11-11 and checked with a fake `claude` (see "Implemented"); the paid run is still to do. Every `claude` call is billed to the user.
 
 Flags were checked against `claude --help` for Claude Code 2.1.322 and against the [CLI reference](https://code.claude.com/docs/en/cli-reference) and [headless docs](https://code.claude.com/docs/en/headless). Anything not checked is marked **unverified**.
 
-## Today
+## Implemented (2026-11-11)
 
-`claude_step(prompt)` in `fleet/run.py` runs `claude -p <prompt> --output-format json` with `subprocess.run`, raises if `is_error` or the exit code is non-zero, and returns the JSON envelope. Nothing calls it. It does not run in its own process group, record `steps.pgid`, set any telemetry settings, or limit turns, spend or tools.
+`fleet/run.py` follows the decisions below, with these details settled while building it (decision log, 2026-11-11):
+
+- Tools: `--tools Read,Edit,Write` (removes every other tool) instead of `--allowedTools` (only pre-approves), plus `--permission-mode acceptEdits` and `--permission-prompts none`.
+- The gate hook's `ITERUM_DB` and `FLEET_RUN_ID` are set in its own command, so it does not depend on inheriting `claude`'s environment.
+- Resume refuses a `failed` prompt step without `--force`, as well as a `proposed` one.
+- Every prompt step must declare at least one file.
+- A prompt step starts only if the fleet's headroom covers its whole cap (`fleet/governor.py`).
+
+Checked with a fake `claude` on `PATH`: the six free checks in section 6 pass, and the real `claude` (2.1.322) accepts every flag and the `--settings` JSON without an API call (`--bare`, no `ANTHROPIC_API_KEY`). Not yet checked: everything in the paid run.
 
 ## 1. How a plan marks a prompt step, and how resume treats it
 

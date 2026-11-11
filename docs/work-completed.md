@@ -2,6 +2,24 @@
 
 Items moved here from `todo.md` once done. Newest first.
 
+## Implement `claude_step()` in `fleet/run.py`, up to the paid run
+
+Completed 2026-11-11, except the paid run, which stays in `todo.md`. Moved from `todo.md`:
+
+1. **Implement `claude_step()` in `fleet/run.py` as agreed in `claude-step-design.md`.** Free checks first, with a fake `claude` script on `PATH` (the six in the note's test plan). Then one paid run, only with the user's go-ahead.
+
+## Wire `iterum.run_id` into `claude_step()`
+
+When `claude_step()` replaces `shell()` in `fleet/run.py`, it must start Claude Code with the `.env.example` settings plus `OTEL_RESOURCE_ATTRIBUTES=iterum.run_id=<run_id>`, so spend lands under the run instead of `session-<session.id>`.
+
+## Reserve each prompt step's cap against the ceiling
+
+When `claude_step()` is wired in, `stop_at_ceiling()` in `fleet/run.py` should start a prompt step only if `governor.headroom()` is at least the step's `--max-budget-usd` cap, and pass `claude` `--max-budget-usd min(cap, headroom)`. Today it checks only `headroom > 0`, so a run can pass the ceiling by up to one step's spend. Claude Code's cap is a "client-side cost estimate" and "Spend can pass the cap" (`claude-step-design.md` section 2), so this narrows the overshoot to how far Claude Code itself passes its cap; it does not remove it.
+
+**Change.** Commits `984fcfa` (prompt steps behind `--allow-claude`, in their own process group, with `iterum.run_id`), `0482d6b` (resume refuses an uncommitted prompt step without `--force`), `6ddad85` (only the file tools, edits accepted, prompts denied), `b44d88e` (`gate.py` through `--settings`), `a9ecf0a` (a prompt step must declare files), `9eea62b` (a prompt step starts only if headroom covers its whole cap, so `min(cap, headroom)` was dropped: it would always equal the cap). Details settled while building: decision log, 2026-11-11.
+
+**Checked.** With a fake `claude` on `PATH` and scratch databases: the plan is refused without `--allow-claude` or without files; the child gets every flag and `iterum.run_id`; SIGKILL, SIGTERM and SIGINT mid-step leave a resume that refuses until `--force`; `is_error` and a non-zero exit fail the step and run; the gate's hook command refuses another run's file and allows the run's own; cap reservation halts before a step whose cap exceeds the headroom. The real `claude` 2.1.322 accepted every flag and the `--settings` JSON with `--bare` and no API key, at no cost. A first SIGINT test passed wrongly because a background job inherits SIGINT as ignored (`signal.getsignal` returned `SIG_IGN`); rerun with SIGINT reset to default, it passed.
+
 ## A fleet-wide spend ceiling in `fleet/governor.py`
 
 Completed 2026-11-11. Not from `todo.md`: it began as a review of a draft `governor.py`.

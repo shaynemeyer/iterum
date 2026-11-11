@@ -194,7 +194,7 @@ flowchart LR
     DB -- fleet.sync --> OTHER
 ```
 
-`claude_step()` is not wired in yet. Once it is, it sets `OTEL_RESOURCE_ATTRIBUTES=iterum.run_id=<run_id>` in the session's environment, so every cost record names the run that paid for it. Sessions that fleet did not start are logged under `session-<session.id>` [T4].
+`claude_step()` sets `OTEL_RESOURCE_ATTRIBUTES=iterum.run_id=<run_id>` in the session's environment, so every cost record names the run that paid for it (wired in 2026-11-11; not yet seen in a paid run). Sessions that fleet did not start are logged under `session-<session.id>` [T4].
 
 Two options were rejected. Writing `runs.cost_usd` would keep spend on one machine, because `runs` never syncs, and an update keeps no history. Importing the `cost.usage` metric would store a running total that the events already add up to.
 

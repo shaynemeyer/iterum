@@ -121,7 +121,7 @@ uv run python -m fleet.governor            # ceiling, spend since it was set, he
 uv run python -m fleet.governor set 5.00   # set or change the ceiling in USD
 ```
 
-Spend counts only while the telemetry receiver is running, and only from the time the ceiling was first set. `fleet.run` does not check the ceiling yet.
+Spend counts only while the telemetry receiver is running, and only from the time the ceiling was first set. Before each step, `fleet.run` checks the headroom and halts the run, so it can be resumed, when a shell step would start with none left or a prompt step's cap is more than what is left.
 
 The token counts in each event and the rates here could check Claude Code's estimate by hand. This document's numbers are as of the date above and nothing updates them.
 
