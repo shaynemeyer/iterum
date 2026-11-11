@@ -2,6 +2,18 @@
 
 Decisions and why they were made. Newest first. Entries are never deleted; a decision that is reversed is marked "Superseded by" the entry that replaces it. Open decisions live in `open-questions.md`.
 
+## 2026-11-11: Prompt steps get no MCP servers or tools
+
+**Decision.** `CLAUDE_TOOLS` in `fleet/run.py` adds `--disallowedTools "mcp__*"` and `--strict-mcp-config` to `--tools Read,Edit,Write`, and `claude_env()` sets `ENABLE_CLAUDEAI_MCP_SERVERS=false`.
+
+**Context.** The second Next.js run (`095cf7955377`, `nextjs-first-run.md`) was given `--tools Read,Edit,Write`, yet partway through, the session was told the user's claude.ai Gmail connector tools "just became available", and Haiku called `mcp__claude_ai_Gmail__list_labels` after writing "Now a type check". It was denied only because the tool needed approval and `--permission-prompts none` leaves no one to give it; `claude.finished` recorded the denial. `claude --help` (2.1.322) says `--tools` picks "from the built-in set"; the [CLI reference](https://code.claude.com/docs/en/cli-reference) says it does not affect MCP tools and that `--disallowedTools "mcp__*"` "removes every MCP tool". The [MCP docs](https://code.claude.com/docs/en/mcp) say claude.ai connectors load automatically for a claude.ai login, can arrive after a background retry, and are turned off by `ENABLE_CLAUDEAI_MCP_SERVERS=false` (read from a summarized fetch of the page, not verbatim).
+
+**Alternatives.** Only `--disallowedTools "mcp__*"`: blocks the tools, but the first check showed 13 MCP servers still starting (the user's `supabase` and plugin servers, some connected), each a process with the user's credentials. Only the environment variable: covers claude.ai connectors, not user or plugin servers. `--restricted`: still an open question; it ignores user settings files but, per `--help`, needs `--strict-mcp-config` to skip MCP servers too. `--bare`: needs `ANTHROPIC_API_KEY` auth.
+
+**Evidence.** Two billed Haiku checks with `claude_step()`'s exact flags and environment, `--max-turns 1`, asking for every tool name, read from the `stream-json` init message. Without `--strict-mcp-config` ($0.0012): tools `Edit, Read, Write`, 13 MCP servers in `mcp_servers`, none from claude.ai. With it ($0.0006): tools `Edit, Read, Write`, `mcp_servers` empty; Haiku listed the same three tools both times. One-turn sessions cannot show whether connectors would have arrived later; if they do, `--disallowedTools "mcp__*"` still removes their tools. Not yet checked: that the gate hook still runs with these flags (no edit was made).
+
+**Affects.** `fleet/run.py`. The user's claude.ai account context (it included the user's email address) still reaches the session; see `open-questions.md`.
+
 ## 2026-11-11: Resume refuses a changed command, unless the step failed
 
 **Decision.** `step.proposed` records a `command_hash` (the first 16 hex digits of a SHA-256 over the JSON of the shell string or the whole prompt object). `check_resumable()` refuses a resume when a recorded step's latest hash differs from the plan's command, unless that step's status is `failed`. Events logged before the hash existed carry none and are not checked.

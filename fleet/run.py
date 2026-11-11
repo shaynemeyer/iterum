@@ -33,7 +33,10 @@ CLAIM_TTL = float(os.environ.get("ITERUM_CLAIM_TTL", claim.DEFAULT_TTL))  # seco
 MAX_TURNS = 10  # a prompt step's --max-turns; a guess until the first paid run
 # Only the file tools exist in a prompt step's session; edits need no approval, and anything that
 # would ask is denied, since nobody is there to answer (`claude --help`, Claude Code 2.1.322).
-CLAUDE_TOOLS = ["--tools", "Read,Edit,Write", "--permission-mode", "acceptEdits", "--permission-prompts", "none"]
+CLAUDE_TOOLS = [
+    "--tools", "Read,Edit,Write", "--disallowedTools", "mcp__*", "--strict-mcp-config",
+    "--permission-mode", "acceptEdits", "--permission-prompts", "none",
+]
 
 
 def _spawn(args, run_id, seq, env=None):
@@ -379,8 +382,12 @@ def run_steps(run_id, plan, lost, cap_usd=None):
 
 
 def claude_env(run_id):
-    """os.environ plus iterum.run_id in OTEL_RESOURCE_ATTRIBUTES, so telemetry logs spend under this run."""
-    env = dict(os.environ)
+    """os.environ plus iterum.run_id in OTEL_RESOURCE_ATTRIBUTES, so telemetry logs spend under this run.
+
+    ENABLE_CLAUDEAI_MCP_SERVERS=false keeps the user's claude.ai connectors out of the
+    session; --tools does not cover MCP tools (docs/claude-step-design.md).
+    """
+    env = dict(os.environ, ENABLE_CLAUDEAI_MCP_SERVERS="false")
     attrs = env.get("OTEL_RESOURCE_ATTRIBUTES")
     env["OTEL_RESOURCE_ATTRIBUTES"] = f"{attrs},iterum.run_id={run_id}" if attrs else f"iterum.run_id={run_id}"
     return env

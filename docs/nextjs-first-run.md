@@ -59,3 +59,13 @@ Run `111d83b085ae`: "replace the existing `<h1>`'s content with: Hello from iter
 - `fleet.telemetry` logged 3 `spend.reported` events summing to $0.0171, matching the envelope; the governor showed $0.0171 spent.
 - `fleet.merge` landed the branch with `--fence file:app/page.tsx=1`. No file was missed and nothing was refused.
 - No step needed to run twice, so nothing triggered option B in `commit-once-design.md`.
+
+## Results: the second run, 2026-11-11
+
+Run `095cf7955377`: create `app/about/page.tsx` and link it from `app/page.tsx` (with its `import Link`), Haiku, cap $0.10 per step under the same ceiling. Both files claimed by every step.
+
+- All three steps committed on the first try. Haiku used Write for the new file and Edit for the link; both diffs were the requested ones, and it built.
+- $0.0226 (`claude.finished`), matched by 7 `spend.reported` events. `num_turns` was 11, above `--max-turns 10`, while the transcript shows about 7 rounds of tool calls (`open-questions.md`).
+- A claim on a file that did not exist yet worked: `fleet.merge` landed the new file with `--fence file:app/about/page.tsx=1 --fence file:app/page.tsx=2`.
+- **The session got the user's claude.ai connectors** despite `--tools Read,Edit,Write`, and Haiku called `mcp__claude_ai_Gmail__list_labels`, which was denied. Fixed after the run: prompt steps now get no MCP servers or tools (decision log, 2026-11-11).
+- No step needed to run twice.
