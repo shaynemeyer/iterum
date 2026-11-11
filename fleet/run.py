@@ -422,6 +422,23 @@ def notice_dead_runs():
     print("see: uv run python -m fleet.recovery")
 
 
+def check_prompt_steps(plan, cap_usd):
+    """Exit if the plan has prompt steps without --allow-claude, or a prompt step that declares no files.
+
+    A prompt step's files are claimed like any other, which puts the run on its own branch,
+    lets gate.py refuse edits to other runs' files, and lets fleet.merge land the edits.
+    """
+    prompts = [(seq, resources) for seq, _, cmd, resources in plan if is_prompt(cmd)]
+    if prompts and cap_usd is None:
+        sys.exit("this plan has prompt steps, which are billed to you. Pass --allow-claude <usd>, the cap for each step.")
+    for seq, resources in prompts:
+        if not resources:
+            sys.exit(
+                f"prompt step {seq} declares no files. List the files it may edit as its fourth field,\n"
+                '  e.g. [1, "fix the typo", {"prompt": "..."}, ["file:a.txt"]]'
+            )
+
+
 def load_plan(path):
     """Read a plan from JSON: [[seq, intent, command, [resource, ...]], ...]. The resources are optional.
 
@@ -448,8 +465,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     stop_on_sigterm()
     plan = load_plan(args.plan) if args.plan else PLAN
-    if args.allow_claude is None and any(is_prompt(cmd) for _, _, cmd, _ in plan):
-        sys.exit("this plan has prompt steps, which are billed to you. Pass --allow-claude <usd>, the cap for each step.")
+    check_prompt_steps(plan, args.allow_claude)
     branch = run_branch(args.target) if any(resources for *_, resources in plan) else None
 
     db.init()  # a fresh agent.db has no tables yet; safe to repeat
