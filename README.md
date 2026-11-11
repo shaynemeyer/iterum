@@ -34,7 +34,7 @@ Every event carries a UUIDv7 `uid` and the `device` that wrote it, so ledgers fr
 | `fleet/project.py` | Rebuilds `knowledge` from `events`; exits 1 on DRIFT |
 | `fleet/run.py` | Runs a multi-step plan that can be killed and resumed; each step is recorded before it runs |
 | `fleet/recovery.py` | Lists runs that died and halts ones retried too often |
-| `fleet/step.py`, `fleet/idem.py` | Retries a step only when its failure class allows; at-most-once side effects with receipts |
+| `fleet/step.py`, `fleet/idem.py` | Retries a step only when its failure class allows; at-most-once side effects with receipts. Not yet called by `fleet.run` (`docs/commit-once-design.md`) |
 | `fleet/queue.py`, `fleet/worker.py` | A work queue with dependencies, leases, fences and a dead-letter queue, and the worker loop that drains it |
 | `fleet/dlq.py`, `fleet/conflicts.py` | Lists dead-lettered tasks and puts one back on the queue; lists conflicts waiting for a person and settles one |
 | `fleet/claim.py` | Claims on files: leases that expire, with fences that make expiry safe |
