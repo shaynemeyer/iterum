@@ -2,6 +2,14 @@
 
 Items moved here from `todo.md` once done. Newest first.
 
+## Recapture the spend-ceiling drill with real requests (not done)
+
+Closed 2026-11-11 without doing it. Moved from `todo.md`:
+
+1. **Decide whether to recapture the spend-ceiling drill with real requests.** Billed, so only with the user's go-ahead. The first paid run cost $0.0172 for one small Haiku step (`claude-step-design.md` section 6).
+
+**Why not.** The ceiling was tested with synthetic `spend.reported` events (decision log, "The spend ceiling reads `spend.reported` events and halts a run before a step"). Real requests could add only two things, and the first paid run showed both: the last `spend.reported` was written 0.28 s before `claude.finished`, so before `stop_at_ceiling()` checks the next step (T7 in `telemetry/claude-code-telemetry.md`), and the events' `cost_usd` summed exactly to the envelope's `total_cost_usd`. The rest is arithmetic on events. A recapture needs at least two prompt steps, about $0.035 at that run's cost. That evidence is one run; more confidence in the timing would come from repeated normal exits, not from this drill.
+
 ## Catch a changed command on resume
 
 Completed 2026-11-11. Moved from `todo.md`:
