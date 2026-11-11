@@ -263,20 +263,23 @@ def execute(run_id, plan, branch=None, target="main", cap_usd=None):
         print(f"land with: uv run python -m fleet.merge {branch} --run-id {run_id}{to} {flags}")
 
 
-def stop_at_ceiling(run_id, seq):
-    """Halt the run, resumably, if the fleet's reported spend has reached its ceiling.
+def stop_at_ceiling(run_id, seq, cap_usd=None):
+    """Halt the run, resumably, unless the fleet's headroom covers the next step.
 
+    A prompt step needs headroom of at least its whole cap (cap_usd), so it is never
+    started with less than its --max-budget-usd; a shell step needs headroom above zero.
     Checked before a step is proposed, so a halted run has no step in flight.
-    The spend of the step just finished may not be reported yet, so a run can pass
-    the ceiling by up to one step's spend.
+    The cap is Claude Code's own estimate and spend can pass it, so a run can still
+    pass the ceiling by however far one step passes its cap.
     """
     left = governor.headroom()
-    if left > 0:
+    need = f"its cap of {cap_usd:.4f} USD" if cap_usd is not None else "more than 0 USD"
+    if (left >= cap_usd) if cap_usd is not None else (left > 0):
         return
-    governor.halt_resumable(run_id, f"headroom {left:.4f} USD before step {seq}")
+    governor.halt_resumable(run_id, f"headroom {left:.4f} USD before step {seq}, which needs {need}")
     sys.exit(
-        f"run {run_id} stopped before step {seq}: fleet spend is at its ceiling (headroom {left:.4f} USD).\n"
-        "raise the ceiling, then resume with the same plan:\n"
+        f"run {run_id} stopped before step {seq}: fleet headroom is {left:.4f} USD and the step needs {need}.\n"
+        "raise the ceiling (or lower --allow-claude), then resume with the same plan:\n"
         "  uv run python -m fleet.governor set <usd>\n"
         f"  uv run python -u -m fleet.run --resume {run_id} [--plan yourplan.json]"
     )
@@ -297,7 +300,7 @@ def run_steps(run_id, plan, lost, cap_usd=None):
             print(f"  step {seq}  already committed, skipping")
             continue
 
-        stop_at_ceiling(run_id, seq)
+        stop_at_ceiling(run_id, seq, cap_usd if is_prompt(cmd) else None)
 
         # ---- write BEFORE the side effect ----
         with db.write() as con:
