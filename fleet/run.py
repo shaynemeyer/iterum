@@ -76,6 +76,7 @@ def check_resumable(run_id, plan, force=False):
 
     Alive means running with a heartbeat younger than recovery.IDLE_SECONDS, the same rule fleet.recovery uses,
     or an uncommitted step whose command's process group still exists.
+    An uncommitted prompt step also needs force: it may have edited files, and a rerun is billed again.
     """
     con = db.connect()
     try:
@@ -120,6 +121,16 @@ def check_resumable(run_id, plan, force=False):
                 f"  plan:     {planned.get(r['seq'])!r}\n"
                 "resume it with the same plan you started it with:\n"
                 f"  uv run python -u -m fleet.run --resume {run_id} --plan yourplan.json"
+            )
+    commands = {seq: cmd for seq, _, cmd, _ in plan}
+    for r in recorded:
+        if r["status"] != "committed" and is_prompt(commands[r["seq"]]) and not force:
+            sys.exit(
+                f"run {run_id} step {r['seq']} is a prompt step that did not commit: it may already have edited files,\n"
+                "and running it again is a second billed session. Check the run's branch first:\n"
+                "  git status && git diff\n"
+                "then resume, which runs the step again:\n"
+                f"  uv run python -u -m fleet.run --resume {run_id} --plan yourplan.json --allow-claude <usd> --force"
             )
 
 
