@@ -370,6 +370,28 @@ def gate_settings(run_id):
     return json.dumps({"hooks": {"PreToolUse": [hook]}})
 
 
+def parse_envelope(stdout):
+    """claude's JSON result envelope, or {} when stdout is not JSON.
+
+    A failing claude still prints its envelope (exit 1, "Not logged in", docs/claude-step-design.md);
+    a step killed for a lost claim prints nothing.
+    """
+    try:
+        return json.loads(stdout)
+    except json.JSONDecodeError:
+        return {}
+
+
+def log_finished(run_id, seq, code, envelope):
+    """Log claude.finished: the exit code and the envelope fields that make a paid run evidence."""
+    fields = ("session_id", "total_cost_usd", "num_turns", "is_error", "permission_denials")
+    with db.write() as con:
+        db.log(
+            con, run_id, "claude.finished", stage="tool_execution", seq=seq,
+            exit_code=code, **{k: envelope.get(k) for k in fields},
+        )
+
+
 def claude_step(prompt, run_id, seq, cap_usd, model=None):
     """One prompt step: `claude -p`. Returns a short result string.
 
@@ -388,9 +410,10 @@ def claude_step(prompt, run_id, seq, cap_usd, model=None):
         *(["--model", model] if model else []),
     ]
     code, stdout, stderr = _spawn(argv, run_id, seq, env=claude_env(run_id))
+    envelope = parse_envelope(stdout)
+    log_finished(run_id, seq, code, envelope)
     if code != 0:
         raise RuntimeError(f"claude failed with exit {code}: {(stdout or stderr).strip()[:200]}")
-    envelope = json.loads(stdout)
     if envelope["is_error"]:
         raise RuntimeError(f"claude reported an error: {envelope.get('result')}")
     return str(envelope.get("result", ""))[:200]
