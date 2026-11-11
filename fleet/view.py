@@ -3,6 +3,7 @@
     uv run python -m fleet.view                   # live sessions, then ledger runs per agent
     uv run python -m fleet.view trace <run_id>    # one run, stage by stage, failing stage named
     uv run python -m fleet.view stages [days]     # failures per stage, default last 7 days
+    uv run python -m fleet.view context [session] # context size per session, or per request in one
 
 `roster()` shells out to `claude agents --json` and returns [] when the CLI is
 not there, so every command above works with no Claude Code installed. You get
@@ -31,7 +32,7 @@ STAGES = (
 # Substrings of an event kind that mark a failure, shared by trace() and stages().
 FAILURE_KINDS = ("failed", "halted", "dead_letter", "refused", "reaped")
 
-USAGE = "usage: uv run python -m fleet.view [trace <run_id> | stages [days]]"
+USAGE = "usage: uv run python -m fleet.view [trace <run_id> | stages [days] | context [session]]"
 
 
 def is_failure(kind):
@@ -157,8 +158,53 @@ def stages(days=7):
         print(f"{stage:<16} {failures:>9} {events:>8} {failures / events * 100:>6.1f}%")
 
 
+CONTEXT_SQL = """
+SELECT run_id,
+       json_extract(payload, '$.session_id') AS session_id,
+       ts,
+       CAST(json_extract(payload, '$.input_tokens') AS INTEGER)
+     + CAST(json_extract(payload, '$.cache_read_tokens') AS INTEGER)
+     + CAST(json_extract(payload, '$.cache_creation_tokens') AS INTEGER) AS context
+FROM events
+WHERE kind = 'spend.reported'
+ORDER BY session_id, ts
+"""
+
+
+def context(session=None):
+    """Context size per API request: input plus cache read plus cache write tokens.
+
+    With no session, one line per session: requests, first, last and peak
+    context. With a session id, every request in order, to see the slope.
+    """
+    con = db.connect()
+    try:
+        rows = con.execute(CONTEXT_SQL).fetchall()
+    finally:
+        con.close()
+
+    if session:
+        print(f"{'#':>4} {'TIME':<19} {'CONTEXT':>9}")
+        mine = [r for r in rows if r["session_id"] == session]
+        for n, r in enumerate(mine, 1):
+            when = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(r["ts"]))
+            print(f"{n:>4} {when:<19} {r['context']:>9,}")
+        return
+
+    sessions = {}
+    for r in rows:
+        sessions.setdefault(r["session_id"], []).append(r)
+    print(f"{'SESSION':<38} {'REQS':>5} {'FIRST':>9} {'LAST':>9} {'PEAK':>9}  RUN")
+    for sid, reqs in sessions.items():
+        sizes = [r["context"] for r in reqs]
+        print(
+            f"{sid:<38} {len(sizes):>5} {sizes[0]:>9,} {sizes[-1]:>9,}"
+            f" {max(sizes):>9,}  {reqs[0]['run_id']}"
+        )
+
+
 def main(args):
-    """Dispatch to status, trace or stages."""
+    """Dispatch to status, trace, stages or context."""
     db.init()  # a fresh agent.db has no tables yet; safe to repeat
     match args:
         case []:
@@ -169,6 +215,10 @@ def main(args):
             stages()
         case ["stages", days]:
             stages(int(days))
+        case ["context"]:
+            context()
+        case ["context", session]:
+            context(session)
         case _:
             sys.exit(USAGE)
 

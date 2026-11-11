@@ -23,7 +23,7 @@ uv run python -u -m fleet.worker <name> [--budget-s 30]   # claim, run and repor
 uv run python -m fleet.dlq [redrive <task_id>]            # list dead-lettered tasks, or put one back on the queue
 uv run python -m fleet.conflicts [resolve <task_id> "<decision>"]   # list conflicts waiting for a person, or settle one
 uv run python -u -m fleet.kill_drill                      # SIGKILL a worker mid-task and check recovery (about 50s)
-uv run python -m fleet.view [trace <run_id> | stages [days]]   # live sessions and runs, one run's trace, or failures per stage
+uv run python -m fleet.view [trace <run_id> | stages [days] | context [session]]   # live sessions and runs, one run's trace, failures per stage, or context size per request
 uv run python -u -m fleet.telemetry [--port 4318]                # receive Claude Code telemetry; settings in .env.example
 uv run python -m fleet.merge <branch> --run-id R --fence file:path=N [--repo .] [--target main]   # land a branch if every changed file has a live claim
 uv run python -u -m fleet.merge_drill                     # drive the merge gate through refusals, the lock and a crash (a few seconds)
