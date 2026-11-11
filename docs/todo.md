@@ -4,7 +4,10 @@ Done items move to `work-completed.md`. Undecided questions live in `open-questi
 
 ## Next: what to work on, in order
 
-Status: open, written 2026-11-10 after the merge gate was finished. The fence and merge-gate work is in `work-completed.md` and the decision log. `claude_step()` is wired into `fleet/run.py` and passed its first paid run (2026-11-11, `work-completed.md`). Most open questions wait on option B in `commit-once-design.md` (decision log, 2026-11-11). Nothing in this list is ready to start: the items below wait for a trigger.
+Status: open, written 2026-11-10 after the merge gate was finished. The fence and merge-gate work is in `work-completed.md` and the decision log. `claude_step()` is wired into `fleet/run.py` and passed its first paid run (2026-11-11, `work-completed.md`). Most open questions wait on option B in `commit-once-design.md` (decision log, 2026-11-11). The sections after this list wait for a trigger; item 1 is how to find one.
+
+1. **Run the harness on one real task.** Every other item here, and every open question, waits on a trigger that only real use produces (a plan step that must not run twice, concurrent paid runs, a reproduced `pgid` window). Plan: `nextjs-first-run.md`, a Next.js app scaffolded by hand, then one feature per run (a Haiku prompt step, a build step, a commit step, `fleet.merge`). About a few cents a run at the first paid run's $0.0172 per small step; confirm the plan and the cap with the user before anything is billed. Record what it surfaces here or in `open-questions.md`.
+2. **Optional, billed: repeat short normal-exit runs.** T7 in `telemetry/claude-code-telemetry.md` showed a normal `claude -p` exit sending its last spend 0.28 s before `claude_step()` returned, in one run. A few more short Haiku runs would show whether that holds. Only with the user's go-ahead.
 
 How this work has been done, and should continue: one small step at a time; reproduce a problem before fixing it; check each change against the three drills (`fleet.merge_drill`, a few seconds; `fleet.claims_drill` and `fleet.kill_drill`, about 50 seconds each, runnable in parallel) and the built-in `fleet.run` plan on a scratch `ITERUM_DB`; when a drill gains a check, break the code once to see it fail, and undo the break by reversing the edit, not with `git checkout` (that also discards uncommitted work).
 
