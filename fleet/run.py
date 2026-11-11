@@ -21,6 +21,7 @@ import subprocess
 import sys
 import threading
 import time
+import urllib.request
 from pathlib import Path
 
 from fleet import claim, db, governor, recovery
@@ -470,6 +471,29 @@ def check_prompt_steps(plan, cap_usd):
             )
 
 
+def check_receiver(plan):
+    """Exit if the plan has prompt steps, a ceiling is set, and the ceiling could not see their spend.
+
+    The ceiling counts only what fleet.telemetry logs (fleet/governor.py), so this refuses when
+    claude would not export telemetry, the receiver does not answer, or it writes to another database.
+    A receiver that dies mid-run is still missed (docs/decision-log.md, 2026-11-11).
+    """
+    if not any(is_prompt(cmd) for _, _, cmd, _ in plan) or governor.status() is None:
+        return
+    endpoint = os.environ.get("OTEL_EXPORTER_OTLP_LOGS_ENDPOINT")
+    if os.environ.get("CLAUDE_CODE_ENABLE_TELEMETRY") != "1" or not endpoint:
+        sys.exit("a ceiling is set, but claude would not report its spend. Load the telemetry settings first:\n  source .env.example")
+    try:
+        with urllib.request.urlopen(endpoint, timeout=5) as r:
+            receiver_db = json.load(r)["db"]
+    except OSError as e:
+        sys.exit(f"a ceiling is set, but the telemetry receiver at {endpoint} did not answer ({e}). Start it first:\n"
+                 "  uv run python -u -m fleet.telemetry")
+    if receiver_db != str(db.DB.resolve()):
+        sys.exit(f"the telemetry receiver writes to {receiver_db}, but this run reads {db.DB.resolve()}.\n"
+                 "  Start fleet.telemetry with the same ITERUM_DB.")
+
+
 def load_plan(path):
     """Read a plan from JSON: [[seq, intent, command, [resource, ...]], ...]. The resources are optional.
 
@@ -501,6 +525,7 @@ if __name__ == "__main__":
 
     db.init()  # a fresh agent.db has no tables yet; safe to repeat
     notice_dead_runs()
+    check_receiver(plan)
     if args.resume:
         run_id = args.resume
         # a resume has to re-read the plan from somewhere, and the ledger stores
