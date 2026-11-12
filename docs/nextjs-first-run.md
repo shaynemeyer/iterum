@@ -44,7 +44,7 @@ The harness limits what one run can do (`CLAUDE.md`):
 
 - Whether Haiku's edits build, and how many turns they take against the cap of 10.
 - Declaring files before a run: what is missed, and what `fleet.merge` refuses.
-- A failed build: fix the failed shell step's command and resume (allowed since `aadd955`). A failed prompt step may also change its prompt, but rerunning it always needs `--force`.
+- A failed build: fix the failed shell step's command and resume (allowed since `aadd955`). A failed prompt step may also change its prompt, but rerunning it always needs `--force`. When the prompt step committed but its edit broke the build, a person can fix the file by hand and resume: the prompt step is skipped and nothing is billed, but the run's commit then mixes the model's edit with the person's fix (fourth run).
 - Cost per step against the first paid run's $0.0172.
 - Any step that must not run twice (the trigger for option B in `commit-once-design.md`).
 
@@ -79,3 +79,14 @@ Run `bec20a793b36`: read the app's route-handler guide in `node_modules/next/dis
 - First run with the new context settings (decision log, 2026-11-11). The transcript had no git status snapshot, no CLAUDE.md contents and no `mcp__` names; the account email was there, as decided. The first request's context was 5,466 tokens, against 46,189 in the second run. Part of the cost drop is the smaller task.
 - Still not shown: that the gate hook runs under the new flags. A hook that allows an edit leaves nothing in the transcript.
 - No step needed to run twice.
+
+## Results: the fourth run, 2026-11-11
+
+Run `aeec4aecb610`: the home page shows the message from `/api/hello`, the first feature built on an earlier run's. The app's own docs (`node_modules/next/dist/docs/01-app/02-guides/backend-for-frontend.md`, "Server Components") say a Server Component must not fetch the app's own Route Handlers, and one prerendered at build time fails the build, so the prompt asked for a Client Component: create `app/hello-message.tsx` (`'use client'`, `fetch('/api/hello')` in a `useEffect`) and render it in `app/page.tsx`. A new step 3 started the built app on a port, checked `/` and `/api/hello` answered, and stopped it; checked beforehand to fail on a missing string and to leave no server behind.
+
+- **The build failed.** Haiku's Write call ended the new file with a stray `</content>` line; the transcript shows it in the tool call's own `content`, so the model wrote it. The component above it was right, and the `page.tsx` edit was exactly the requested two lines. 7 turns, $0.0024, no denials.
+- The build step caught it before anything was committed; the run stopped `failed` with the prompt step `committed`. This is the first failure only real use produced, and why every prompt step is followed by a build.
+- Fixed by hand (deleted the line) and resumed with the same plan: step 1 was skipped, nothing billed, and build, smoke check and commit passed. The commit (`2369218` in the app) holds Haiku's edit and the one-line fix together; only this note says so.
+- The smoke check cannot see the Client Component's output, since the message is fetched in the browser and `/` already says "Hello from iterum" in its heading. A browser on the built app showed the fetched message under the About link.
+- `fleet.merge` landed it with `--fence file:app/hello-message.tsx=2 --fence file:app/page.tsx=4`: the resume claimed both files again, so the fences moved on.
+- No step needed to run twice in the sense of option B: the rerun build was safe to repeat.
