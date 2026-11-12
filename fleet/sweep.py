@@ -6,7 +6,8 @@ Run it from the repo the plans work on, as fleet.run. Each repeat starts every p
 in a rotated order (the first request pays to write the prompt cache, so a fixed order
 skews cost), each run on its own new branch from --base, as `fleet.run` in a subprocess.
 The branches are never landed, so each run's claims are released when it ends.
-The sweep refuses a dirty tree and stops if a run leaves one.
+What a run that did not finish leaves behind is committed on its branch, so it counts
+as a fail. The sweep refuses a dirty tree, and stops if a finished run leaves one.
 """
 
 import argparse
@@ -62,6 +63,19 @@ def release_claims(run_id):
         claim.release(r["resource"], run_id, r["fence"])
 
 
+def keep_leftovers(run_id):
+    """Commit what a run that did not finish left behind, on its own sweep branch.
+
+    A failed step (a check, say) stops before the plan's commit step. Committing here
+    keeps the tree clean for the next run and keeps the failed output for inspection.
+    A run that finished and still left changes is a plan without a commit step; require_clean() stops on it.
+    """
+    status, _ = outcome(run_id)
+    if status != "done" and git("status", "--porcelain"):
+        git("add", "--all")
+        git("commit", "--quiet", "-m", f"sweep: what run {run_id} ({status}) left behind")
+
+
 def sweep(plans, repeats, base, allow_claude):
     """Run every plan repeats times. Returns [(plan, run_id)]."""
     tag = time.strftime("%Y%m%d-%H%M%S")
@@ -73,6 +87,8 @@ def sweep(plans, repeats, base, allow_claude):
             print(f"repeat {i + 1}/{repeats}  {plan.stem}  on {branch}")
             git("switch", "--quiet", "-c", branch, base)
             run_id = run_plan(plan, allow_claude)
+            if run_id is not None:
+                keep_leftovers(run_id)
             git("switch", "--quiet", start)
             if run_id is None:
                 sys.exit(f"{plan} did not start a run; sweep stopped")
