@@ -2,6 +2,16 @@
 
 Items moved here from `todo.md` once done. Newest first.
 
+## `fleet.worker` stops at the fleet ceiling
+
+Completed 2026-11-11. Not a `todo.md` item: the ceiling was meant to be fleet-wide, but only `fleet.run` checked it.
+
+**Before.** `fleet/worker.py` never called the governor, so a worker kept claiming tasks past the ceiling.
+
+**Change.** `stop_at_ceiling()` in `fleet/worker.py` checks `governor.headroom()` before each claim and exits 1 at or below zero, as `fleet.run` does for a shell step. It runs between tasks, so nothing is in flight and the queue is untouched. A task can still pass the ceiling by its own spend.
+
+**After.** Scratch database: three tasks, each posting $0.02 to `fleet.telemetry`, under a $0.03 ceiling. The worker finished tasks 1 and 2, stopped with headroom -0.0100 and exit 1, and left task 3 `ready`. After `fleet.governor set 1` a new worker finished task 3. With no ceiling set, a worker ran `echo hello` as before.
+
 ## Name the holding run in claim refusals
 
 Completed 2026-11-11. Not a `todo.md` item: settled the open question "Should `fleet.run` give each run its own agent name?" once concurrent runs had happened twice.

@@ -22,11 +22,12 @@ import os
 import signal
 import sqlite3
 import subprocess
+import sys
 import threading
 import time
 from contextlib import contextmanager
 
-from fleet import db, queue
+from fleet import db, governor, queue
 from fleet.claim import Fenced, Refused
 from fleet.proc import stop_on_sigterm
 
@@ -155,6 +156,23 @@ def _run_one(task, worker):
     print(f"{label}  done" if error is None else f"{label}  failed: {error}")
 
 
+def stop_at_ceiling(worker):
+    """Exit before claiming another task once the fleet has no headroom left.
+
+    Checked between tasks, as fleet.run checks between steps, so no task is in
+    flight and every queued task stays queued for a worker started after the
+    ceiling is raised. A task can still pass the ceiling by its own spend.
+    """
+    left = governor.headroom()
+    if left > 0:
+        return
+    sys.exit(
+        f"{worker}  stopped: fleet headroom is {left:.4f} USD, so no task was claimed.\n"
+        "raise the ceiling, then start the worker again:\n"
+        "  uv run python -m fleet.governor set <usd>"
+    )
+
+
 def main(worker, budget_s=BUDGET_S):
     deadline = time.time() + budget_s
     next_reap = 0
@@ -162,6 +180,7 @@ def main(worker, budget_s=BUDGET_S):
         if time.time() >= next_reap:
             _reap(worker)
             next_reap = time.time() + REAP_EVERY
+        stop_at_ceiling(worker)
         task = queue.claim(worker)
         if not task:
             time.sleep(0.2)
