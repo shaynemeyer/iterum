@@ -2,6 +2,26 @@
 
 Decisions not made yet. When one is answered, record it in `decision-log.md`, add any resulting work to `todo.md`, and remove it here.
 
+## Who builds the merged result?
+
+**Context.** In the fifth Next.js run two concurrent runs each built their own branch, and `fleet.merge` landed both, the second onto a `main` the first had moved. Nothing built `main` afterwards; a build by hand passed. `land()` builds the merge with `git merge-tree` and checks claims, but runs no check, so two branches that each build can land into a `main` that does not, with no textual conflict to stop it.
+
+**Options.** `fleet.merge` takes a check command and runs it on the merged tree before `update-ref`, which needs a working tree for that tree (the target must not be checked out in one). Or a person, or a later plan step, builds the target after landing, as now. Or runs that touch related files are not run at once.
+
+**Blocks.** Nothing yet: no merged result has failed.
+
+**Settled by.** A merged result that fails its build, or a choice to check before landing anyway.
+
+## Should `fleet.run` give each run its own agent name?
+
+**Context.** `fleet.run` starts every run with agent `worker-1` (`db.start_run("worker-1", ...)` in `main()`). Claims are keyed by run id, but a refusal names the holder by agent, so with two runs at once (fifth Next.js run) "`file:app/footer.tsx` held by worker-1" does not say which run holds it.
+
+**Options.** Name the run id in the refusal; take an agent name from a flag or `ITERUM_DEVICE`; or leave it.
+
+**Blocks.** Nothing.
+
+**Settled by.** Whether concurrent runs become routine.
+
 ## Should prompt steps run with `--restricted`?
 
 **Context.** `claude --help` (2.1.322) lists `--restricted`: it removes code-running tools and WebFetch unless `--tools` names them, "ignores user, project and local settings files (managed settings and --settings still apply...)", "confines the file tools to the working directories", and refuses `bypassPermissions`. Prompt steps today run default `-p` with `--tools Read,Edit,Write` (decision log, 2026-11-11), which loads the user's settings and does not confine edits to the worktree; `fleet.merge` still refuses unclaimed files.

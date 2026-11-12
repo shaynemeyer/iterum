@@ -90,3 +90,15 @@ Run `aeec4aecb610`: the home page shows the message from `/api/hello`, the first
 - The smoke check cannot see the Client Component's output, since the message is fetched in the browser and `/` already says "Hello from iterum" in its heading. A browser on the built app showed the fetched message under the About link.
 - `fleet.merge` landed it with `--fence file:app/hello-message.tsx=2 --fence file:app/page.tsx=4`: the resume claimed both files again, so the fences moved on.
 - No step needed to run twice in the sense of option B: the rerun build was safe to repeat.
+
+## Results: the fifth run, two at once, 2026-11-11
+
+Two runs started together against one `agent.db` and one `fleet.telemetry`, each in its own working tree of the app: run A (`3dc4f3eb311c`, branch `feat/about-list`) added a three-item list to `app/about/page.tsx`; run B (`079f6a69f0a5`, branch `feat/footer`, in a `git worktree`) created `app/footer.tsx`, a Server Component, and rendered it in `app/layout.tsx`. Each plan: a Haiku prompt step, build, a smoke check on its own port, commit. Cap $0.10 per step under the $0.50 ceiling.
+
+- Free checks first: both plans dry-run at the same time on a scratch database; starting B's plan in A's tree while B held its claims was refused before any step ran; both smoke checks failed without the edits and left no server behind; `bun install` and the build in the new worktree changed no tracked file.
+- Both runs: every step committed on the first try, and each diff was exactly the change asked for. A: 3 turns, $0.00071. B: 6 turns, $0.00111. No denials.
+- The prompt steps overlapped: both `step.proposed` within 3 ms, committed 5.4 s and 6.9 s later. One receiver logged 3 `spend.reported` events per run, each run's matching its own session's cost.
+- Both runs passed their headroom check together. Far from the limit this shows nothing about two runs near it (`open-questions.md`, "Can concurrent runs share one spend ceiling?").
+- `fleet.merge` landed A, then B onto the `main` A had just moved.
+- **No step built the merged result.** Each branch built alone and `fleet.merge` does not build. `bun run build` on `main` after both merges passed, by hand (`open-questions.md`).
+- Both runs' agent was `worker-1`, which `fleet.run` gives every run (`db.start_run("worker-1", ...)` in `main()`), so the refusal named the holder as "worker-1": with two runs it cannot say which one. Claims are keyed by run id, so nothing broke.
