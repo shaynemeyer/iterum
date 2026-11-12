@@ -2,6 +2,16 @@
 
 Items moved here from `todo.md` once done. Newest first.
 
+## Name the holding run in claim refusals
+
+Completed 2026-11-11. Not a `todo.md` item: settled the open question "Should `fleet.run` give each run its own agent name?" once concurrent runs had happened twice.
+
+**Before.** "`file:a.txt` held by worker-1 for another 300s"; every run is `worker-1`.
+
+**Change.** The refusal and the gate's message add "(run <id>)"; `claim.refused` adds `held_by_run` (decision log, 2026-11-11).
+
+**After.** "`file:a.txt` held by worker-1 (run 813631d110df) for another 300s". The three drills pass.
+
 ## Build `fleet.merge --check`
 
 Completed 2026-11-11. Moved from `todo.md`:

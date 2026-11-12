@@ -61,6 +61,7 @@ def acquire(resource, run_id, agent, ttl=DEFAULT_TTL):
                 resource=resource,
                 agent=agent,
                 held_by=row["agent"],
+                held_by_run=row["run_id"],
                 fence=row["fence"],
             )
         else:
@@ -68,7 +69,7 @@ def acquire(resource, run_id, agent, ttl=DEFAULT_TTL):
     # Raised after the block: raising inside it would roll back the claim.refused event.
     if held:
         raise Refused(
-            f"{resource} held by {row['agent']} "
+            f"{resource} held by {row['agent']} (run {row['run_id']}) "
             f"for another {row['expires_at'] - now:.0f}s"
         )
     return fence

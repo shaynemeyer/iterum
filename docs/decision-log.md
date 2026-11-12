@@ -2,6 +2,18 @@
 
 Decisions and why they were made. Newest first. Entries are never deleted; a decision that is reversed is marked "Superseded by" the entry that replaces it. Open decisions live in `open-questions.md`.
 
+## 2026-11-11: Claim refusals name the holder's run id; agent names stay
+
+**Decision.** `claim.acquire()`'s refusal and `fleet/gate.py`'s message name the holder's run id after its agent, as in "`file:a.txt` held by worker-1 (run 813631d110df) for another 300s", and the `claim.refused` event gains `held_by_run`. `fleet.run` still names every run's agent `worker-1`. Settles the open question "Should `fleet.run` give each run its own agent name?"
+
+**Context.** That question was to be settled by whether concurrent runs became routine; the fifth and seventh Next.js runs each ran two at once. Reproduced on a scratch database: a second run of a plan was refused with "`file:a.txt` held by worker-1 for another 300s", the gate said "claimed by worker-1 until ...", and `claim.refused` carried only `held_by: worker-1`, while the `claims` row held the run id.
+
+**Alternatives.** A distinct agent name per run, from a flag or `ITERUM_DEVICE`: changes what every event and claim records for an answer the run id already gives. Leave it: with two runs, the message cannot say which one holds the file.
+
+**Evidence.** The same reproduction after the change: both messages name run `813631d110df`, and the event's `held_by_run` matches the `claims` row. No drill matches on the message text; the three drills pass.
+
+**Affects.** `fleet/claim.py`, `fleet/gate.py`.
+
 ## 2026-11-11: `fleet.merge` gets an optional check on the merged tree
 
 **Decision.** `fleet.merge --check "<command>"` runs the command in a temporary detached worktree of the merge commit, after `merge.started` and before the claims block; a failure logs `merge.refused` with `reason: "check failed"`, keeps the claims and leaves the target alone. The tree is always removed. Implemented the same day; design, test plan and results in `merge-check-design.md`. Settles the open question "Who builds the merged result?"

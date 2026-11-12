@@ -2,16 +2,6 @@
 
 Decisions not made yet. When one is answered, record it in `decision-log.md`, add any resulting work to `todo.md`, and remove it here.
 
-## Should `fleet.run` give each run its own agent name?
-
-**Context.** `fleet.run` starts every run with agent `worker-1` (`db.start_run("worker-1", ...)` in `main()`). Claims are keyed by run id, but a refusal names the holder by agent, so with two runs at once (fifth Next.js run) "`file:app/footer.tsx` held by worker-1" does not say which run holds it.
-
-**Options.** Name the run id in the refusal; take an agent name from a flag or `ITERUM_DEVICE`; or leave it.
-
-**Blocks.** Nothing.
-
-**Settled by.** Whether concurrent runs become routine.
-
 ## Should prompt steps run with `--restricted`?
 
 **Context.** `claude --help` (2.1.322) lists `--restricted`: it removes code-running tools and WebFetch unless `--tools` names them, "ignores user, project and local settings files (managed settings and --settings still apply...)", "confines the file tools to the working directories", and refuses `bypassPermissions`. Prompt steps today run default `-p` with `--tools Read,Edit,Write` (decision log, 2026-11-11), which loads the user's settings and does not confine edits to the worktree; `fleet.merge` still refuses unclaimed files.
