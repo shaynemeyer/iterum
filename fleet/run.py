@@ -311,9 +311,10 @@ def stop_at_ceiling(run_id, seq, cap_usd=None):
     if (left >= cap_usd) if cap_usd is not None else (left > 0):
         return
     governor.halt_resumable(run_id, f"headroom {left:.4f} USD before step {seq}, which needs {need}")
+    lower = " (or lower --allow-claude)" if cap_usd is not None else ""
     sys.exit(
         f"run {run_id} stopped before step {seq}: fleet headroom is {left:.4f} USD and the step needs {need}.\n"
-        "raise the ceiling (or lower --allow-claude), then resume with the same plan:\n"
+        f"raise the ceiling{lower}, then resume with the same plan:\n"
         "  uv run python -m fleet.governor set <usd>\n"
         f"  uv run python -u -m fleet.run --resume {run_id} [--plan yourplan.json]"
     )
