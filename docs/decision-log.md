@@ -2,6 +2,20 @@
 
 Decisions and why they were made. Newest first. Entries are never deleted; a decision that is reversed is marked "Superseded by" the entry that replaces it. Open decisions live in `open-questions.md`.
 
+## 2026-11-12: Prompt steps stay bare; a docs hint names files, and only for a known change
+
+**Decision.** Prompts in a plan carry no general "read the docs" hint. When a task touches an API known to have changed, the prompt names the doc files that state the rule (for the notes task, `dynamicParams.md` and `generate-static-params.md` under `node_modules/next/dist/docs/01-app/03-api-reference/`). Otherwise the build step and `fleet.merge --check` catch the mistake, and the failed step is rerun. Settles the open question "Should prompt steps tell the model to read the app's docs?"
+
+**Context.** Prompt steps do not see the app's `AGENTS.md` (`CLAUDE_CODE_DISABLE_CLAUDE_MDS=1`, `nextjs-first-run.md`), so a hint can only go in the prompt. On a dynamic route under Cache Components, Opus without a hint added `dynamicParams` and failed the build in 2 of 3 runs (eleventh run); with a general hint it passed 5 of 5 (twelfth run). Haiku passed 3 of 3 without one.
+
+**Alternatives.** A general hint in every prompt: 5/5, but about $0.37 a run against $0.05, and about 39,000 cache-write tokens against 2,000, which fits reading many of the 475 bundled doc files (inferred; the ledger does not record files read). A paid sweep of a file-naming hint: would show it cheaper, but only for a trap already known, and would use most of the $0.62 left under the ceiling.
+
+**Evidence.** Both failures were caught by the build at about $0.05 each, so three bare tries cost less than one hinted run. The two rules Opus broke sit in two files of about 20 KB together, against 3.4 MB of bundled docs (measured 2026-11-12). Thin: a 3-run baseline, one task, one app.
+
+**Revisit when.** A model mistake gets past the build and `--check`, as the dry run's unawaited `params` got past the build and was caught only by the output check. Then a failure costs more than a rerun and a hint may pay.
+
+**Affects.** Plans with prompt steps; no code.
+
 ## 2026-11-12: Replay drives the real harness code, and refuses what it cannot reproduce
 
 **Decision.** `fleet.replay` runs the real `fleet.run` and queue code against a scratch database, with each side effect replaced by the recorded outcome. It never calls a model or a command. A regression case expects the end state its run actually reached; a capability case's expect is written by hand and never fails the suite. A run with events replay cannot reproduce is refused rather than approximated. `fleet.scorecard` compares git revisions, each scored in a temporary worktree by its own `fleet.eval --json`.
