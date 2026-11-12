@@ -267,3 +267,13 @@ Run `12c0572d5ec1` on `feat/home-copy`, plan `docs/.local-only/home-copy.json`: 
 - The paid run: all 4 steps committed on the first try. $0.00143, 4 turns, no denials. The diff changed exactly the two places the prompt named: the h1 now reads "Run your Claude Code agent fleet with control", and the paragraph states the three facts and nothing more.
 - **Telemetry under `--restricted`:** 3 `spend.reported` events totalling $0.001431, equal to `claude.finished`'s cost, with the receiver on the real database and `check_receiver()` passing. The flag does not stop spend reaching the governor.
 - Landed with the printed command plus `--check "bun install --frozen-lockfile && bun run build"`: `merge.started`, `merge.landed`, `claim.released`; no claim or check worktree left. `main` is at the merge, `124b79a`.
+
+## Results: the home page links into the app, 2026-11-12
+
+Run `f3c8866e476b` on `feat/home-links`, plan `docs/.local-only/home-links.json`: (1) a Haiku prompt step, cap $0.05, turning the Deploy Now and Documentation buttons into `Link`s to `/notes` ("Read the notes") and `/about`, and removing the Next.js logo, the Vercel icon and the then-unused `Image` import, (2) build, (3) `check-home-links.sh`, (4) commit, every step claiming `file:app/page.tsx`.
+
+- The check failed on `main` ("a vercel.com link is still there"), and so did a dry run with step 1 as `echo dry`, at step 3.
+- The paid run: all 4 steps committed on the first try. $0.00203, 5 turns, no denials. The diff (8 insertions, 28 deletions) is what the prompt named and nothing else; the heading, copy, the existing About link and `HelloMessage` are untouched.
+- 3 `spend.reported` events totalling $0.002032, equal to `claude.finished`'s cost.
+- Landed with the printed command plus `--check "bun install --frozen-lockfile && bun run build"`: `merge.started`, `merge.landed`, `claim.released`; no claim or check worktree left. `main` is at `6fd5eda`. Governor headroom $0.6187.
+- The page now has two links to `/about` (the text link from an earlier run and the new button); the prompt kept both on purpose.
