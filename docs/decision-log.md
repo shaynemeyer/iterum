@@ -2,6 +2,18 @@
 
 Decisions and why they were made. Newest first. Entries are never deleted; a decision that is reversed is marked "Superseded by" the entry that replaces it. Open decisions live in `open-questions.md`.
 
+## 2026-11-11: Option B waits for an outside effect that cannot be checked first
+
+**Decision.** Option A stands (`commit-once-design.md`). A plan step that changes files in the repo must be written to be safe to rerun: check before acting, as in `grep -qxF ... || echo ... >>`. Option B's trigger narrows from "a step that must not run twice" to a step with an effect outside the repo that cannot be checked before acting (a message, a charge). No plan has one yet.
+
+**Context.** Four Next.js feature runs produced no step that must not run twice, so a changelog entry, ordinary release work that is not safe to repeat, was tried on purpose.
+
+**Alternatives.** Build option B now for such steps: needs the settle command first (decision 3 in `commit-once-design.md`), and every kill would wait for a person, while a check in the command fixes this case for free. Leave the trigger as it was: it would count a step the plan can fix.
+
+**Evidence.** `commit-once-design.md` section 6: killed mid-command and resumed, the plain append committed the entry twice and the run finished `done`; the guarded version committed it once. A rerun file change also shows up in the diff, which is reviewed before `fleet.merge` lands it; an outside effect does not. Not shown: a crash of `fleet.run` itself (the kill reached only the step), and any outside effect.
+
+**Affects.** How plans are written; no code.
+
 ## 2026-11-11: Prompt steps keep the account email; git status and CLAUDE.md files are dropped
 
 **Decision.** Accept that a prompt step's session sees the user's claude.ai account email. `claude_env()` sets `CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS=1` and `CLAUDE_CODE_DISABLE_CLAUDE_MDS=1`, so the git status snapshot (with the git user name) and every CLAUDE.md file stay out of the session. Settles the open question "Should prompt steps keep the user's claude.ai account context?"

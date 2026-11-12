@@ -55,6 +55,19 @@ The first two rows are the cost: every kill and every failing shell command woul
 
 **A for now, B when a plan has a step that must not run twice.** No current plan has one. The built-in drill's steps rewrite the same files when rerun. In the paid-run plan, `--force` already guards the prompt step, and a rerun `git commit` after a commit that landed finds nothing to commit and exits non-zero: the run fails, but nothing changes twice. Under A, the next small step would be catching a changed command on resume without receipts, by recording each step's command hash in `step.proposed`. That is a separate change, **unverified** as a design.
 
+## 6. Seen 2026-11-11: a file-changing step that must not run twice
+
+A free experiment in the Next.js app (`nextjs-first-run.md`) on a throwaway branch and a scratch `ITERUM_DB` with `ITERUM_IDLE_SECONDS=2`. Step 1 added a changelog entry and built in one command; step 2 committed `CHANGELOG.md`. While the build ran, after the append, the step's process group was killed with SIGKILL, then the run was resumed with the same plan.
+
+| Step 1 | Entries before the kill | After resume | Run |
+| --- | --- | --- | --- |
+| `echo '<entry>' >> CHANGELOG.md && bun run build` | 1 | 2, committed | `done`, nothing flagged |
+| `grep -qxF -- "$line" CHANGELOG.md \|\| echo "$line" >> CHANGELOG.md; bun run build` | 1 | 1, committed | `done` |
+
+Resume reran the uncommitted step, as section 2 says. The plain append committed the entry twice and reported success; only the diff shows it. The guarded step checked before acting and committed it once.
+
+What was killed: the kill reached the `uv` wrapper and the step's group, not `fleet.run`'s Python process, which saw its step exit -9 and marked the step and run `failed`. So this covers a step killed mid-command, not `fleet.run` crashing; section 2 says resume reruns an uncommitted step either way, but this experiment did not show the crash case. Nothing with an outside effect was tested.
+
 ## Decisions (agreed 2026-11-11)
 
 1. **Option A.** No plan has a step that must not run twice yet. The one action here that must not repeat, landing a branch, already has its own guard: `fleet.merge` moves the target with `git update-ref` and the expected old value, so a second attempt is refused, and `reconcile()` settles a merge a crash interrupted from its `merge.started` event. Revisit with option B when a plan needs a step such as a push, a deploy or a message.
