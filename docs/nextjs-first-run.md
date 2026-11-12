@@ -102,3 +102,12 @@ Two runs started together against one `agent.db` and one `fleet.telemetry`, each
 - `fleet.merge` landed A, then B onto the `main` A had just moved.
 - **No step built the merged result.** Each branch built alone and `fleet.merge` does not build. `bun run build` on `main` after both merges passed, by hand (`open-questions.md`).
 - Both runs' agent was `worker-1`, which `fleet.run` gives every run (`db.start_run("worker-1", ...)` in `main()`), so the refusal named the holder as "worker-1": with two runs it cannot say which one. Claims are keyed by run id, so nothing broke.
+
+## Results: the sixth run, two prompt steps, 2026-11-11
+
+Run `45ac556c9930`: replace the scaffold's "Create Next App" title. The first plan with two prompt steps, the second depending on the first, each followed by a build: (1) Haiku sets the root layout's `title` to `{ default: "iterum demo", template: "%s | iterum demo" }` and a new description; (2) build; (3) Haiku adds `export const metadata = { title: "About" }` to `app/about/page.tsx`; (4) build; (5) start the built app and check `<title>iterum demo</title>` on `/` and `<title>About | iterum demo</title>` on `/about`; (6) commit. The app's docs (`generate-metadata.md`, "template") say a root layout's template applies to child segments, not the layout's own, hence the two expected titles. Cap $0.10 per prompt step.
+
+- Free checks first: a dry run with both prompt steps as `echo` committed every step; the smoke check failed without the edits and left no server.
+- Every step committed on the first try, and both diffs were exactly the changes asked for. Step 1: 3 turns, $0.00069; step 3: 3 turns, $0.00066; no denials. 6 `spend.reported` events summed to $0.00135, the two sessions together.
+- Each prompt step passed its own headroom check. The smoke check saw both titles in the server's HTML, so the second step's title and the first step's template combined as the docs say.
+- `fleet.merge` landed it with `--fence file:about/page.tsx=3 --fence file:layout.tsx=2`. `main` was then built by hand, since `fleet.merge` does not (`open-questions.md`, "Who builds the merged result?"); it passed.
