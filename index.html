@@ -361,6 +361,8 @@ footer img { width: 72px; height: auto; }
         <p class="tables">fleet/replay.py · eval.py</p><h3>Regression suite</h3><p>Replays a recorded run through the real run and queue code, with no model and no shell. Save a run as a case, and the suite fails when a change makes it end differently.</p></div>
       <div class="card reveal"><div class="icon i5"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 18a8 8 0 1 1 16 0"/><path d="M12 18l4-5"/><path d="M3 21h18"/></svg></div>
         <p class="tables">fleet/governor.py · telemetry.py</p><h3>Spend ceiling</h3><p>One ceiling for the whole fleet, summed from Claude Code's own telemetry. Once it is reached, runs stop before their next step and workers before their next task, and a stopped run can resume.</p></div>
+      <div class="card reveal"><div class="icon i6"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17l6-5-6-5"/><path d="M12 19h8"/></svg></div>
+        <p class="tables">fleet/run.py · gate.py</p><h3>Prompt steps</h3><p>A plan step can be a Claude Code prompt. It runs only with <code style="white-space:nowrap">--allow-claude</code> and a dollar cap, gets only the Read, Edit and Write tools, and a hook refuses any edit to a file another run has claimed.</p></div>
     </div>
   </div>
 </section>
