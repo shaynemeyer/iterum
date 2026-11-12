@@ -182,3 +182,35 @@ The same plan three times, each on its own branch from `main`, none landed: (1) 
 - The first Opus run again cost the most of its three ($0.0251 against $0.0213 and $0.0189), the prompt-cache write the eighth run found. A smaller gap than the ninth run's; two observations.
 - **Same model, different code, again.** `app/contact/page.tsx` is byte-identical on all 9 branches. `app/footer.tsx` has the ninth run's two versions, split differently: the one-line `· <Link …>` in all 3 Opus runs and all 3 Haiku runs, the `<span aria-hidden="true">·</span>{" "}` version in all 3 Opus/Haiku runs, where Haiku wrote the footer. In the ninth run Haiku-only runs wrote the span version. The check accepts both, as it should: both do what the prompt asked.
 - **Not shown:** that the check fails a model's wrong output. No model got this task wrong, so no paid run failed its check; that a failing check scores a fail rests on the free dry run (a footer left unedited scored 0/1).
+
+## Results: the eleventh run, a dynamic route under Cache Components, 2026-11-12
+
+A harder task, picked so a model might fail: one prompt step creates a notes section, `app/notes/data.ts` (three fixed notes), `app/notes/page.tsx` (a page titled Notes linking to each) and `app/notes/[slug]/page.tsx` (the note's title in an `<h1>` and as the page title, its body, every note prerendered, the not-found page for an unknown slug). The app runs Next 16.4.6 with `cacheComponents: true`, and its bundled docs differ from what models know: `params` is a `Promise`, `dynamicParams` is not available with Cache Components, and `generateStaticParams` must return at least one param. Prompt steps do not load the app's `AGENTS.md`, which points at those docs, and the prompt gives no hint. Plans `docs/.local-only/notes-{haiku,opus}.json`: (1) the prompt step, (2) build, (3) `check-notes.sh`, (4) commit; every step claims the three files.
+
+**The check.** `check-notes.sh` starts the built app with `next start` and requests it: `/notes` answers 200 with the title `Notes | iterum demo` and links to all three slugs; each note answers 200; `/notes/resume` has its `<title>`, `<h1>` and body and no `noindex` tag; `/notes/nope` shows "Page not found" with `<meta name="robots" content="noindex"/>`.
+
+**Free dry run.** In a scratch worktree of the app, with a hand-written version that follows the bundled docs:
+
+- The first draft asked for a 404 on an unknown slug, and the correct version failed it: `/notes/nope` answered 200 with the not-found page. Under Cache Components the route is a Partial Prerender, and the docs say so: "Sending the shell starts the response with a `200`", and a request-time check in the page "runs after the shell is sent... so the status remains `200`" (`loading.md`, "Status codes"); a 404 status needs a check in Proxy. The prompt and check now ask for the not-found page instead.
+- `next start` runs the server as a child process, so killing its pid left the server listening. The check now runs `pkill -P` on it first.
+- Two broken versions: `params` typed as a plain object and read without `await` built cleanly (TypeScript did not object) but every note answered 404, so the check failed it; `export const dynamicParams = false` failed the build with `Route segment config "dynamicParams" is not compatible with nextConfig.cacheComponents. Please remove it.`
+- `fleet.run` on a scratch database, with the prompt step replaced by a copy of the correct version: 4 of 4 steps committed, the three claims (`[slug]` included) granted, `git add app/notes` committed the three files, no server left behind.
+
+**The paid sweep.** `fleet.sweep` ran both plans 3 times each, rotating the order, each run on its own branch `sweep/20261112-092708/<plan>-<n>` from `main`, none landed. Cap $0.50 per prompt step under the $3.00 ceiling, `fleet.telemetry` on the real database.
+
+| Repeat | First | Second |
+| --- | --- | --- |
+| 1 | Haiku $0.0039 pass | Opus $0.0560 fail |
+| 2 | Opus $0.0460 fail | Haiku $0.0024 pass |
+| 3 | Haiku $0.0036 pass | Opus $0.0471 pass |
+
+| Model | Pass | Mean | Min | Max | Turns |
+| --- | --- | --- | --- | --- | --- |
+| Haiku | 3/3 | $0.0033 | $0.0024 | $0.0039 | 13, 10, 12 |
+| Opus | 1/3 | $0.0497 | $0.0460 | $0.0560 | 5, 5, 5 |
+
+- **The first model failures in these runs.** Opus runs 1 and 2 added `export const dynamicParams = false` and failed the build step with the error above; `fleet.sweep` committed what each left on its branch and counted it as a fail. Opus run 3 and all three Haiku runs left it out. All 6 typed `params` as a `Promise` and awaited it.
+- **The build caught both, not the output check.** Neither failed run reached step 3, so a paid run has still not failed the check itself; the dry run's unawaited `params` is the only evidence that it catches what the build does not.
+- Haiku took 10 to 13 turns, Opus 5 each time. The ledger records turns, not which files a session read, so whether Haiku's extra turns went to the bundled docs is not known. Six runs are too few to say one model is more reliable on this task.
+- Total $0.1590 (governor spend $0.3616 before, $0.5205 after). Each run's `spend.reported` total equals its `claude.finished` cost. 18 claims granted, 18 released, no permission denials.
+- **Found on the way:** the `land with:` command `fleet.run` prints leaves its fences unquoted, and zsh rejects `--fence file:app/notes/[slug]/page.tsx=1` with `no matches found` (`todo.md`).
