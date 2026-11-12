@@ -2,6 +2,18 @@
 
 Decisions and why they were made. Newest first. Entries are never deleted; a decision that is reversed is marked "Superseded by" the entry that replaces it. Open decisions live in `open-questions.md`.
 
+## 2026-11-11: `fleet.merge` gets an optional check on the merged tree
+
+**Decision.** `fleet.merge --check "<command>"` runs the command in a temporary detached worktree of the merge commit, after `merge.started` and before the claims block; a failure logs `merge.refused` with `reason: "check failed"`, keeps the claims and leaves the target alone. The tree is always removed. Not implemented yet; design and test plan in `merge-check-design.md`. Settles the open question "Who builds the merged result?"
+
+**Context.** Reproduced for free: two branches that each built landed through `fleet.merge` into a `main` that failed to build (`merge-check-design.md` section 0).
+
+**Alternatives.** A plan-level setting passed on by `fleet.run`: changes the plan format before any plan needs it. A new event kind: adds nothing `merge.refused` lacks. Keeping the failed tree: the event and the merge commit's hash are enough. Building the target after landing: catches the break only once it is on `main`. Not running related changes at once: needs knowing in advance which changes are related.
+
+**Evidence.** The reproduction; reading `fleet/merge.py` at `eeb7ccb`.
+
+**Affects.** `fleet/merge.py`.
+
 ## 2026-11-11: Option B waits for an outside effect that cannot be checked first
 
 **Decision.** Option A stands (`commit-once-design.md`). A plan step that changes files in the repo must be written to be safe to rerun: check before acting, as in `grep -qxF ... || echo ... >>`. Option B's trigger narrows from "a step that must not run twice" to a step with an effect outside the repo that cannot be checked before acting (a message, a charge). No plan has one yet.

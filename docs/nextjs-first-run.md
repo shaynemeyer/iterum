@@ -110,4 +110,4 @@ Run `45ac556c9930`: replace the scaffold's "Create Next App" title. The first pl
 - Free checks first: a dry run with both prompt steps as `echo` committed every step; the smoke check failed without the edits and left no server.
 - Every step committed on the first try, and both diffs were exactly the changes asked for. Step 1: 3 turns, $0.00069; step 3: 3 turns, $0.00066; no denials. 6 `spend.reported` events summed to $0.00135, the two sessions together.
 - Each prompt step passed its own headroom check. The smoke check saw both titles in the server's HTML, so the second step's title and the first step's template combined as the docs say.
-- `fleet.merge` landed it with `--fence file:about/page.tsx=3 --fence file:layout.tsx=2`. `main` was then built by hand, since `fleet.merge` does not (`open-questions.md`, "Who builds the merged result?"); it passed.
+- `fleet.merge` landed it with `--fence file:about/page.tsx=3 --fence file:layout.tsx=2`. `main` was then built by hand, since `fleet.merge` does not (`merge-check-design.md`); it passed.
