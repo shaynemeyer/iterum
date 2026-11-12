@@ -4,9 +4,9 @@ Decisions not made yet. When one is answered, record it in `decision-log.md`, ad
 
 ## Should prompt steps tell the model to read the app's docs?
 
-**Context.** Prompt steps load no CLAUDE.md files (`CLAUDE_CODE_DISABLE_CLAUDE_MDS=1`), and nothing in the eleventh run's prompts pointed at the bundled docs that the Next.js app's `AGENTS.md` tells agents to read (whether a session reads `AGENTS.md` itself was not checked). On a dynamic route under Cache Components, Opus without a hint added `dynamicParams` and failed the build in 2 of 3 runs (eleventh run, `nextjs-first-run.md`); told to read the docs, it passed 5 of 5 at 7.5 times the cost per run, about $0.37 against $0.05 (twelfth run). Haiku passed 3 of 3 without the hint.
+**Context.** Prompt steps load no CLAUDE.md files (`CLAUDE_CODE_DISABLE_CLAUDE_MDS=1`), and nothing in the eleventh run's prompts pointed at the bundled docs that the Next.js app's `AGENTS.md` tells agents to read; a session would read `AGENTS.md`, but `CLAUDE_CODE_DISABLE_CLAUDE_MDS=1` keeps it out (`nextjs-first-run.md`, "Check: do prompt steps see the app's `AGENTS.md`?"). On a dynamic route under Cache Components, Opus without a hint added `dynamicParams` and failed the build in 2 of 3 runs (eleventh run, `nextjs-first-run.md`); told to read the docs, it passed 5 of 5 at 7.5 times the cost per run, about $0.37 against $0.05 (twelfth run). Haiku passed 3 of 3 without the hint.
 
-**Options.** Add a docs hint to every prompt in a plan for such an app; add it only to tasks that touch APIs known to have changed; or leave prompts bare and rely on the build and `--check` to catch the mistake, rerunning a failed step.
+**Options.** Add a docs hint to every prompt in a plan for such an app; add it only to tasks that touch APIs known to have changed; or leave prompts bare and rely on the build and `--check` to catch the mistake, rerunning a failed step. Letting the app's `AGENTS.md` through is not one: `CLAUDE_CODE_DISABLE_CLAUDE_MDS=1` keeps out the user's CLAUDE.md files too, which is why it is set, and none of the documented "Project instructions" settings loads `AGENTS.md` alone. So a hint goes in the prompt.
 
 **Blocks.** Nothing.
 

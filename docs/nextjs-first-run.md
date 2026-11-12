@@ -185,7 +185,7 @@ The same plan three times, each on its own branch from `main`, none landed: (1) 
 
 ## Results: the eleventh run, a dynamic route under Cache Components, 2026-11-12
 
-A harder task, picked so a model might fail: one prompt step creates a notes section, `app/notes/data.ts` (three fixed notes), `app/notes/page.tsx` (a page titled Notes linking to each) and `app/notes/[slug]/page.tsx` (the note's title in an `<h1>` and as the page title, its body, every note prerendered, the not-found page for an unknown slug). The app runs Next 16.4.6 with `cacheComponents: true`, and its bundled docs differ from what models know: `params` is a `Promise`, `dynamicParams` is not available with Cache Components, and `generateStaticParams` must return at least one param. The app's `AGENTS.md` tells agents to read those docs; the app has no CLAUDE.md and prompt steps load none, and whether a session reads `AGENTS.md` itself was not checked. The prompt gives no hint. Plans `docs/.local-only/notes-{haiku,opus}.json`: (1) the prompt step, (2) build, (3) `check-notes.sh`, (4) commit; every step claims the three files.
+A harder task, picked so a model might fail: one prompt step creates a notes section, `app/notes/data.ts` (three fixed notes), `app/notes/page.tsx` (a page titled Notes linking to each) and `app/notes/[slug]/page.tsx` (the note's title in an `<h1>` and as the page title, its body, every note prerendered, the not-found page for an unknown slug). The app runs Next 16.4.6 with `cacheComponents: true`, and its bundled docs differ from what models know: `params` is a `Promise`, `dynamicParams` is not available with Cache Components, and `generateStaticParams` must return at least one param. The app's `AGENTS.md` tells agents to read those docs, and prompt steps do not see it: `CLAUDE_CODE_DISABLE_CLAUDE_MDS=1` keeps `AGENTS.md` out as well as CLAUDE.md files ("Check: do prompt steps see the app's `AGENTS.md`?", below). The prompt gives no hint. Plans `docs/.local-only/notes-{haiku,opus}.json`: (1) the prompt step, (2) build, (3) `check-notes.sh`, (4) commit; every step claims the three files.
 
 **The check.** `check-notes.sh` starts the built app with `next start` and requests it: `/notes` answers 200 with the title `Notes | iterum demo` and links to all three slugs; each note answers 200; `/notes/resume` has its `<title>`, `<h1>` and body and no `noindex` tag; `/notes/nope` shows "Page not found" with `<meta name="robots" content="noindex"/>`.
 
@@ -228,3 +228,14 @@ The eleventh run's Opus plan with one sentence added before the prompt, close to
 - **The hint cost 7.5 times as much per run.** About 39,000 tokens written to the prompt cache per run against about 2,000 without it, which fits the model reading the bundled docs into context; the ledger records tokens, not which files a session read, so that part is inferred. The estimate before the run was $0.25 to $0.50 for all 5; the total was $1.8573. The size of the docs folder was not checked first.
 - **What it shows, and what it does not.** In these runs the hint stopped the mistake: 5/5 against 1/3, on 8 runs with a baseline of 3. On this task three failed tries without the hint (about $0.05 each, caught by the build) still cost less than one run with it, so the hint pays only where a failure costs more than a rerun.
 - Each run's `spend.reported` total equals its `claude.finished` cost. Governor spend $0.5205 before, $2.3778 after: $0.62 of the $3.00 ceiling left, enough for one more prompt step capped at $0.50.
+
+## Check: do prompt steps see the app's `AGENTS.md`?, 2026-11-12
+
+Claude Code's memory docs (https://code.claude.com/docs/en/memory): "By default, Claude reads `AGENTS.md` only when you have no `CLAUDE.md` in your working directory or above it"; a user `~/.claude/CLAUDE.md` does not count. The app has no `CLAUDE.md`, so by default a session there reads its `AGENTS.md`. The page does not mention `CLAUDE_CODE_DISABLE_CLAUDE_MDS`, which `claude_env()` sets for every prompt step.
+
+Two Haiku sessions in the app (Claude Code 2.1.322), `claude -p` with `--tools ""`, so the answer could only come from loaded context, asked whether their project instructions contain the heading "This is NOT the Next.js you know":
+
+- With `CLAUDE_CODE_DISABLE_CLAUDE_MDS=1`, as a prompt step runs: "NO ... I haven't read any CLAUDE.md or project file in this session."
+- With it set to `0`: "YES", quoting the `AGENTS.md` paragraph word for word.
+
+So the flag keeps `AGENTS.md` out as well as CLAUDE.md files, and in the eleventh run Opus never saw the app's own warning. $0.0011 for both, run outside `fleet`, so not in the ledger. One session each way.
