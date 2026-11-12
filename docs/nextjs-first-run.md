@@ -100,7 +100,7 @@ Two runs started together against one `agent.db` and one `fleet.telemetry`, each
 - The prompt steps overlapped: both `step.proposed` within 3 ms, committed 5.4 s and 6.9 s later. One receiver logged 3 `spend.reported` events per run, each run's matching its own session's cost.
 - Both runs passed their headroom check together. Far from the limit this shows nothing about two runs near it (`open-questions.md`, "Can concurrent runs share one spend ceiling?").
 - `fleet.merge` landed A, then B onto the `main` A had just moved.
-- **No step built the merged result.** Each branch built alone and `fleet.merge` does not build. `bun run build` on `main` after both merges passed, by hand (`open-questions.md`).
+- **No step built the merged result.** Each branch built alone and `fleet.merge` does not build. `bun run build` on `main` after both merges passed, by hand. Later reproduced as a real gap (`merge-check-design.md`).
 - Both runs' agent was `worker-1`, which `fleet.run` gives every run (`db.start_run("worker-1", ...)` in `main()`), so the refusal named the holder as "worker-1": with two runs it cannot say which one. Claims are keyed by run id, so nothing broke.
 
 ## Results: the sixth run, two prompt steps, 2026-11-11
