@@ -131,20 +131,23 @@ def _reap(worker):
         print(f"{worker}  halted task {task_id}: deadline exceeded")
 
 
-def _attempt(task, worker):
-    """Run do_work under a heartbeat. Return (result, None), or (None, error text) on failure."""
+def _attempt(task, worker, work):
+    """Run work under a heartbeat. Return (result, None), or (None, error text) on failure."""
     try:
         with _heartbeating(task, worker):
-            return do_work(task), None
+            return work(task), None
     except Exception as e:
         return None, str(e)
 
 
-def _run_one(task, worker):
-    """Do one task and report one outcome. A worker that lost its lease has nothing to report."""
+def _run_one(task, worker, work=None):
+    """Do one task and report one outcome. A worker that lost its lease has nothing to report.
+
+    work defaults to do_work; fleet.replay passes its own to reuse a recorded outcome.
+    """
     task_id, fence = task["task_id"], task["fence"]
     label = f"{worker}  task {task_id} ({task['kind']})"
-    result, error = _attempt(task, worker)
+    result, error = _attempt(task, worker, work or do_work)
     try:
         if error is None:
             queue.finish(task_id, worker, fence, result)

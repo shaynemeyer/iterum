@@ -132,6 +132,7 @@ def add(kind, payload=None, depends_on=None, max_attempts=3, deadline=None):
             stage="scheduling",
             task_kind=kind,
             depends_on=depends_on,
+            max_attempts=max_attempts,
         )
         if parent and parent["status"] == "dead_letter":
             _halt(con, [task_id], _blocked_by(depends_on), now)
