@@ -2,6 +2,14 @@
 
 Items moved here from `todo.md` once done. Newest first.
 
+## Quote the fences in the printed land command
+
+Completed 2026-11-12 (`8a6a997`). Moved from `todo.md` (item 4):
+
+> **Quote the fences in `fleet.run`'s `land with:` command.** `fleet/run.py:295` prints `--fence file:<path>=<n>` unquoted, so a path with shell pattern characters breaks the pasted command: zsh rejects `--fence file:app/notes/[slug]/page.tsx=1` with `no matches found` (eleventh run, `nextjs-first-run.md`). Quote each fence (and the branch) with `shlex.quote`, and check the printed command pastes in zsh for a `[slug]` path.
+
+**Done.** Each fence, the branch and `--target` go through `shlex.quote`; plain values print as before. **Evidence:** in a scratch repo, a plan claiming `file:app/[slug]/p.txt` printed `--fence 'file:app/[slug]/p.txt=1'`, and that command pasted unchanged into `zsh -c` landed the branch. `fleet.claims_drill`, which reads the fences back from this line, passed, and so did the built-in `fleet.run` plan.
+
 ## A sweep's pass checks the output
 
 Completed 2026-11-12 (`49e970f`; the paid sweep is the tenth run in `nextjs-first-run.md`). Moved from `todo.md` (item 4):
