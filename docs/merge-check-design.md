@@ -70,4 +70,6 @@ Order: the check and its refusal first (tests 1-5), then the crash case and the 
 
 Found while testing: the check runs before the claims check, so a branch with stale fences pays for a whole check before it is refused (seen with a branch holding no claim). Accepted: claims must be checked after the check anyway, since one can expire during it.
 
+First real use (seventh Next.js run, `nextjs-first-run.md`): two concurrent branches landed one after the other, each with `--check "bun install --frozen-lockfile && bun run build"`; both checks passed in about 5 s, and no temporary worktree was left.
+
 Left as is: after a SIGKILL, the stale worktree and the check's process are cleaned up by hand. A later change could let `reconcile()` remove `iterum-check-*` worktrees of abandoned merges.

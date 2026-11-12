@@ -111,3 +111,11 @@ Run `45ac556c9930`: replace the scaffold's "Create Next App" title. The first pl
 - Every step committed on the first try, and both diffs were exactly the changes asked for. Step 1: 3 turns, $0.00069; step 3: 3 turns, $0.00066; no denials. 6 `spend.reported` events summed to $0.00135, the two sessions together.
 - Each prompt step passed its own headroom check. The smoke check saw both titles in the server's HTML, so the second step's title and the first step's template combined as the docs say.
 - `fleet.merge` landed it with `--fence file:about/page.tsx=3 --fence file:layout.tsx=2`. `main` was then built by hand, since `fleet.merge` does not (`merge-check-design.md`); it passed.
+
+## Results: the seventh run, two at once, landed with `--check`, 2026-11-11
+
+Two runs started together, as in the fifth run: A (`69561f66c656`, `feat/not-found`) created `app/not-found.tsx`, which the app's docs (`not-found.md`) say handles every unmatched URL from the app root; B (`dc206a6502c6`, `feat/robots`, in a worktree) created `app/robots.ts` in the shape `robots.md` shows, disallowing `/api/`. Each: a Haiku prompt step that read its guide first, build, a smoke check (A: `/no-such-page` answers 404 with "Page not found"; B: `/robots.txt` has `Disallow: /api/`), commit. Cap $0.10 per step.
+
+- Free checks first: concurrent dry runs on a scratch database; both smoke checks failed without the edits (A's because Next's default 404 page does not say "Page not found"), and left no server.
+- Both runs: every step committed on the first try, both diffs exactly as asked. A: 4 turns, $0.00178; B: 3 turns, $0.00117; no denials; each run's `spend.reported` events matched its session.
+- **First real use of `fleet.merge --check`** (`merge-check-design.md`): A, then B onto the `main` A had moved, each with `--check "bun install --frozen-lockfile && bun run build"`. Both checks passed in about 5 s each, `merge.started` then `merge.landed`, no temporary worktree left. No hand build of `main` was needed. The two features did not interact, so this shows the gate passing; refusal was shown by the reproduction.
