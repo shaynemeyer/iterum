@@ -3,6 +3,7 @@
     uv run python -m fleet.eval                                  # replay every case
     uv run python -m fleet.eval add <name> <run_id>              # a regression case
     uv run python -m fleet.eval add <name> <run_id> --expect J   # a capability case
+    uv run python -m fleet.eval --json                           # {case: passed}, nothing stored (fleet.scorecard)
 
 The cases come from your own ledger, so nothing ships with this repo. Each case is
 replayed through fleet.run's own code (see fleet.replay). A regression case expects
@@ -50,19 +51,24 @@ def _add(name, run_id, kind, expect):
     return expect
 
 
-def run_suite():
-    """Replay every case, store and print the results. Returns the names of failed regression cases."""
-    suite_run = uuid.uuid4().hex[:12]
+def replay_cases():
+    """Replay every case. Returns [(case row, passed, actual end state)], in eval_id order."""
     con = db.connect()
     try:
         cases = con.execute("SELECT * FROM evals ORDER BY eval_id").fetchall()
     finally:
         con.close()
-
     results = []
     for case in cases:
         actual = replay.replay(case["source_run"])
         results.append((case, actual == json.loads(case["expect"]), actual))
+    return results
+
+
+def run_suite():
+    """Replay every case, store and print the results. Returns the names of failed regression cases."""
+    suite_run = uuid.uuid4().hex[:12]
+    results = replay_cases()
 
     with db.write() as con:
         con.executemany(
@@ -92,9 +98,13 @@ def main():
     add.add_argument("name")
     add.add_argument("run_id")
     add.add_argument("--expect", type=json.loads, help="a capability case's end state, as JSON")
+    parser.add_argument("--json", action="store_true", help="print {case: passed} as one JSON line and store nothing")
     args = parser.parse_args()
 
     db.init()  # a fresh agent.db has no tables yet; safe to repeat
+    if args.json:
+        print(json.dumps({c["name"]: ok for c, ok, _ in replay_cases()}))
+        return
     if args.command == "add":
         if args.expect is None:
             print(json.dumps(add_from_failure(args.name, args.run_id)))
