@@ -38,7 +38,7 @@ Every event carries a UUIDv7 `uid` and the `device` that wrote it, so ledgers fr
 | `fleet/queue.py`, `fleet/worker.py` | A work queue with dependencies, leases, fences and a dead-letter queue, and the worker loop that drains it |
 | `fleet/dlq.py`, `fleet/conflicts.py` | Lists dead-lettered tasks and puts one back on the queue; lists conflicts waiting for a person and settles one |
 | `fleet/claim.py` | Claims on files: leases that expire, with fences that make expiry safe |
-| `fleet/merge.py` | Lands a branch only while every changed file has a live claim |
+| `fleet/merge.py` | Lands a branch only while every changed file has a live claim and, with `--check`, a command passes on the merged tree |
 | `fleet/gate.py` | A `PreToolUse` hook that refuses an edit to a file another run has claimed; not registered here, wire it up yourself |
 | `fleet/telemetry.py` | Receives Claude Code telemetry and records each API request's cost; settings in [`.env.example`](.env.example) |
 | `fleet/view.py` | Read-only views: live sessions and runs, one run's trace, failures per stage |
