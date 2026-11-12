@@ -299,3 +299,12 @@ Two Haiku runs from the same `main` (`9ab46d7`), started together against one `a
 - Landed A, then B, each with `--check "bun install --frozen-lockfile && bun run build"`: both `merge.started`, `merge.landed`, then `claim.released` for every claim; no claim or check worktree left. `main` is at `5c18bef`. A only added a field, so B's import still built: no refusal.
 - Both output checks pass on the merged `main` (built in B's worktree, detached), and the worktree was then removed. Governor headroom $0.6152.
 - Still no unstaged `--check` refusal: five Haiku runs today, each a narrow edit with an output check, and none landed a break.
+
+## Results: tags on the notes list, 2026-11-12
+
+Run `f1d824f2c53c` on `feat/list-tags`, plan `docs/.local-only/list-tags.json`: (1) a Haiku prompt step, cap $0.05, adding each note's tags, joined with ", ", in a `<span>` after its link on `/notes`, (2) build, (3) `check-list-tags.sh`, (4) commit, every step claiming `file:app/notes/page.tsx`. A follow-on to the tags run: the page reads the `tags` field that run added.
+
+- Writing the check found a bug in the check: `<li[^>]*>` also matched the page head's `<link>` tags, so the first item swallowed the head's text. The pattern now matches only `<li>` with or without attributes, and the three items parse as their titles. The fixed check failed on `main` ("the first run item does not show plans"), and so did a dry run with step 1 as `echo dry`, at step 3.
+- The paid run: all 4 steps committed on the first try. $0.00111, 4 turns, no denials. The diff adds `{' '}` and the `<span>` after the link, nothing else.
+- 3 `spend.reported` events totalling $0.001106, equal to `claude.finished`'s cost.
+- Landed with `--check "bun install --frozen-lockfile && bun run build"`: `merge.started`, `merge.landed`, `claim.released`; no claim or check worktree left. `main` is at `b912fd6`. Governor headroom $0.6141.
