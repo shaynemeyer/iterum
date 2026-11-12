@@ -2,6 +2,14 @@
 
 Items moved here from `todo.md` once done. Newest first.
 
+## A sweep's pass checks the output
+
+Completed 2026-11-12 (`49e970f`; the paid sweep is the tenth run in `nextjs-first-run.md`). Moved from `todo.md` (item 4):
+
+> **A sweep's pass should check the output, not only that the run finished.** The ninth run (`nextjs-first-run.md`) scored 9 of 9 runs as passed while Haiku wrote `app/footer.tsx` two different ways; the plans' only check is the build. Add a check step to each plan that compares the result with what the prompt asked (for example a `grep` or a small script), so a failing check fails the run and `fleet.sweep` counts it. A plan change, not a `fleet.sweep` change; try it free first with the dry plans and a deliberately wrong file. Needed before a sweep on a task where a model might fail. Progress 2026-11-12: a failing check first stopped the sweep on the files it left (reproduced in a scratch repo); `fleet.sweep` now commits a failed run's leftovers on its branch and counts it (`49e970f`). The check (`docs/.local-only/check-contact.sh`, misses to stderr so they reach the step's error) passes both real footer versions from the ninth run and fails unedited `main`. Checked plans `cmp-{opus,haiku,split}-checked.json` add it as step 3; dry in the Next.js app, prompt steps copying a real Opus run's files: 3 of 3 passed, a fourth plan with the footer left unedited failed its check and scored 0/1. Left: a paid sweep with the checked plans, only with the user's go-ahead.
+
+**Done.** The paid sweep (the tenth run): 9 of 9 runs passed the output check, $0.0958 in total, the same cost order as the ninth run. **Limit:** no model got the task wrong, so no paid run failed its check; that a failing check counts as a fail rests on the free dry run.
+
 ## `fleet.sweep`: model mixes compared on pass rate beside cost
 
 Completed 2026-11-12 (`f10c287`, `8ec505b`). `todo.md` item 4.

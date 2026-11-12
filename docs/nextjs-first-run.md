@@ -158,3 +158,27 @@ The same plan three times, each on its own branch from `main`, none landed: (1) 
 - No claim was refused: 18 granted, 18 released by the sweep. The first run reclaimed two expired rows the eighth run's last run (`01530d2ae6bd`) had left behind.
 - The sweep's first Opus run cost $0.0626, the other two $0.0217 and $0.0206, as the eighth run's prompt-cache write would predict. One observation.
 - **Same model, different code.** `app/contact/page.tsx` is byte-identical on all 9 branches. `app/footer.tsx` has two versions: `Built with iterum · <Link href="/contact">Contact</Link>` on one line (all 3 Opus footers, and Haiku in Opus/Haiku runs 1 and 2), or the dot in `<span aria-hidden="true">·</span>{" "}` with the Link on the next line (Haiku in all 3 Haiku runs and in Opus/Haiku run 3). Both build. The sweep's pass rate counts runs that finished, and this plan's only check is the build, so it cannot see this.
+
+## Results: the tenth run, the three mixes swept with an output check, 2026-11-12
+
+`fleet.sweep` ran the checked plans (`docs/.local-only/cmp-{opus,haiku,split}-checked.json`: the ninth run's plans with a step 3 that runs `check-contact.sh` on the two files before the build) 3 times each, rotating the order, each run on its own branch `sweep/20261112-082638/<plan>-<n>` from `main`, none landed. Cap $0.50 per prompt step under the $3.00 ceiling, `fleet.telemetry` on the real database. The free dry run is recorded in `work-completed.md` ("A sweep's pass checks the output").
+
+| Repeat | First | Second | Third |
+| --- | --- | --- | --- |
+| 1 | Opus/Opus $0.0251 | Haiku/Haiku $0.0008 | Opus/Haiku $0.0090 |
+| 2 | Haiku/Haiku $0.0009 | Opus/Haiku $0.0094 | Opus/Opus $0.0213 |
+| 3 | Opus/Haiku $0.0096 | Opus/Opus $0.0189 | Haiku/Haiku $0.0008 |
+
+| Mix | Pass | Mean | Min | Max |
+| --- | --- | --- | --- | --- |
+| Opus / Opus | 3/3 | $0.0218 | $0.0189 | $0.0251 |
+| Haiku / Haiku | 3/3 | $0.0009 | $0.0008 | $0.0009 |
+| Opus / Haiku | 3/3 | $0.0094 | $0.0090 | $0.0096 |
+
+- Total $0.0958 (governor spend $0.2657 before, $0.3616 after). 45 steps proposed, 45 committed, none failed or retried; 2 to 4 turns per prompt step, no denials.
+- Every run passed its output check, so here a pass means the two files hold what the prompts asked, not only that the build succeeded.
+- No two cost ranges overlapped: Haiku, then Opus/Haiku, then Opus, cost less on every run, the ninth run's order.
+- Each run's `spend.reported` total equals the sum of its `claude.finished` costs. 18 claims granted, 18 released by the sweep, none refused.
+- The first Opus run again cost the most of its three ($0.0251 against $0.0213 and $0.0189), the prompt-cache write the eighth run found. A smaller gap than the ninth run's; two observations.
+- **Same model, different code, again.** `app/contact/page.tsx` is byte-identical on all 9 branches. `app/footer.tsx` has the ninth run's two versions, split differently: the one-line `· <Link …>` in all 3 Opus runs and all 3 Haiku runs, the `<span aria-hidden="true">·</span>{" "}` version in all 3 Opus/Haiku runs, where Haiku wrote the footer. In the ninth run Haiku-only runs wrote the span version. The check accepts both, as it should: both do what the prompt asked.
+- **Not shown:** that the check fails a model's wrong output. No model got this task wrong, so no paid run failed its check; that a failing check scores a fail rests on the free dry run (a footer left unedited scored 0/1).
