@@ -2,6 +2,16 @@
 
 Items moved here from `todo.md` once done. Newest first.
 
+## `fleet.sweep`: model mixes compared on pass rate beside cost
+
+Completed 2026-11-12 (`f10c287`, `8ec505b`). `todo.md` item 4.
+
+**What.** `fleet.sweep` runs each plan N times from the app repo, rotating the order each repeat, each run a `fleet.run` subprocess on its own unlanded branch; it releases each run's claims when it ends, so the next run can claim the same files without waiting for `ITERUM_CLAIM_TTL`. It reports pass count and mean, min and max `spend.reported` cost per plan, and for each pair which cost less on every run, or NO SIGNAL when the ranges overlap.
+
+**Evidence.** Free: a scratch repo (pass rate, the cost verdict with fake spend events, refusal on a dirty tree, stop when a run leaves one) and the Next.js app with prompt steps as `echo` (6 of 6 runs, 12 claims granted and released, none refused). Billed: the ninth run (`nextjs-first-run.md`), the eighth run's three mixes x 3 repeats, $0.1483, every run passed, each run's `spend.reported` equal to its `claude.finished` costs.
+
+**Limits.** Pass means the run finished; a plan's checks are all it knows about the output (`todo.md` item 4). A stopped sweep prints no report. Branches stay in the app repo.
+
 ## A regression suite from the ledger: `fleet.replay`, `fleet.eval`, `fleet.scorecard`
 
 Completed 2026-11-12 (`3079c5e`, `85c82bc`, `175cbe7`, `1a5ac68`, `50ff55e`, `b1b9386`). Not a `todo.md` item.

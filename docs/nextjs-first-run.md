@@ -135,3 +135,26 @@ The same plan three times, each on its own branch from `main`, none landed: (1) 
 - Each run's `spend.reported` total equals the sum of its `claude.finished` costs.
 - **Order skews the Opus numbers.** A's first Opus request wrote 2,469 tokens to the prompt cache and cost $0.0248; the same request in C, about 7 minutes later, wrote none and cost $0.0055. So A against C partly measures which ran first. A fair comparison repeats each mix or alternates the order.
 - B and C were first refused before any step ran (nothing billed): A's claims on the same files lasted `ITERUM_CLAIM_TTL` after it finished, since its branch was not landed. Both were resumed after the claims expired, with `ITERUM_CLAIM_TTL=60` so B's cleared quickly for C.
+
+## Results: the ninth run, the eighth run's three mixes swept, 2026-11-12
+
+`fleet.sweep` (`f10c287`) ran the eighth run's three plans (`docs/.local-only/cmp-*.json`, unchanged) 3 times each, rotating the order, each run on its own branch `sweep/20261112-075200/<plan>-<n>` from `main`, none landed. Cap $0.50 per prompt step, ceiling raised from $0.50 to $3.00, `fleet.telemetry` on the real database. A free dry run first (prompt steps as `echo`, commit as `git status --short`, scratch database, the real build, 2 repeats) finished 6 of 6 runs.
+
+| Repeat | First | Second | Third |
+| --- | --- | --- | --- |
+| 1 | Opus/Opus $0.0626 | Haiku/Haiku $0.0018 | Opus/Haiku $0.0179 |
+| 2 | Haiku/Haiku $0.0010 | Opus/Haiku $0.0120 | Opus/Opus $0.0217 |
+| 3 | Opus/Haiku $0.0093 | Opus/Opus $0.0206 | Haiku/Haiku $0.0014 |
+
+| Mix | Pass | Mean | Min | Max |
+| --- | --- | --- | --- | --- |
+| Opus / Opus | 3/3 | $0.0350 | $0.0206 | $0.0626 |
+| Haiku / Haiku | 3/3 | $0.0014 | $0.0010 | $0.0018 |
+| Opus / Haiku | 3/3 | $0.0131 | $0.0093 | $0.0179 |
+
+- Total $0.1483. Every step of every run committed on the first try; 2 to 4 turns per prompt step, no denials.
+- No two cost ranges overlapped, so the sweep reported for each pair which mix cost less on every run: Haiku, then Opus/Haiku, then Opus.
+- Each run's `spend.reported` total equals the sum of its `claude.finished` costs, and the report printed after the last run equals the final ledger totals: no spend arrived late.
+- No claim was refused: 18 granted, 18 released by the sweep. The first run reclaimed two expired rows the eighth run's last run (`01530d2ae6bd`) had left behind.
+- The sweep's first Opus run cost $0.0626, the other two $0.0217 and $0.0206, as the eighth run's prompt-cache write would predict. One observation.
+- **Same model, different code.** `app/contact/page.tsx` is byte-identical on all 9 branches. `app/footer.tsx` has two versions: `Built with iterum · <Link href="/contact">Contact</Link>` on one line (all 3 Opus footers, and Haiku in Opus/Haiku runs 1 and 2), or the dot in `<span aria-hidden="true">·</span>{" "}` with the Link on the next line (Haiku in all 3 Haiku runs and in Opus/Haiku run 3). Both build. The sweep's pass rate counts runs that finished, and this plan's only check is the build, so it cannot see this.
