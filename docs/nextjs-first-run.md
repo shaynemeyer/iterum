@@ -247,3 +247,14 @@ Free: no prompt step. Sweep branches are never landed and `fleet.sweep` releases
 - All 4 steps committed. The printed `land with:` command quoted the bracketed fence, `--fence 'file:app/notes/[slug]/page.tsx=12'`, and left the plain ones bare.
 - That command, pasted unchanged into zsh with `--check "bun install --frozen-lockfile && bun run build"` added, landed `feat/notes` on `main` (`merge.started`, then `merge.landed`). The first real use of the quoting fix (`8a6a997`), and the first `--check` since the seventh run.
 - The 3 claims were released by the landing, none left in `claims`, and no temporary check worktree was left. `main` changed exactly the three `app/notes` files, builds, and passes `check-notes.sh`.
+
+## Results: a staged `--check` refusal, 2026-11-12
+
+Staged on purpose, to see a refusal in real use: two branches that each build alone and break when merged, the case `--check` exists for. Real app, real ledger, shell steps only, nothing billed. Plans `docs/.local-only/refuse-{a,b}.json`, each (1) an edit, (2) build, (3) commit.
+
+- **A** (`c9bb80e12ca6`, `feat/rename-notes`, claiming the three notes files) renamed the `notes` export in `app/notes/data.ts` to `allNotes` and updated both pages; the rename was tried first on copies of the files and changed exactly the 5 intended lines. **B** (`00644cd24f1c`, `feat/latest-note`, claiming `app/notes/latest/page.tsx`) added a page that imports `notes`. Both from the same `main`, both built, no claim or git conflict.
+- A landed with `--check "bun install --frozen-lockfile && bun run build"`. B, onto the `main` A had moved, was refused: the check's build failed with `Export notes doesn't exist in target module` (Next.js added `Did you mean to import allNotes?`), exit 1. `main` stayed at A's merge.
+- As `CLAUDE.md` describes: `merge.started`, then `merge.refused` with `reason: "check failed"`, the exit code and 1,349 characters of output; B's claim kept; no temporary worktree left, in `git worktree list` or the temp directories.
+- B's import was fixed by hand (`notes` to `allNotes`, 2 lines, committed on its branch) and B landed with the same fence, 1, while its claim had about 4 minutes left. B's ledger: `claim.granted`, `merge.started`, `merge.refused`, `merge.started`, `merge.landed`, `claim.released`. A refusal keeps the claims, so the fix lands without claiming again.
+- `main` builds, `/notes/latest` answers 200 with the last note, and `check-notes.sh` still passes. No claims left for either run.
+- **Not shown:** a second landing after the claim has expired, which the merge gate refuses as stale (`fleet.merge_drill`); here the claim was still live.
