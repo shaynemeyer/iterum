@@ -115,6 +115,15 @@ Committing the edits is a following shell step in the plan (example in 1), not n
 
 Cost: $0.0172 by Claude Code's estimate, of which $0.0152 was the first request writing 75,146 tokens to the cache. `num_turns` was 5 against 3 API requests in telemetry; the reason is not known.
 
+**Seen 2026-11-11, paid, gate under the new flags.** The same test repeated after prompt steps lost MCP servers and tools, the git status snapshot and CLAUDE.md files (decision log, 2026-11-11), since a run whose edits are allowed leaves no trace of the hook. A throwaway repo and a scratch `ITERUM_DB`, so the probe's claim stayed out of the real ledger; `fleet.telemetry` still logged the spend to the real one. A probe run held `file:b.txt`; run `c5614dbb1375` claimed `file:a.txt` and asked Haiku to fix "teh" in both files, then two shell steps checked `a.txt` fixed and `b.txt` unchanged.
+
+| Check | Result |
+| --- | --- |
+| Gate under the new flags | Pass. The Edit to `b.txt` got `PreToolUse:Edit hook error` with the gate's message ("claimed by probe until ..."), and `permission_denials` lists it. `b.txt` was unchanged. |
+| Allowed edit | Pass. `a.txt` was fixed and all three steps committed. |
+| Context | No git status snapshot and no `mcp__` names in the transcript. |
+| Spend | $0.0015, 5 turns, matched by 3 `spend.reported` events. |
+
 ## Decisions (agreed 2026-11-10)
 
 1. Plan format: `{"prompt": ...}` in the third field.
