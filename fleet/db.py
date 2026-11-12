@@ -10,15 +10,35 @@ from pathlib import Path
 
 DB = Path(os.environ.get("ITERUM_DB", "agent.db"))
 SCHEMA = Path(__file__).with_name("schema.sql")
+TIMEOUT = 5.0  # seconds a connection waits for a lock
+
+
+def use_wal(con):
+    """Switch to WAL, retrying "database is locked" for up to TIMEOUT seconds.
+
+    On a database still in rollback-journal mode, the switch fails at once while
+    another connection holds a lock, without calling the busy handler
+    (https://sqlite.org/c3ref/busy_handler.html: SQLite returns SQLITE_BUSY instead
+    when waiting could deadlock). Once the file is WAL the switch is a no-op.
+    """
+    deadline = time.monotonic() + TIMEOUT
+    while True:
+        try:
+            con.execute("PRAGMA journal_mode = WAL")
+            return
+        except sqlite3.OperationalError as e:
+            if "locked" not in str(e) or time.monotonic() > deadline:
+                raise
+            time.sleep(0.05)
 
 
 def connect():
     # isolation_level=None turns OFF the module's implicit transaction
     # handling, so our explicit BEGIN IMMEDIATE is the one that counts.
-    con = sqlite3.connect(DB, isolation_level=None, timeout=5.0)
+    con = sqlite3.connect(DB, isolation_level=None, timeout=TIMEOUT)
     con.row_factory = sqlite3.Row
-    con.execute("PRAGMA journal_mode = WAL")
-    con.execute("PRAGMA busy_timeout = 5000")
+    use_wal(con)
+    con.execute(f"PRAGMA busy_timeout = {int(TIMEOUT * 1000)}")
     con.execute("PRAGMA foreign_keys = ON")
     con.execute("PRAGMA recursive_triggers = ON")
     return con

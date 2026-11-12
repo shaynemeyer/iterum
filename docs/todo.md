@@ -13,10 +13,6 @@ Status: open, written 2026-11-10 after the merge gate was finished. The fence an
 
 How this work has been done, and should continue: one small step at a time; reproduce a problem before fixing it; check each change against the three drills (`fleet.merge_drill`, a few seconds; `fleet.claims_drill` and `fleet.kill_drill`, about 50 seconds each, runnable in parallel) and the built-in `fleet.run` plan on a scratch `ITERUM_DB`; when a drill gains a check, break the code once to see it fail, and undo the break by reversing the edit, not with `git checkout` (that also discards uncommitted work).
 
-## Two runs starting together on a new database
-
-Found 2026-11-12: two `fleet.run` dry runs started at once on a new scratch `ITERUM_DB`; one died in `db.init()` with `sqlite3.OperationalError: database is locked` at `PRAGMA journal_mode = WAL` in `db.connect()`. Reproduced: while a database is still in rollback-journal mode and another connection holds a write lock, `db.connect()` fails after 0.00 s, without waiting out its 5 s timeout; with the database in WAL mode, the same lock is waited out and connect succeeds. WAL mode persists in the file, so only a database's first moments are exposed; the real `agent.db` is WAL. Twenty pairs of bare `db.init()` calls on new files did not hit it, so the window is narrow. Workaround: run `db.init()` once before starting concurrent runs on a new database. A fix would make that first switch wait; not done.
-
 ## The `pgid` write window
 
 `_spawn()` starts a step's command (shell or `claude`), then writes `steps.pgid`. A kill between the two leaves a running command with no group to check, and a resume can overlap it. The window is one SQLite write. `Popen` cannot report the group before the child starts. The worker's `_shell()` has the same window before `queue.record_pgid()`; a reap there reruns the task alongside the command. Not reproduced; leave it unless it shows up.

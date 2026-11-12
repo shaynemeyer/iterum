@@ -2,6 +2,14 @@
 
 Items moved here from `todo.md` once done. Newest first.
 
+## Two runs starting together on a new database
+
+Completed 2026-11-12. Moved from `todo.md`:
+
+> Found 2026-11-12: two `fleet.run` dry runs started at once on a new scratch `ITERUM_DB`; one died in `db.init()` with `sqlite3.OperationalError: database is locked` at `PRAGMA journal_mode = WAL` in `db.connect()`. Reproduced: while a database is still in rollback-journal mode and another connection holds a write lock, `db.connect()` fails after 0.00 s, without waiting out its 5 s timeout; with the database in WAL mode, the same lock is waited out and connect succeeds. WAL mode persists in the file, so only a database's first moments are exposed; the real `agent.db` is WAL. Twenty pairs of bare `db.init()` calls on new files did not hit it, so the window is narrow. Workaround: run `db.init()` once before starting concurrent runs on a new database. A fix would make that first switch wait; not done.
+
+**Done.** `db.connect()` calls `use_wal()`, which retries `PRAGMA journal_mode = WAL` on "database is locked" until the connection's 5 s `TIMEOUT` runs out. SQLite's busy-handler page (https://sqlite.org/c3ref/busy_handler.html) says SQLite returns SQLITE_BUSY without calling the busy handler when waiting could deadlock, which fits the failure; that this is the exact path was not traced. **Evidence:** a script holding a write lock on a rollback-journal database: before, `db.connect()` failed after 0.00 s; after, it connected after 3.03 s against a 3 s hold, still failed after 5.03 s against a 7 s hold, and connected at once on a WAL database. The three drills, the built-in plan and 5 pairs of concurrent one-step runs on new databases passed (the pairs are weak evidence: 20 bare pairs had not failed before the fix either).
+
 ## Quote the fences in the printed land command
 
 Completed 2026-11-12 (`8a6a997`). Moved from `todo.md` (item 4):
