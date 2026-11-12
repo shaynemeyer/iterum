@@ -2,6 +2,18 @@
 
 Decisions and why they were made. Newest first. Entries are never deleted; a decision that is reversed is marked "Superseded by" the entry that replaces it. Open decisions live in `open-questions.md`.
 
+## 2026-11-12: No more runs just to find an unstaged `--check` refusal
+
+**Decision.** Stop planning feature runs whose purpose is to catch `fleet.merge --check` refusing a branch nobody broke on purpose. Every landing still uses `--check`, and a refusal is recorded when one comes (`todo.md` item 1).
+
+**Context.** The staged refusal (`nextjs-first-run.md`) showed `--check` refuse a merged tree that does not build, keep the claim, leave `main` alone, and land the fixed branch under the same fence. What was left was seeing it happen without staging.
+
+**Alternatives.** Keep running billed features until one breaks a merge: each costs little (about $0.001 to $0.002 on Haiku), but nothing says when, or whether, one will.
+
+**Evidence.** Five Haiku runs on 2026-11-12 (home-page copy, links, one About link, and a concurrent pair where one run read a file the other changed), each a narrow edit with an output check, all landed with `--check` on the first try (`nextjs-first-run.md`).
+
+**Affects.** `todo.md` item 1; no code.
+
 ## 2026-11-12: Prompt steps run with `--restricted`
 
 **Decision.** `CLAUDE_TOOLS` in `fleet/run.py` adds `--restricted`. A prompt step's file tools are confined to its working directory, and the session ignores user, project and local settings files; `--settings`, which carries the gate hook, still applies. Settles the open question "Should prompt steps run with `--restricted`?" and supersedes the "default `claude -p`" part of the 2026-11-10 entry "How `claude_step()` will be wired into `fleet.run`".
