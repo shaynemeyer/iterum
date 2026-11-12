@@ -277,3 +277,13 @@ Run `f3c8866e476b` on `feat/home-links`, plan `docs/.local-only/home-links.json`
 - 3 `spend.reported` events totalling $0.002032, equal to `claude.finished`'s cost.
 - Landed with the printed command plus `--check "bun install --frozen-lockfile && bun run build"`: `merge.started`, `merge.landed`, `claim.released`; no claim or check worktree left. `main` is at `6fd5eda`. Governor headroom $0.6187.
 - The page now has two links to `/about` (the text link from an earlier run and the new button); the prompt kept both on purpose.
+
+## Results: one About link on the home page, 2026-11-12
+
+Run `7472bcc80b52` on `feat/one-about`, plan `docs/.local-only/one-about.json`: (1) a Haiku prompt step, cap $0.05, removing the About text link under the h1 and keeping the About button, (2) build, (3) `check-one-about.sh` (exactly one `href="/about"` in the rendered page, the button and the earlier copy still there), (4) commit, every step claiming `file:app/page.tsx`.
+
+- The check failed on `main` ("the page has 2 links to /about, not 1"), and so did a dry run with step 1 as `echo dry`, at step 3.
+- The paid run: all 4 steps committed on the first try. $0.00107, 3 turns, no denials. The diff removes exactly the three lines of that `Link`.
+- 3 `spend.reported` events totalling $0.001067, equal to `claude.finished`'s cost.
+- Landed with `--check "bun install --frozen-lockfile && bun run build"`: `merge.started`, `merge.landed`, `claim.released`; no claim or check worktree left. `main` is at `9ab46d7`. Governor headroom $0.6176.
+- Three Haiku runs on `app/page.tsx` today, each a narrow edit with an output check, passed first time and landed with `--check`; none gave `--check` anything to refuse.
