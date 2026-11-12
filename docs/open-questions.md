@@ -12,25 +12,6 @@ Decisions not made yet. When one is answered, record it in `decision-log.md`, ad
 
 **Settled by.** Whether anything needs the other fields. The `result` text can be long, so logging it whole has a cost.
 
-## Can concurrent runs share one spend ceiling?
-
-**Context.** Two runs that check `governor.headroom()` at the same moment can both start a step and together pass the ceiling by two steps' spend. `budgets` is local to one machine, so each device has its own ceiling, while the spend it counts includes synced events from every device.
-
-**Options.** Accept and document it. Reserve each step's cap in a table under `BEGIN IMMEDIATE`, which still covers one machine only. Rely on a limit enforced by the biller, such as an API spend limit in the Anthropic Console (not checked yet: what it offers, and whether it applies to Claude Code sessions).
-
-**Blocks.** Nothing until more than one paid run goes at once. That started 2026-11-12 (the tags/latest-note pair, `nextjs-first-run.md`), far from the ceiling.
-
-**Reproduced 2026-11-12, free.** Scratch database, ceiling $0.03 with $0.02 already spent (headroom $0.01). A plan of two shell steps, each sleeping 1 s and then logging a fake $0.02 `spend.reported`; shell and prompt steps go through the same `stop_at_ceiling()`, which reads headroom and starts the step with nothing reserved in between.
-
-| Case | Steps started | Spend after | Over the ceiling by |
-| --- | --- | --- | --- |
-| One run | 1, then stopped before step 2 | $0.04 | $0.01 (one step, as documented) |
-| Two runs started together | 2 (proposed 5 ms apart), then both stopped before step 2 | $0.06 | $0.03 (two steps) |
-
-The two-run case gave the same result in 4 of 4 tries. So the overshoot grows with the number of runs that check at the same moment: each passes on the same headroom.
-
-**Settled by.** Choosing an option. Reservation would close it on one machine; the Console option still needs checking what its limits cover.
-
 ## How does a human settle a stuck `in_flight` receipt?
 
 **Context.** An ambiguous failure leaves the receipt `in_flight`, and every later attempt raises `Uncertain` (see the decision log). Today the only way out is editing `agent.db` by hand.

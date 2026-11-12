@@ -2,6 +2,20 @@
 
 Decisions and why they were made. Newest first. Entries are never deleted; a decision that is reversed is marked "Superseded by" the entry that replaces it. Open decisions live in `open-questions.md`.
 
+## 2026-11-12: Concurrent runs may each pass the ceiling by one step; accepted, not reserved
+
+**Decision.** Keep the spend ceiling as it is: a headroom check reserves nothing, so each run that checks at the same moment can pass the ceiling by one step's spend. Stated in `fleet/governor.py` and `CLAUDE.md`. Settles the open question "Can concurrent runs share one spend ceiling?"
+
+**Context.** `stop_at_ceiling()` in `fleet/run.py` reads `governor.headroom()` and starts the step; shell and prompt steps both go through it. The ceiling was already soft: one run can pass it by one step's spend, and spend `fleet.telemetry` never received is not counted.
+
+**Alternatives.** Reserve each step's cap in a table under `BEGIN IMMEDIATE` and release it when the step ends: closes the gap on one machine, at the cost of new mutable state, a release on every exit path, and cleanup of reservations a killed run leaves; it does nothing across devices, since `budgets` is per machine. Rely on a limit the biller enforces in the Anthropic Console: would cover every device, but what it offers and whether it applies to Claude Code sessions is not checked.
+
+**Evidence.** Reproduced on a scratch database, nothing billed: ceiling $0.03 with $0.02 spent, each step logging a fake $0.02. One run passed the ceiling by $0.01 and stopped before step 2; two runs started together both started step 1 (proposed 5 ms apart) and passed it by $0.03, in 4 of 4 tries. The bound is one step's spend per concurrent run; with the $0.05 caps used in recent runs, two runs could pass by about $0.10, while the real Haiku steps of 2026-11-12 cost $0.001 to $0.002 each.
+
+**Revisit when.** Paid runs routinely overlap near the ceiling, more than two run at once, or step caps grow large (Opus steps). Then reservation, or a checked biller limit, comes first.
+
+**Affects.** `fleet/governor.py` (docstring), `CLAUDE.md`; no behavior change.
+
 ## 2026-11-12: No more runs just to find an unstaged `--check` refusal
 
 **Decision.** Stop planning feature runs whose purpose is to catch `fleet.merge --check` refusing a branch nobody broke on purpose. Every landing still uses `--check`, and a refusal is recorded when one comes (`todo.md` item 1).

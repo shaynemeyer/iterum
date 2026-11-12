@@ -5,6 +5,10 @@ fleet.telemetry logs, one per Claude Code API request (docs/decision-log.md,
 2026-11-10). The governor keeps no count of its own: events sync across
 devices, and `budgets.spent_usd` does not, so it is left unused.
 
+Nothing is reserved between a headroom check and the step it allows, so runs
+that check at the same moment each pass on the same headroom and each can
+pass the ceiling by one step's spend (decision log, 2026-11-12).
+
     uv run python -m fleet.governor
     uv run python -m fleet.governor set <usd>
 """
