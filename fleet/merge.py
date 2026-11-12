@@ -3,12 +3,19 @@
 import argparse
 import fcntl
 import json
+import os
+import shutil
+import signal
 import subprocess
 import sys
+import tempfile
 import uuid
 from pathlib import Path
 
 from fleet import claim, db
+from fleet.proc import stop_on_sigterm
+
+OUTPUT_TAIL = 2000
 
 
 class Conflict(Exception):
@@ -17,6 +24,10 @@ class Conflict(Exception):
 
 class Empty(Exception):
     """Merging the branch would not change the target's files, for example because it already landed."""
+
+
+class CheckFailed(Exception):
+    """The check command failed on the merged tree."""
 
 
 def _git(repo, *args):
@@ -49,11 +60,36 @@ def changed_resources(repo, old, branch):
     return sorted(f"file:{name}" for name in names.splitlines())
 
 
-def land(repo, branch, run_id, fences, target="main"):
+def run_check(repo, commit, command):
+    """Run command in a temporary detached worktree of commit. Return (exit code, combined output).
+
+    The worktree is always removed. The command runs in its own process group, killed on Ctrl-C.
+    """
+    tmp = tempfile.mkdtemp(prefix="iterum-check-")
+    tree = Path(tmp) / "tree"
+    _git(repo, "worktree", "add", "--detach", str(tree), commit)
+    try:
+        p = subprocess.Popen(
+            command, shell=True, cwd=tree, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+            text=True, start_new_session=True,
+        )
+        try:
+            output, _ = p.communicate()
+        except KeyboardInterrupt:
+            os.killpg(p.pid, signal.SIGKILL)
+            raise
+        return p.returncode, output
+    finally:
+        _git(repo, "worktree", "remove", "--force", str(tree))
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def land(repo, branch, run_id, fences, target="main", check=None):
     """Merge branch into target if fences (resource -> fence) holds a live claim on every changed file.
 
+    With check, a shell command, it must first exit 0 in a worktree of the merged commit.
     Landing releases every claim in fences, in the same block. A refusal keeps them, so the caller can retry.
-    Raises Conflict, Empty, Refused or Fenced, or CalledProcessError if target moved since the build.
+    Raises Conflict, Empty, CheckFailed, Refused or Fenced, or CalledProcessError if target moved since the build.
     """
     old, new = build(repo, target, branch)
     needed = changed_resources(repo, old, branch)
@@ -61,6 +97,14 @@ def land(repo, branch, run_id, fences, target="main"):
     merge_id = str(uuid.uuid7())  # the commit hash can repeat: commit-tree timestamps to the second
     with db.write() as con:
         db.log(con, run_id, "merge.started", stage="coordination", merge_id=merge_id, branch=branch, target=target, old=old, commit=new, fences=fences)
+    if check:
+        # Outside any db.write(): BEGIN IMMEDIATE would block every other writer for the whole check.
+        code, output = run_check(repo, new, check)
+        if code != 0:
+            with db.write() as con:
+                db.log(con, run_id, "merge.refused", stage="coordination", merge_id=merge_id, branch=branch, target=target,
+                       commit=new, reason="check failed", check=check, exit_code=code, output=output[-OUTPUT_TAIL:])
+            raise CheckFailed(f"check failed with exit {code}: {check}\n{output[-OUTPUT_TAIL:]}")
     refused = None
     try:
         with db.write() as con:
@@ -134,7 +178,10 @@ def main():
                         help="one per changed file, e.g. file:src/a.py=3")
     parser.add_argument("--repo", default=".")
     parser.add_argument("--target", default="main")
+    parser.add_argument("--check", metavar="COMMAND",
+                        help="a shell command that must exit 0 in a worktree of the merged commit, e.g. a build")
     args = parser.parse_args()
+    stop_on_sigterm()
     fences = {r: int(f) for r, f in (s.rsplit("=", 1) for s in args.fence)}
 
     if checked_out(args.repo, args.target):
@@ -145,8 +192,8 @@ def main():
         fcntl.flock(f, fcntl.LOCK_EX)  # one merge process per repo, so reconcile() sees no merge in flight
         reconcile(args.repo)
         try:
-            new = land(args.repo, args.branch, args.run_id, fences, args.target)
-        except (Conflict, Empty, claim.Refused, claim.Fenced) as e:
+            new = land(args.repo, args.branch, args.run_id, fences, args.target, args.check)
+        except (Conflict, Empty, CheckFailed, claim.Refused, claim.Fenced) as e:
             sys.exit(f"refused: {e}")
         except subprocess.CalledProcessError as e:
             sys.exit(f"refused: {e.stderr.strip()}")

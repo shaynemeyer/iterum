@@ -2,6 +2,18 @@
 
 Items moved here from `todo.md` once done. Newest first.
 
+## Build `fleet.merge --check`
+
+Completed 2026-11-11. Moved from `todo.md`:
+
+1. **Build `fleet.merge --check`.** Agreed design and free test plan in `merge-check-design.md`: the check and its refusal first (tests 1-5), then the crash case and the drills (tests 6-7). Why: six Next.js feature runs (`nextjs-first-run.md`, results sections) worked, and they surfaced three findings, each now handled: MCP tools and user context reaching prompt steps (fixed, decision log), a model-made syntax error (caught by the build step, fixed by hand and resumed for free), and two branches that each build landing into a `main` that does not (reproduced; this item). A free experiment showed a file-changing step that runs twice is fixed in the plan, so option B waits for an outside effect that cannot be checked first (decision log). More feature runs can follow; confirm each plan and its cap with the user before anything is billed, and record what they surface here or in `open-questions.md`.
+
+**Before.** Two branches that each built landed through `fleet.merge` into a `main` that failed to build (`merge-check-design.md` section 0).
+
+**Change.** `fleet.merge --check CMD` runs CMD in a temporary detached worktree of the merge commit before claims are checked; a failure logs `merge.refused` and leaves the target alone.
+
+**After.** The same reproduction is refused with the build error, and lands once fixed. Tests 1-7 pass (`merge-check-design.md` section 6), the three drills included.
+
 ## The first real task: one feature in a Next.js app
 
 Completed 2026-11-11. Moved from `todo.md`:

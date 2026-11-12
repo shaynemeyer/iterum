@@ -4,7 +4,7 @@ Decisions and why they were made. Newest first. Entries are never deleted; a dec
 
 ## 2026-11-11: `fleet.merge` gets an optional check on the merged tree
 
-**Decision.** `fleet.merge --check "<command>"` runs the command in a temporary detached worktree of the merge commit, after `merge.started` and before the claims block; a failure logs `merge.refused` with `reason: "check failed"`, keeps the claims and leaves the target alone. The tree is always removed. Not implemented yet; design and test plan in `merge-check-design.md`. Settles the open question "Who builds the merged result?"
+**Decision.** `fleet.merge --check "<command>"` runs the command in a temporary detached worktree of the merge commit, after `merge.started` and before the claims block; a failure logs `merge.refused` with `reason: "check failed"`, keeps the claims and leaves the target alone. The tree is always removed. Implemented the same day; design, test plan and results in `merge-check-design.md`. Settles the open question "Who builds the merged result?"
 
 **Context.** Reproduced for free: two branches that each built landed through `fleet.merge` into a `main` that failed to build (`merge-check-design.md` section 0).
 
