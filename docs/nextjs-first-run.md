@@ -287,3 +287,15 @@ Run `7472bcc80b52` on `feat/one-about`, plan `docs/.local-only/one-about.json`: 
 - 3 `spend.reported` events totalling $0.001067, equal to `claude.finished`'s cost.
 - Landed with `--check "bun install --frozen-lockfile && bun run build"`: `merge.started`, `merge.landed`, `claim.released`; no claim or check worktree left. `main` is at `9ab46d7`. Governor headroom $0.6176.
 - Three Haiku runs on `app/page.tsx` today, each a narrow edit with an output check, passed first time and landed with `--check`; none gave `--check` anything to refuse.
+
+## Results: tags on notes and the latest note on the home page, two at once, 2026-11-12
+
+Two Haiku runs from the same `main` (`9ab46d7`), started together against one `agent.db` and one `fleet.telemetry`, cap $0.05 each; the first concurrent prompt steps under `--restricted`. B read the data file A changed, without claiming it, so whether the merged tree still built depended on what Haiku wrote; nothing was broken on purpose.
+
+- **A** (`127e3d919278`, `feat/note-tags`, in the app checkout, claiming `app/notes/data.ts` and `app/notes/[slug]/page.tsx`): add `tags: string[]` to `Note`, give each note the tags the prompt named, render them as a `<ul>` on the note page. Check `check-note-tags.sh`.
+- **B** (`2aded9d0657b`, `feat/home-latest`, in a `git worktree`, claiming `app/page.tsx`): import `allNotes` and link to the last note, "Latest note: <title>". Check `check-home-latest.sh`.
+- Free checks first: both checks failed on `main`. The first pair of dry runs, on a new scratch database, lost run A in `db.init()` to "database is locked"; reproduced and recorded in `todo.md` ("Two runs starting together on a new database"). The rerun, with `db.init()` done first, failed both at step 3 as expected.
+- The paid pair: both `step.proposed` for step 1 within 4 ms; all 4 steps of each committed on the first try. A: $0.00113, 5 turns. B: $0.00134, 5 turns. No denials. Each run's 3 `spend.reported` events equal its `claude.finished` cost. Each diff is what its prompt named and nothing else.
+- Landed A, then B, each with `--check "bun install --frozen-lockfile && bun run build"`: both `merge.started`, `merge.landed`, then `claim.released` for every claim; no claim or check worktree left. `main` is at `5c18bef`. A only added a field, so B's import still built: no refusal.
+- Both output checks pass on the merged `main` (built in B's worktree, detached), and the worktree was then removed. Governor headroom $0.6152.
+- Still no unstaged `--check` refusal: five Haiku runs today, each a narrow edit with an output check, and none landed a break.
