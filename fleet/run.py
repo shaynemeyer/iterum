@@ -325,7 +325,15 @@ def is_prompt(cmd):
     return isinstance(cmd, dict)
 
 
-def run_steps(run_id, plan, lost, cap_usd=None):
+def do_step(cmd, run_id, seq, cap_usd):
+    """One step's side effect: a prompt step through claude_step(), a shell string through shell()."""
+    if is_prompt(cmd):
+        return claude_step(cmd["prompt"], run_id, seq, cap_usd, cmd.get("model"))
+    return shell(cmd, run_id, seq)
+
+
+def run_steps(run_id, plan, lost, cap_usd=None, do_step=do_step):
+    """Run every uncommitted step, write-ahead. fleet.replay passes its own do_step to reuse recorded results."""
     done = committed_seqs(run_id)
     if done:
         print(f"resuming {run_id}, {len(done)} step(s) already committed")
@@ -351,10 +359,7 @@ def run_steps(run_id, plan, lost, cap_usd=None):
 
         fail_if_lost(run_id, seq, lost)
         try:
-            if is_prompt(cmd):  # <-- the side effect
-                result = claude_step(cmd["prompt"], run_id, seq, cap_usd, cmd.get("model"))
-            else:
-                result = shell(cmd, run_id, seq)
+            result = do_step(cmd, run_id, seq, cap_usd)  # <-- the side effect
         except RuntimeError as e:
             fail_if_lost(run_id, seq, lost)  # a step killed for a lost claim reports why
             record_failure(run_id, seq, str(e))

@@ -4,8 +4,9 @@
     uv run python -m fleet.eval add <name> <run_id>              # a regression case
     uv run python -m fleet.eval add <name> <run_id> --expect J   # a capability case
 
-The cases come from your own ledger, so nothing ships with this repo. A regression
-case expects the end state its run reached. A capability case expects a hand-written
+The cases come from your own ledger, so nothing ships with this repo. Each case is
+replayed through fleet.run's own code (see fleet.replay). A regression case expects
+the end state its run reached. A capability case expects a hand-written
 end state (JSON with the keys `end`, `failed_stage` and `committed`) and may stay red:
 it is reported but never fails the suite. Exits 1 if a regression case fails.
 """
@@ -20,8 +21,9 @@ from fleet import db, replay
 
 
 def add_from_failure(name, run_id):
-    """Store run_id's replayed end state as the regression case `name`."""
-    return _add(name, run_id, "regression", replay.replay(run_id))
+    """Store the end state run_id actually reached as the regression case `name`. Refuses a run replay cannot drive."""
+    replay.replay(run_id)
+    return _add(name, run_id, "regression", replay.recorded_state(run_id))
 
 
 def add_capability(name, run_id, expect):
@@ -48,7 +50,7 @@ def _add(name, run_id, kind, expect):
     return expect
 
 
-def run_suite(harness_fn=None):
+def run_suite():
     """Replay every case, store and print the results. Returns the names of failed regression cases."""
     suite_run = uuid.uuid4().hex[:12]
     con = db.connect()
@@ -59,7 +61,7 @@ def run_suite(harness_fn=None):
 
     results = []
     for case in cases:
-        actual = replay.replay(case["source_run"], harness_fn)
+        actual = replay.replay(case["source_run"])
         results.append((case, actual == json.loads(case["expect"]), actual))
 
     with db.write() as con:
