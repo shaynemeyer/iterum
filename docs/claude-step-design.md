@@ -79,7 +79,7 @@ Committing the edits is a following shell step in the plan (example in 1), not n
 | Runs `gate.py` passed through `--settings` | Yes (paid run, section 6) | No: `--bare` help says it skips "hooks (those defined in settings and by installed plugins...)" |
 | Auth | Subscription login | "strictly ANTHROPIC_API_KEY" (help text); "bare mode doesn't use your subscription login" (headless page) |
 
-**Decided: default `-p`**, with `gate.py` passed through `--settings`. It uses the subscription, and the merge gate backs it up if the hook does not load. `--bare` would need an API key and drop the early check. `--setting-sources` and `--strict-mcp-config` may narrow what the default loads; **unverified**.
+**Decided: default `-p`**, with `gate.py` passed through `--settings`. It uses the subscription, and the merge gate backs it up if the hook does not load. `--bare` would need an API key and drop the early check. `--setting-sources` and `--strict-mcp-config` may narrow what the default loads; **unverified**. **Superseded 2026-11-12:** prompt steps add `--restricted`, which ignores user and project settings while `--settings` and the gate still apply (decision log).
 
 ## 6. Test plan
 

@@ -2,6 +2,29 @@
 
 Decisions and why they were made. Newest first. Entries are never deleted; a decision that is reversed is marked "Superseded by" the entry that replaces it. Open decisions live in `open-questions.md`.
 
+## 2026-11-12: Prompt steps run with `--restricted`
+
+**Decision.** `CLAUDE_TOOLS` in `fleet/run.py` adds `--restricted`. A prompt step's file tools are confined to its working directory, and the session ignores user, project and local settings files; `--settings`, which carries the gate hook, still applies. Settles the open question "Should prompt steps run with `--restricted`?" and supersedes the "default `claude -p`" part of the 2026-11-10 entry "How `claude_step()` will be wired into `fleet.run`".
+
+**Context.** `claude --help` (2.1.322): `--restricted` "ignores user, project and local settings files (managed settings and --settings still apply...)" and "confines the file tools to the working directories". Default `-p` loads the user's and the project's settings, so a repo's own `.claude/settings.json` could widen where a prompt step may write.
+
+**Alternatives.** Keep default `-p` (the 2026-11-10 choice), so a prompt step loads the user's setup like an interactive session. In every case tried it also stayed inside the repo, so the flag guards against a case not yet seen.
+
+**Evidence.** Six Haiku sessions outside `fleet`, with `claude_step()`'s flags and gate settings, in a scratch repo where another run held `file:held.txt` ($0.0052, not in the ledger):
+
+| Session | Default `-p` | `--restricted` |
+| --- | --- | --- |
+| Edit the claimed `held.txt`, then the unclaimed `free.txt` | not run here; the gate refused a claimed file in the 2026-11-11 paid run | gate refused `held.txt` (its message reached the model), `free.txt` edited |
+| Write a file in a sibling directory outside the repo | denied: "Path is outside allowed working directories" | denied: "--restricted confines the file tools to the working directory" |
+| Edit an outside `.env.example` named by the user settings' `Edit(**/.env*.example)` allow rule | denied, same message | not run |
+| Write outside, with the repo's `.claude/settings.json` adding that folder to `additionalDirectories` | denied; stderr: "Ignoring 1 permissions.additionalDirectories entry ... this workspace has not been trusted" | denied |
+
+After the change, a `fleet.run` plan in the scratch repo (run `f682a2441f4c`, Haiku, cap $0.05) committed a prompt step that edited its one claimed file and a check step: $0.00054, 3 turns, no denials. The three drills and the built-in plan pass.
+
+**Not shown.** A trusted workspace whose project settings add a directory: default `-p`'s warning implies it would apply it, which is what `--restricted` removes. Whether the `.env.example` rule could match outside the repo (a pattern without `/` or `//` is likely relative to the working directory; not checked against the docs). Whether telemetry still arrives under `--restricted` when a ceiling requires it: the variables come from the environment, not a settings file, but no run with the receiver has used the flag yet.
+
+**Affects.** `fleet/run.py` (`CLAUDE_TOOLS`), `CLAUDE.md`, `claude-step-design.md` section 5.
+
 ## 2026-11-12: Prompt steps stay bare; a docs hint names files, and only for a known change
 
 **Decision.** Prompts in a plan carry no general "read the docs" hint. When a task touches an API known to have changed, the prompt names the doc files that state the rule (for the notes task, `dynamicParams.md` and `generate-static-params.md` under `node_modules/next/dist/docs/01-app/03-api-reference/`). Otherwise the build step and `fleet.merge --check` catch the mistake, and the failed step is rerun. Settles the open question "Should prompt steps tell the model to read the app's docs?"
@@ -159,6 +182,8 @@ Decisions and why they were made. Newest first. Entries are never deleted; a dec
 **Evidence.** `claude-step-design.md`; flags checked against `claude --help` and https://code.claude.com/docs/en/cli-reference. Not yet verified: `is_error` in the envelope, the gate hook under `--settings` in `-p` mode, a disallowed tool's behavior in `-p` mode.
 
 **Affects.** `fleet/run.py` once implemented. Nothing changed yet.
+
+**Superseded in part 2026-11-12** by "Prompt steps run with `--restricted`": the session is `claude -p --restricted`, not default `-p`.
 
 **Update 2026-11-11.** `is_error` is now verified: a free failing run (`claude -p --bare` with no API key, Claude Code 2.1.322) printed `"is_error": true` alongside `"subtype": "success"` and exited 1. Details in `claude-step-design.md`. The other two items remain unverified.
 

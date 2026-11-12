@@ -33,9 +33,11 @@ CLAIM_TTL = float(os.environ.get("ITERUM_CLAIM_TTL", claim.DEFAULT_TTL))  # seco
 MAX_TURNS = 10  # a prompt step's --max-turns; a guess until the first paid run
 # Only the file tools exist in a prompt step's session; edits need no approval, and anything that
 # would ask is denied, since nobody is there to answer (`claude --help`, Claude Code 2.1.322).
+# --restricted confines the file tools to the working directory and ignores user and project
+# settings; --settings, and so the gate hook, still apply (decision log, 2026-11-12).
 CLAUDE_TOOLS = [
     "--tools", "Read,Edit,Write", "--disallowedTools", "mcp__*", "--strict-mcp-config",
-    "--permission-mode", "acceptEdits", "--permission-prompts", "none",
+    "--permission-mode", "acceptEdits", "--permission-prompts", "none", "--restricted",
 ]
 
 

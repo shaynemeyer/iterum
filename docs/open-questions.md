@@ -2,16 +2,6 @@
 
 Decisions not made yet. When one is answered, record it in `decision-log.md`, add any resulting work to `todo.md`, and remove it here.
 
-## Should prompt steps run with `--restricted`?
-
-**Context.** `claude --help` (2.1.322) lists `--restricted`: it removes code-running tools and WebFetch unless `--tools` names them, "ignores user, project and local settings files (managed settings and --settings still apply...)", "confines the file tools to the working directories", and refuses `bypassPermissions`. Prompt steps today run default `-p` with `--tools Read,Edit,Write` (decision log, 2026-11-11), which loads the user's settings and does not confine edits to the worktree; `fleet.merge` still refuses unclaimed files.
-
-**Options.** Add `--restricted` to `CLAUDE_TOOLS` in `fleet/run.py`. Or keep default `-p`, as decided 2026-11-10, so the session loads the user's settings like an interactive one.
-
-**Blocks.** Nothing.
-
-**Settled by.** Whether a default `-p` session edits outside the worktree, and whether the gate hook still runs under `--restricted` through `--settings`. The first paid run (2026-11-11, `claude-step-design.md` section 6) edited only the two files its prompt named, inside the worktree, which says nothing about a prompt that reaches further; it did not try `--restricted`.
-
 ## Should `claude.finished` keep the whole result envelope?
 
 **Context.** `claude_step()` logs only `exit_code`, `session_id`, `total_cost_usd`, `num_turns`, `is_error` and `permission_denials`. The first paid run (2026-11-11) therefore kept no full copy of a success envelope for `claude-step-design.md`. Its `num_turns` was 5 against 3 API requests in telemetry, for reasons not known. The second Next.js run (`095cf7955377`) reported `num_turns: 11` under `--max-turns 10`, without failing, while its transcript shows about 7 rounds of tool calls; 7 `spend.reported` events arrived.
