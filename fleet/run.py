@@ -385,9 +385,15 @@ def claude_env(run_id):
     """os.environ plus iterum.run_id in OTEL_RESOURCE_ATTRIBUTES, so telemetry logs spend under this run.
 
     ENABLE_CLAUDEAI_MCP_SERVERS=false keeps the user's claude.ai connectors out of the
-    session; --tools does not cover MCP tools (docs/claude-step-design.md).
+    session; --tools does not cover MCP tools (docs/claude-step-design.md). The other two
+    keep the git status snapshot and every CLAUDE.md out of its context (decision log).
     """
-    env = dict(os.environ, ENABLE_CLAUDEAI_MCP_SERVERS="false")
+    env = dict(
+        os.environ,
+        ENABLE_CLAUDEAI_MCP_SERVERS="false",
+        CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS="1",
+        CLAUDE_CODE_DISABLE_CLAUDE_MDS="1",
+    )
     attrs = env.get("OTEL_RESOURCE_ATTRIBUTES")
     env["OTEL_RESOURCE_ATTRIBUTES"] = f"{attrs},iterum.run_id={run_id}" if attrs else f"iterum.run_id={run_id}"
     return env

@@ -8,7 +8,7 @@ Flags were checked against `claude --help` for Claude Code 2.1.322 and against t
 
 `fleet/run.py` follows the decisions below, with these details settled while building it (decision log, 2026-11-11):
 
-- Tools: `--tools Read,Edit,Write` (removes every other built-in tool) instead of `--allowedTools` (only pre-approves), plus `--permission-mode acceptEdits` and `--permission-prompts none`. `--tools` does not cover MCP tools, so a session also gets `--disallowedTools "mcp__*"` and `--strict-mcp-config`, and `claude_env()` sets `ENABLE_CLAUDEAI_MCP_SERVERS=false` (decision log, 2026-11-11, "Prompt steps get no MCP servers or tools").
+- Tools: `--tools Read,Edit,Write` (removes every other built-in tool) instead of `--allowedTools` (only pre-approves), plus `--permission-mode acceptEdits` and `--permission-prompts none`. `--tools` does not cover MCP tools, so a session also gets `--disallowedTools "mcp__*"` and `--strict-mcp-config`, and `claude_env()` sets `ENABLE_CLAUDEAI_MCP_SERVERS=false` (decision log, 2026-11-11, "Prompt steps get no MCP servers or tools"). `claude_env()` also sets `CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS=1` and `CLAUDE_CODE_DISABLE_CLAUDE_MDS=1`; the account email stays in context (decision log, 2026-11-11, "Prompt steps keep the account email").
 - The gate hook's `ITERUM_DB` and `FLEET_RUN_ID` are set in its own command, so it does not depend on inheriting `claude`'s environment.
 - Resume refuses a `failed` prompt step without `--force`, as well as a `proposed` one.
 - Every prompt step must declare at least one file.

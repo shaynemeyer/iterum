@@ -2,16 +2,6 @@
 
 Decisions not made yet. When one is answered, record it in `decision-log.md`, add any resulting work to `todo.md`, and remove it here.
 
-## Should prompt steps keep the user's claude.ai account context?
-
-**Context.** The transcript of the second Next.js run (`095cf7955377`) shows the session's context included the user's claude.ai account details, among them their email address, as Claude Code adds for a claude.ai login. Removing MCP servers (decision log, 2026-11-11) does not change that. The model sees it; nothing in a prompt step needs it.
-
-**Options.** Leave it. Run prompt steps with `--bare`, which `claude --help` says needs `ANTHROPIC_API_KEY` auth, so a separate API key and API billing. Look for a setting that drops the account context under a claude.ai login (not checked).
-
-**Blocks.** Nothing.
-
-**Settled by.** Whether a setting exists for it, and whether the user wants prompt steps billed to an API key.
-
 ## Should prompt steps run with `--restricted`?
 
 **Context.** `claude --help` (2.1.322) lists `--restricted`: it removes code-running tools and WebFetch unless `--tools` names them, "ignores user, project and local settings files (managed settings and --settings still apply...)", "confines the file tools to the working directories", and refuses `bypassPermissions`. Prompt steps today run default `-p` with `--tools Read,Edit,Write` (decision log, 2026-11-11), which loads the user's settings and does not confine edits to the worktree; `fleet.merge` still refuses unclaimed files.

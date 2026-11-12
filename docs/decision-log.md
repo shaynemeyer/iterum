@@ -2,6 +2,18 @@
 
 Decisions and why they were made. Newest first. Entries are never deleted; a decision that is reversed is marked "Superseded by" the entry that replaces it. Open decisions live in `open-questions.md`.
 
+## 2026-11-11: Prompt steps keep the account email; git status and CLAUDE.md files are dropped
+
+**Decision.** Accept that a prompt step's session sees the user's claude.ai account email. `claude_env()` sets `CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS=1` and `CLAUDE_CODE_DISABLE_CLAUDE_MDS=1`, so the git status snapshot (with the git user name) and every CLAUDE.md file stay out of the session. Settles the open question "Should prompt steps keep the user's claude.ai account context?"
+
+**Context.** The second Next.js run's transcript showed Claude Code adds a context block for a claude.ai login with `# userEmail` and `# gitStatus`, and the session also loaded the user's global CLAUDE.md. None of it is needed by a prompt step.
+
+**Alternatives.** `IS_DEMO=1` or `--system-prompt`: tested, neither removes the email (below). `--bare` with an `ANTHROPIC_API_KEY`: probably removes it, since there is no claude.ai login, but untested, billed separately, and changes `claude_step()`'s auth. Leave the question open: nothing presses on it. Keeping CLAUDE.md files: a project's own CLAUDE.md might help a prompt step, but the prompt already names the change and its files.
+
+**Evidence.** No page of the [env-vars](https://code.claude.com/docs/en/env-vars), [settings](https://code.claude.com/docs/en/settings), [CLI reference](https://code.claude.com/docs/en/cli-reference) or [headless](https://code.claude.com/docs/en/headless) docs mentions `userEmail`; `IS_DEMO` is documented only for "the header and `/status` output". Three billed one-turn Haiku sessions with `claude_step()`'s flags ($0.0015 in all), each transcript searched for the block: control, `IS_DEMO=1`, and `--system-prompt` all contained it. The env-vars page documents both variables set here (verbatim): `CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS` "remove[s] built-in commit and PR workflow instructions and the git status snapshot from Claude's context"; `CLAUDE_CODE_DISABLE_CLAUDE_MDS` "prevent[s] loading any CLAUDE.md memory files into context". Not yet checked in a session: their effect (the three sessions ran outside a git repo, so no git snapshot appeared in any). Why the email is acceptable: prompt steps have no MCP tools and no shell (decision log, 2026-11-11), so the only way it leaves the machine is in a claimed file's diff, which `fleet.merge` lands only from a branch the user can review.
+
+**Affects.** `fleet/run.py` (`claude_env()`). A prompt step no longer sees a project's CLAUDE.md or AGENTS.md conventions unless its prompt states them.
+
 ## 2026-11-11: Prompt steps get no MCP servers or tools
 
 **Decision.** `CLAUDE_TOOLS` in `fleet/run.py` adds `--disallowedTools "mcp__*"` and `--strict-mcp-config` to `--tools Read,Edit,Write`, and `claude_env()` sets `ENABLE_CLAUDEAI_MCP_SERVERS=false`.
