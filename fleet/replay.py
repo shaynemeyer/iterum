@@ -17,8 +17,10 @@ recorded claim, each attempt's work playing back the recorded outcome (done, or 
 with its reason), and redriven with `queue.redrive` where the ledger shows a redrive.
 A reaped claim runs no work: the clock moves past the lease and `worker._reap` runs, as
 another worker's loop would. A clock skips past each retry backoff. A task with a
-dependency gets a stand-in parent, finished first. Releases, deadlines and halts are
-not replayed.
+dependency gets a chain of stand-in ancestors, as deep as the recorded depends_on chain
+up to the dead letter its halt reason names; the replay dead-letters the first where the
+task's ledger shows it halted, and redrives it where it shows it restored, so the real
+queue does both. Releases and deadline halts are not replayed.
 
 Needs ITERUM_DEVICE, since the harness logs events (into the scratch database only).
 """
@@ -39,8 +41,8 @@ FAIL_KINDS = {"step.failed", "task.failed", "run.halted"}
 REPLAYABLE = {"run.started", "step.proposed", "step.committed", "step.failed", "run.done",
               "run.failed", "claude.finished", "spend.reported",
               "claim.granted", "claim.reclaimed", "claim.released"}
-TASK_REPLAYABLE = {"task.added", "task.claimed", "task.done", "task.failed",
-                   "task.reaped", "task.dead_lettered", "task.redriven"}
+TASK_REPLAYABLE = {"task.added", "task.claimed", "task.done", "task.failed", "task.reaped",
+                   "task.dead_lettered", "task.redriven", "task.halted", "task.restored"}
 SKIP_AHEAD_S = 86400  # past any retry backoff, so a recorded retry is claimable at once
 
 
@@ -153,10 +155,11 @@ def drive(events):
 
 
 def recorded_task(run_id, events):
-    """The task.added payload, and the actions in order: ["claim", outcome] or ["redrive", None].
+    """The task.added payload, and the actions in order: ["claim", outcome], ["redrive", None],
+    ["halt", None] or ["restore", None].
 
     An outcome is ("done", None), ("failed", reason), ("reaped", reason), or None for a
-    claim with no outcome yet.
+    claim with no outcome yet. Refuses a deadline halt, since the deadline is not recorded.
     """
     added = json.loads(events[0]["payload"])
     if "max_attempts" not in added:
@@ -174,7 +177,28 @@ def recorded_task(run_id, events):
             actions[-1][1] = ("reaped", payload["reason"])
         elif ev["kind"] == "task.redriven":
             actions.append(["redrive", None])
+        elif ev["kind"] == "task.halted":
+            added.setdefault("depth", chain_depth(run_id, added["depends_on"], payload["reason"]))
+            actions.append(["halt", None])
+        elif ev["kind"] == "task.restored":
+            actions.append(["restore", None])
     return added, actions
+
+
+def chain_depth(run_id, depends_on, reason):
+    """How many tasks up the recorded depends_on chain the dead-lettered task named in reason is.
+
+    Refuses a halt for any other reason (a deadline), since replay can only cause it by a dead letter.
+    """
+    prefix = queue._blocked_by("")
+    if depends_on is None or not reason.startswith(prefix):
+        raise ValueError(f"task {run_id} was halted ({reason}), not behind a dead letter")
+    dead, device = int(reason.removeprefix(prefix)), run_id.rsplit("-", 1)[0]
+    depth, ancestor = 1, depends_on
+    while ancestor != dead:
+        ancestor = json.loads(recorded_events(f"{device}-{ancestor}")[0]["payload"])["depends_on"]
+        depth += 1
+    return depth
 
 
 def recorded_work(outcome):
@@ -187,30 +211,79 @@ def recorded_work(outcome):
     return work
 
 
+def _status(task_id):
+    """The task's status in the scratch database."""
+    con = db.connect()
+    try:
+        return con.execute("SELECT status FROM tasks WHERE task_id=?", (task_id,)).fetchone()["status"]
+    finally:
+        con.close()
+
+
+def _expect(task_id, status, after):
+    """Raise Diverged unless the harness left the task in status after the recorded action."""
+    now = _status(task_id)
+    if now != status:
+        raise Diverged(f"diverged at {after}: the task is {now}, not {status}")
+
+
+def _run_parent(parent, outcome):
+    """Claim a stand-in ancestor and run it to outcome: done, or failed, which dead-letters it."""
+    task = queue.claim("replay")
+    if task is None or task["task_id"] != parent:
+        raise Diverged("diverged: the queue did not offer a stand-in ancestor")
+    worker._run_one(task, "replay", recorded_work(outcome))
+
+
+def _claim(task_id, ancestors, outcome, n, clock):
+    """Claim the task, after finishing its stand-in ancestors, and play back one recorded outcome."""
+    for ancestor in ancestors:
+        if _status(ancestor) != "done":
+            _run_parent(ancestor, ("done", None))
+    task = queue.claim("replay")
+    if task is None or task["task_id"] != task_id:
+        raise Diverged(f"diverged at claim {n}: the queue did not offer the task")
+    if outcome and outcome[0] == "reaped":
+        clock.skipped += queue.LEASE_TTL + 1  # the worker died; its lease runs out
+        worker._reap("replay")
+    elif outcome:
+        worker._run_one(task, "replay", recorded_work(outcome))
+
+
 def drive_task(added, actions):
-    """Re-add the task, then claim, run and redrive it as the ledger shows. Returns its scratch run_id."""
+    """Re-add the task, then claim, run, redrive, halt and restore it as the ledger shows.
+
+    A task with a dependency gets a chain of stand-in ancestors (the first with
+    max_attempts 1) as deep as its recorded halt reason shows, else one, left unfinished
+    until the task's next claim. A recorded halt dead-letters the first, so the real queue
+    halts the chain down to the task; a recorded restore redrives it. Returns the task's
+    scratch run_id.
+    """
     clock = Clock()
     with mock.patch.object(queue, "time", clock):
-        parent = None
+        ancestors = []
         if added["depends_on"] is not None:
-            parent = queue.add("stand-in parent")
-            worker._run_one(queue.claim("replay"), "replay", recorded_work(("done", None)))
-        task_id = queue.add(added["task_kind"], depends_on=parent, max_attempts=added["max_attempts"])
+            for _ in range(added.get("depth", 1)):
+                parent = ancestors[-1] if ancestors else None
+                ancestors.append(queue.add("stand-in ancestor", depends_on=parent, max_attempts=1))
+        task_id = queue.add(
+            added["task_kind"], depends_on=ancestors[-1] if ancestors else None,
+            max_attempts=added["max_attempts"],
+        )
         claims = 0
         for action, outcome in actions:
+            clock.skipped += SKIP_AHEAD_S
             if action == "redrive":
                 queue.redrive(task_id)
-                continue
-            claims += 1
-            clock.skipped += SKIP_AHEAD_S
-            task = queue.claim("replay")
-            if task is None:
-                raise Diverged(f"diverged at claim {claims}: the queue did not offer the task")
-            if outcome and outcome[0] == "reaped":
-                clock.skipped += queue.LEASE_TTL + 1  # the worker died; its lease runs out
-                worker._reap("replay")
-            elif outcome:
-                worker._run_one(task, "replay", recorded_work(outcome))
+            elif action == "halt":
+                _run_parent(ancestors[0], ("failed", "stand-in ancestor failed"))
+                _expect(task_id, "halted", "halt")
+            elif action == "restore":
+                queue.redrive(ancestors[0])
+                _expect(task_id, "ready", "restore")
+            else:
+                claims += 1
+                _claim(task_id, ancestors, outcome, claims, clock)
     return queue._run_id(task_id)
 
 
@@ -225,9 +298,10 @@ def replay(run_id):
     other = {ev["kind"] for ev in events} - (TASK_REPLAYABLE if is_task else REPLAYABLE)
     if other:
         raise ValueError(f"run {run_id} is not replayable: it has {sorted(other)}")
+    task = recorded_task(run_id, events) if is_task else None  # reads the real ledger, so before scratch_db
     with scratch_db(), contextlib.redirect_stdout(io.StringIO()):
         try:
-            replayed = drive_task(*recorded_task(run_id, events)) if is_task else drive(events)
+            replayed = drive_task(*task) if is_task else drive(events)
             return end_state(recorded_events(replayed))
         except Diverged as e:
             return {"end": str(e), "failed_stage": None, "committed": []}
