@@ -239,3 +239,11 @@ Two Haiku sessions in the app (Claude Code 2.1.322), `claude -p` with `--tools "
 - With it set to `0`: "YES", quoting the `AGENTS.md` paragraph word for word.
 
 So the flag keeps `AGENTS.md` out as well as CLAUDE.md files, and in the eleventh run Opus never saw the app's own warning. $0.0011 for both, run outside `fleet`, so not in the ledger. One session each way.
+
+## Results: the notes section landed with `--check`, 2026-11-12
+
+Free: no prompt step. Sweep branches are never landed and `fleet.sweep` releases their claims, so a new run took the code from a passing twelfth-run branch: run `edacbef54dcb` on branch `feat/notes`, (1) `git checkout sweep/20261112-093856/notes-docs-opus-1 -- app/notes`, (2) build, (3) `check-notes.sh`, (4) commit, every step claiming the three files. Plan `docs/.local-only/notes-land.json`.
+
+- All 4 steps committed. The printed `land with:` command quoted the bracketed fence, `--fence 'file:app/notes/[slug]/page.tsx=12'`, and left the plain ones bare.
+- That command, pasted unchanged into zsh with `--check "bun install --frozen-lockfile && bun run build"` added, landed `feat/notes` on `main` (`merge.started`, then `merge.landed`). The first real use of the quoting fix (`8a6a997`), and the first `--check` since the seventh run.
+- The 3 claims were released by the landing, none left in `claims`, and no temporary check worktree was left. `main` changed exactly the three `app/notes` files, builds, and passes `check-notes.sh`.
