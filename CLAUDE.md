@@ -30,6 +30,7 @@ uv run python -m fleet.governor [set <usd>]               # show the fleet's spe
 uv run python -m fleet.merge <branch> --run-id R --fence file:path=N [--repo .] [--target main] [--check CMD]   # land a branch if every changed file has a live claim (and CMD passes on the merged tree)
 uv run python -u -m fleet.merge_drill                     # drive the merge gate through refusals, the lock and a crash (a few seconds)
 uv run python -u -m fleet.claims_drill                    # fleet.run's declared claims: refusal, resume, renewal, paused-agent takeover (about 50s)
+uv run python -m fleet.eval [add <name> <run_id> [--expect JSON]]   # replay every eval case (exit 1 if a regression case fails), or add one from a run
 ```
 
 `fleet` has no `__init__.py` (a namespace package), so its modules must run with `-m`: `python fleet/run.py` fails with `ModuleNotFoundError`. `doctor.py` imports nothing from `fleet` and runs as a script; `seed-ledger.py` adds the repo root to `sys.path` itself.
@@ -82,4 +83,6 @@ A plan step's command is a shell string or `{"prompt": "...", "model": "..."}` (
 
 `fleet/governor.py` is the fleet-wide spend ceiling. Spend is the sum of `cost_usd` over `spend.reported` events since the ceiling was first set (`budgets.window_start`); it keeps no counter, and `budgets.spent_usd` is unused. It counts only what `fleet.telemetry` received, and a run can pass the ceiling by up to one step's spend. So a plan with prompt steps under a ceiling refuses to start or resume (`check_receiver()` in `fleet/run.py`) unless `CLAUDE_CODE_ENABLE_TELEMETRY=1` and `OTEL_EXPORTER_OTLP_LOGS_ENDPOINT` are set (`source .env.example`) and the receiver answers with the run's own database; a receiver that dies mid-run is still missed.
 
-The schema defines more tables (`evals`, `approvals`) than the code uses yet.
+`fleet/replay.py` folds a run's ledger events into an end state (`end`, `failed_stage`, `committed`) without calling a model. `fleet/eval.py` stores cases in `evals`: a regression case expects the end state its run reached; a capability case expects a hand-written one and never fails the suite. Results go to `eval_results`.
+
+The schema defines a table (`approvals`) the code does not use yet.
