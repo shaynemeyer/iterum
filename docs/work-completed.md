@@ -2,6 +2,18 @@
 
 Items moved here from `todo.md` once done. Newest first.
 
+## A regression suite from the ledger: `fleet.replay`, `fleet.eval`, `fleet.scorecard`
+
+Completed 2026-11-12 (`3079c5e`, `85c82bc`, `175cbe7`, `1a5ac68`, `50ff55e`, `b1b9386`). Not a `todo.md` item.
+
+**What.** `fleet.replay` feeds a run's recorded outcomes to the real code against a scratch database: `run.run_steps()` with a `do_step` that plays back results, errors and kills; queue tasks through `queue.claim()`, `worker._run_one()`, `worker._reap()` and `queue.redrive()`, including halts and restores behind a dead letter. `fleet.eval` stores regression cases (the end state a run actually reached) and capability cases (a hand-written end state that never fails the suite). `fleet.scorecard` compares the cases between two git revisions.
+
+**Supporting changes.** `run_steps()` takes `do_step`; `worker._run_one()` takes `work`; `queue.add()` logs `max_attempts` on `task.added`.
+
+**Evidence.** On scratch databases, every replayed case matched its recorded end state: the drill, a failing plan, a run killed with SIGKILL mid-step and resumed, done, dead-lettered (one and three attempts), redriven, reaped, and halted-then-restored chains up to a grandchild. Each of these deliberate breaks turned at least one case red and was then undone: `record_failure` not ending the run; a resume forgetting committed steps; dead-lettering one attempt early and one late; redrive not setting `ready`; `reap()` never seeing an expired lease; `reap()` treating every command as alive; a dead letter halting no children; a halt stopping at children; redrive restoring nothing. The kill drill still passes.
+
+**Limits.** Replay refuses `fleet/step.py` runs (so retry classification is not covered), claim refusals, releases, deadline halts, `run.halted` and `run.budget_exhausted`; it does not replay claims, the heartbeat or `check_resumable()`. The end state has no attempt counts. Tasks logged before `task.added` carried `max_attempts` are refused.
+
 ## `fleet.worker` stops at the fleet ceiling
 
 Completed 2026-11-11. Not a `todo.md` item: the ceiling was meant to be fleet-wide, but only `fleet.run` checked it.

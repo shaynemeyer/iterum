@@ -2,6 +2,18 @@
 
 Decisions and why they were made. Newest first. Entries are never deleted; a decision that is reversed is marked "Superseded by" the entry that replaces it. Open decisions live in `open-questions.md`.
 
+## 2026-11-12: Replay drives the real harness code, and refuses what it cannot reproduce
+
+**Decision.** `fleet.replay` runs the real `fleet.run` and queue code against a scratch database, with each side effect replaced by the recorded outcome. It never calls a model or a command. A regression case expects the end state its run actually reached; a capability case's expect is written by hand and never fails the suite. A run with events replay cannot reproduce is refused rather than approximated. `fleet.scorecard` compares git revisions, each scored in a temporary worktree by its own `fleet.eval --json`.
+
+**Context.** The first draft folded events through a `harness_fn` defined inside `replay.py`, so a stored case could only fail if that function changed: bugs in `fleet.run` or the queue could not turn it red.
+
+**Alternatives.** Keep the event fold (tests nothing outside itself). Re-sample the model (nondeterministic and billed; that is a separate tool, the model sweep). Approximate unsupported events (a case that passes because it skipped the hard part).
+
+**Evidence.** The deliberate breaks listed in `work-completed.md` (2026-11-12) each turned a case red; the first draft's suite could not.
+
+**Affects.** `fleet/run.py` (`do_step`), `fleet/worker.py` (`work`), `fleet/queue.py` (`max_attempts` on `task.added`), `fleet/replay.py`, `fleet/eval.py`, `fleet/scorecard.py`.
+
 ## 2026-11-11: Claim refusals name the holder's run id; agent names stay
 
 **Decision.** `claim.acquire()`'s refusal and `fleet/gate.py`'s message name the holder's run id after its agent, as in "`file:a.txt` held by worker-1 (run 813631d110df) for another 300s", and the `claim.refused` event gains `held_by_run`. `fleet.run` still names every run's agent `worker-1`. Settles the open question "Should `fleet.run` give each run its own agent name?"
