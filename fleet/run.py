@@ -292,9 +292,9 @@ def execute(run_id, plan, branch=None, target="main", cap_usd=None):
     finally:
         stop.set()
     if fences:
-        flags = " ".join(f"--fence {r}={f}" for r, f in fences.items())
-        to = "" if target == "main" else f" --target {target}"
-        print(f"land with: uv run python -m fleet.merge {branch} --run-id {run_id}{to} {flags}")
+        flags = " ".join(f"--fence {shlex.quote(f'{r}={f}')}" for r, f in fences.items())
+        to = "" if target == "main" else f" --target {shlex.quote(target)}"
+        print(f"land with: uv run python -m fleet.merge {shlex.quote(branch)} --run-id {run_id}{to} {flags}")
 
 
 def stop_at_ceiling(run_id, seq, cap_usd=None):
