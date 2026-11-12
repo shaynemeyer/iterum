@@ -185,7 +185,7 @@ The same plan three times, each on its own branch from `main`, none landed: (1) 
 
 ## Results: the eleventh run, a dynamic route under Cache Components, 2026-11-12
 
-A harder task, picked so a model might fail: one prompt step creates a notes section, `app/notes/data.ts` (three fixed notes), `app/notes/page.tsx` (a page titled Notes linking to each) and `app/notes/[slug]/page.tsx` (the note's title in an `<h1>` and as the page title, its body, every note prerendered, the not-found page for an unknown slug). The app runs Next 16.4.6 with `cacheComponents: true`, and its bundled docs differ from what models know: `params` is a `Promise`, `dynamicParams` is not available with Cache Components, and `generateStaticParams` must return at least one param. Prompt steps do not load the app's `AGENTS.md`, which points at those docs, and the prompt gives no hint. Plans `docs/.local-only/notes-{haiku,opus}.json`: (1) the prompt step, (2) build, (3) `check-notes.sh`, (4) commit; every step claims the three files.
+A harder task, picked so a model might fail: one prompt step creates a notes section, `app/notes/data.ts` (three fixed notes), `app/notes/page.tsx` (a page titled Notes linking to each) and `app/notes/[slug]/page.tsx` (the note's title in an `<h1>` and as the page title, its body, every note prerendered, the not-found page for an unknown slug). The app runs Next 16.4.6 with `cacheComponents: true`, and its bundled docs differ from what models know: `params` is a `Promise`, `dynamicParams` is not available with Cache Components, and `generateStaticParams` must return at least one param. The app's `AGENTS.md` tells agents to read those docs; the app has no CLAUDE.md and prompt steps load none, and whether a session reads `AGENTS.md` itself was not checked. The prompt gives no hint. Plans `docs/.local-only/notes-{haiku,opus}.json`: (1) the prompt step, (2) build, (3) `check-notes.sh`, (4) commit; every step claims the three files.
 
 **The check.** `check-notes.sh` starts the built app with `next start` and requests it: `/notes` answers 200 with the title `Notes | iterum demo` and links to all three slugs; each note answers 200; `/notes/resume` has its `<title>`, `<h1>` and body and no `noindex` tag; `/notes/nope` shows "Page not found" with `<meta name="robots" content="noindex"/>`.
 
@@ -214,3 +214,17 @@ A harder task, picked so a model might fail: one prompt step creates a notes sec
 - Haiku took 10 to 13 turns, Opus 5 each time. The ledger records turns, not which files a session read, so whether Haiku's extra turns went to the bundled docs is not known. Six runs are too few to say one model is more reliable on this task.
 - Total $0.1590 (governor spend $0.3616 before, $0.5205 after). Each run's `spend.reported` total equals its `claude.finished` cost. 18 claims granted, 18 released, no permission denials.
 - **Found on the way:** the `land with:` command `fleet.run` prints leaves its fences unquoted, and zsh rejects `--fence file:app/notes/[slug]/page.tsx=1` with `no matches found` (`todo.md`).
+
+## Results: the twelfth run, Opus told to read the docs, 2026-11-12
+
+The eleventh run's Opus plan with one sentence added before the prompt, close to the app's own `AGENTS.md`: "This version of Next.js has breaking changes: APIs, conventions and file structure may all differ from what you know. Before writing any code, read the relevant guides in node_modules/next/dist/docs/ and heed deprecation notices." It names no guide and not `dynamicParams`. Plan `docs/.local-only/notes-docs-opus.json`; steps, check and claims as the eleventh run. Opus only, since Haiku had passed 3/3 without the hint; `fleet.sweep` with one plan, 5 repeats, branches `sweep/20261112-093856/notes-docs-opus-<n>` from `main`, none landed. Cap $0.50 per prompt step under the $3.00 ceiling, `fleet.telemetry` on the real database.
+
+| Opus on the notes task | Pass | Mean | Min | Max | Cache writes per run | Turns |
+| --- | --- | --- | --- | --- | --- | --- |
+| Eleventh run, no hint | 1/3 | $0.0497 | $0.0460 | $0.0560 | 1,819 to 2,738 tokens | 5, 5, 5 |
+| Twelfth run, docs hint | 5/5 | $0.3715 | $0.3567 | $0.3829 | 38,561 to 39,714 tokens | 7, 10, 7, 7, 9 |
+
+- No run added `dynamicParams`; all 5 await `params` in the page and in `generateMetadata`. Every step committed on the first try, no denials, no run at the turn limit.
+- **The hint cost 7.5 times as much per run.** About 39,000 tokens written to the prompt cache per run against about 2,000 without it, which fits the model reading the bundled docs into context; the ledger records tokens, not which files a session read, so that part is inferred. The estimate before the run was $0.25 to $0.50 for all 5; the total was $1.8573. The size of the docs folder was not checked first.
+- **What it shows, and what it does not.** In these runs the hint stopped the mistake: 5/5 against 1/3, on 8 runs with a baseline of 3. On this task three failed tries without the hint (about $0.05 each, caught by the build) still cost less than one run with it, so the hint pays only where a failure costs more than a rerun.
+- Each run's `spend.reported` total equals its `claude.finished` cost. Governor spend $0.5205 before, $2.3778 after: $0.62 of the $3.00 ceiling left, enough for one more prompt step capped at $0.50.

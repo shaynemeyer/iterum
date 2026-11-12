@@ -2,6 +2,16 @@
 
 Decisions not made yet. When one is answered, record it in `decision-log.md`, add any resulting work to `todo.md`, and remove it here.
 
+## Should prompt steps tell the model to read the app's docs?
+
+**Context.** Prompt steps load no CLAUDE.md files (`CLAUDE_CODE_DISABLE_CLAUDE_MDS=1`), and nothing in the eleventh run's prompts pointed at the bundled docs that the Next.js app's `AGENTS.md` tells agents to read (whether a session reads `AGENTS.md` itself was not checked). On a dynamic route under Cache Components, Opus without a hint added `dynamicParams` and failed the build in 2 of 3 runs (eleventh run, `nextjs-first-run.md`); told to read the docs, it passed 5 of 5 at 7.5 times the cost per run, about $0.37 against $0.05 (twelfth run). Haiku passed 3 of 3 without the hint.
+
+**Options.** Add a docs hint to every prompt in a plan for such an app; add it only to tasks that touch APIs known to have changed; or leave prompts bare and rely on the build and `--check` to catch the mistake, rerunning a failed step.
+
+**Blocks.** Nothing.
+
+**Settled by.** What a failure costs in practice: on this task a rerun cost less than the hint. More runs on a task where a failure is not caught as cheaply would show whether the hint pays; the baseline is still 3 runs.
+
 ## Should prompt steps run with `--restricted`?
 
 **Context.** `claude --help` (2.1.322) lists `--restricted`: it removes code-running tools and WebFetch unless `--tools` names them, "ignores user, project and local settings files (managed settings and --settings still apply...)", "confines the file tools to the working directories", and refuses `bypassPermissions`. Prompt steps today run default `-p` with `--tools Read,Edit,Write` (decision log, 2026-11-11), which loads the user's settings and does not confine edits to the worktree; `fleet.merge` still refuses unclaimed files.
