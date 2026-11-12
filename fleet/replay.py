@@ -15,8 +15,10 @@ A queue task (run_id `task-<device>-<id>`) is re-added with its recorded kind an
 max_attempts, then claimed with `queue.claim` and run with `worker._run_one` once per
 recorded claim, each attempt's work playing back the recorded outcome (done, or failed
 with its reason), and redriven with `queue.redrive` where the ledger shows a redrive.
-A clock skips past each retry backoff. A task with a dependency gets a stand-in parent,
-finished first. Reaps, releases, deadlines and halts are not replayed.
+A reaped claim runs no work: the clock moves past the lease and `worker._reap` runs, as
+another worker's loop would. A clock skips past each retry backoff. A task with a
+dependency gets a stand-in parent, finished first. Releases, deadlines and halts are
+not replayed.
 
 Needs ITERUM_DEVICE, since the harness logs events (into the scratch database only).
 """
@@ -38,7 +40,7 @@ REPLAYABLE = {"run.started", "step.proposed", "step.committed", "step.failed", "
               "run.failed", "claude.finished", "spend.reported",
               "claim.granted", "claim.reclaimed", "claim.released"}
 TASK_REPLAYABLE = {"task.added", "task.claimed", "task.done", "task.failed",
-                   "task.dead_lettered", "task.redriven"}
+                   "task.reaped", "task.dead_lettered", "task.redriven"}
 SKIP_AHEAD_S = 86400  # past any retry backoff, so a recorded retry is claimable at once
 
 
@@ -153,7 +155,8 @@ def drive(events):
 def recorded_task(run_id, events):
     """The task.added payload, and the actions in order: ["claim", outcome] or ["redrive", None].
 
-    An outcome is ("done", None), ("failed", reason), or None for a claim with no outcome yet.
+    An outcome is ("done", None), ("failed", reason), ("reaped", reason), or None for a
+    claim with no outcome yet.
     """
     added = json.loads(events[0]["payload"])
     if "max_attempts" not in added:
@@ -167,6 +170,8 @@ def recorded_task(run_id, events):
             actions[-1][1] = ("done", None)
         elif ev["kind"] == "task.failed":
             actions[-1][1] = ("failed", payload["reason"])
+        elif ev["kind"] == "task.reaped":
+            actions[-1][1] = ("reaped", payload["reason"])
         elif ev["kind"] == "task.redriven":
             actions.append(["redrive", None])
     return added, actions
@@ -201,7 +206,10 @@ def drive_task(added, actions):
             task = queue.claim("replay")
             if task is None:
                 raise Diverged(f"diverged at claim {claims}: the queue did not offer the task")
-            if outcome:
+            if outcome and outcome[0] == "reaped":
+                clock.skipped += queue.LEASE_TTL + 1  # the worker died; its lease runs out
+                worker._reap("replay")
+            elif outcome:
                 worker._run_one(task, "replay", recorded_work(outcome))
     return queue._run_id(task_id)
 
