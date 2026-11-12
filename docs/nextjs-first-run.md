@@ -258,3 +258,12 @@ Staged on purpose, to see a refusal in real use: two branches that each build al
 - B's import was fixed by hand (`notes` to `allNotes`, 2 lines, committed on its branch) and B landed with the same fence, 1, while its claim had about 4 minutes left. B's ledger: `claim.granted`, `merge.started`, `merge.refused`, `merge.started`, `merge.landed`, `claim.released`. A refusal keeps the claims, so the fix lands without claiming again.
 - `main` builds, `/notes/latest` answers 200 with the last note, and `check-notes.sh` still passes. No claims left for either run.
 - **Not shown:** a second landing after the claim has expired, which the merge gate refuses as stale (`fleet.merge_drill`); here the claim was still live.
+
+## Results: marketing copy on the home page, the first run under `--restricted`, 2026-11-12
+
+Run `12c0572d5ec1` on `feat/home-copy`, plan `docs/.local-only/home-copy.json`: (1) a Haiku prompt step, cap $0.05, replacing the home page's h1 and its Templates/Learning paragraph with marketing copy that must mention claims, the merge gate and the spend ceiling and claim nothing else, (2) build, (3) `check-home.sh`, (4) commit, every step claiming `file:app/page.tsx`. Prompt steps now run with `--restricted` (decision log, 2026-11-12).
+
+- First a dry run on a scratch database, step 1 as `echo dry`: it failed at step 3 with "the h1 still reads Hello from iterum", so the check is wired in and fails unedited `main`.
+- The paid run: all 4 steps committed on the first try. $0.00143, 4 turns, no denials. The diff changed exactly the two places the prompt named: the h1 now reads "Run your Claude Code agent fleet with control", and the paragraph states the three facts and nothing more.
+- **Telemetry under `--restricted`:** 3 `spend.reported` events totalling $0.001431, equal to `claude.finished`'s cost, with the receiver on the real database and `check_receiver()` passing. The flag does not stop spend reaching the governor.
+- Landed with the printed command plus `--check "bun install --frozen-lockfile && bun run build"`: `merge.started`, `merge.landed`, `claim.released`; no claim or check worktree left. `main` is at the merge, `124b79a`.

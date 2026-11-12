@@ -21,7 +21,7 @@ Decisions and why they were made. Newest first. Entries are never deleted; a dec
 
 After the change, a `fleet.run` plan in the scratch repo (run `f682a2441f4c`, Haiku, cap $0.05) committed a prompt step that edited its one claimed file and a check step: $0.00054, 3 turns, no denials. The three drills and the built-in plan pass.
 
-**Not shown.** A trusted workspace whose project settings add a directory: default `-p`'s warning implies it would apply it, which is what `--restricted` removes. Whether the `.env.example` rule could match outside the repo (a pattern without `/` or `//` is likely relative to the working directory; not checked against the docs). Whether telemetry still arrives under `--restricted` when a ceiling requires it: the variables come from the environment, not a settings file, but no run with the receiver has used the flag yet.
+**Not shown.** A trusted workspace whose project settings add a directory: default `-p`'s warning implies it would apply it, which is what `--restricted` removes. Whether the `.env.example` rule could match outside the repo (a pattern without `/` or `//` is likely relative to the working directory; not checked against the docs). (Telemetry under `--restricted` was shown the same day: run `12c0572d5ec1`'s `spend.reported` events equal its `claude.finished` cost, `nextjs-first-run.md`.)
 
 **Affects.** `fleet/run.py` (`CLAUDE_TOOLS`), `CLAUDE.md`, `claude-step-design.md` section 5.
 
