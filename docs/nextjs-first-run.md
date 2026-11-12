@@ -119,3 +119,19 @@ Two runs started together, as in the fifth run: A (`69561f66c656`, `feat/not-fou
 - Free checks first: concurrent dry runs on a scratch database; both smoke checks failed without the edits (A's because Next's default 404 page does not say "Page not found"), and left no server.
 - Both runs: every step committed on the first try, both diffs exactly as asked. A: 4 turns, $0.00178; B: 3 turns, $0.00117; no denials; each run's `spend.reported` events matched its session.
 - **First real use of `fleet.merge --check`** (`merge-check-design.md`): A, then B onto the `main` A had moved, each with `--check "bun install --frozen-lockfile && bun run build"`. Both checks passed in about 5 s each, `merge.started` then `merge.landed`, no temporary worktree left. No hand build of `main` was needed. The two features did not interact, so this shows the gate passing; refusal was shown by the reproduction.
+
+## Results: the eighth run, one task on three model mixes, 2026-11-11
+
+The same plan three times, each on its own branch from `main`, none landed: (1) a prompt step creates `app/contact/page.tsx`; (2) a prompt step adds a Link to `/contact` in `app/footer.tsx`; (3) build; (4) commit. Only the models differed: A (`acc8e24a9649`, `cmp-opus`) Opus 5.5 on both, B (`cba1b73bfe45`, `cmp-haiku`) Haiku 5.5 on both, C (`01530d2ae6bd`, `cmp-split`) Opus then Haiku. Cap $0.50 per prompt step under a $3.00 ceiling. Plans in `docs/.local-only/cmp-*.json`.
+
+| Run | Step 1 | Step 2 | Total (`spend.reported`) |
+| --- | --- | --- | --- |
+| A: Opus / Opus | 2 turns, $0.0304 | 3 turns, $0.0185 | $0.0489 (5 events) |
+| B: Haiku / Haiku | 4 turns, $0.0010 | 3 turns, $0.0006 | $0.0016 (6 events) |
+| C: Opus / Haiku | 2 turns, $0.0114 | 3 turns, $0.0005 | $0.0119 (5 events) |
+
+- A free dry run (both prompt steps as `echo`, scratch database) committed every step first.
+- Every step of every run committed on the first try, no denials. `git diff` between the three branches shows no difference in `app/`: on this task, Haiku's output was the same as Opus's.
+- Each run's `spend.reported` total equals the sum of its `claude.finished` costs.
+- **Order skews the Opus numbers.** A's first Opus request wrote 2,469 tokens to the prompt cache and cost $0.0248; the same request in C, about 7 minutes later, wrote none and cost $0.0055. So A against C partly measures which ran first. A fair comparison repeats each mix or alternates the order.
+- B and C were first refused before any step ran (nothing billed): A's claims on the same files lasted `ITERUM_CLAIM_TTL` after it finished, since its branch was not landed. Both were resumed after the claims expired, with `ITERUM_CLAIM_TTL=60` so B's cleared quickly for C.
