@@ -69,3 +69,13 @@ Run `095cf7955377`: create `app/about/page.tsx` and link it from `app/page.tsx` 
 - A claim on a file that did not exist yet worked: `fleet.merge` landed the new file with `--fence file:app/about/page.tsx=1 --fence file:app/page.tsx=2`.
 - **The session got the user's claude.ai connectors** despite `--tools Read,Edit,Write`, and Haiku called `mcp__claude_ai_Gmail__list_labels`, which was denied. Fixed after the run: prompt steps now get no MCP servers or tools (decision log, 2026-11-11).
 - No step needed to run twice.
+
+## Results: the third run, 2026-11-11
+
+Run `bec20a793b36`: read the app's route-handler guide in `node_modules/next/dist/docs/` (its `AGENTS.md` warns that this Next.js differs from what models know, and prompt steps no longer load CLAUDE.md files), then create `app/api/hello/route.ts` answering GET with `{"message": "Hello from iterum"}`. Haiku, cap $0.10 per step under the same ceiling. Step 2 was `bun run build | tee /dev/stderr | grep -q '/api/hello'`, checked beforehand to fail while the route was absent.
+
+- All three steps committed on the first try. Haiku read the guide, wrote a three-line handler (`Response.json(...)`) following it, and touched nothing else; the build listed `/api/hello`; `fleet.merge` landed it with `--fence file:app/api/hello/route.ts=1`.
+- 3 turns, $0.0019 (`claude.finished`), matched by 3 `spend.reported` events.
+- First run with the new context settings (decision log, 2026-11-11). The transcript had no git status snapshot, no CLAUDE.md contents and no `mcp__` names; the account email was there, as decided. The first request's context was 5,466 tokens, against 46,189 in the second run. Part of the cost drop is the smaller task.
+- Still not shown: that the gate hook runs under the new flags. A hook that allows an edit leaves nothing in the transcript.
+- No step needed to run twice.
