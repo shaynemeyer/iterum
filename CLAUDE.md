@@ -19,6 +19,7 @@ uv run python -u -m fleet.run --plan p.json     # a plan: [[seq, intent, command
 uv run python -u -m fleet.run --plan p.json --allow-claude <usd>   # a plan with {"prompt": ...} steps: billed, each capped at <usd>
 uv run python -u -m fleet.run --resume <run_id> [--plan p.json] [--allow-claude <usd>] [--force]
 uv run python -m fleet.recovery [--idle-seconds 60] [--max-attempts 3]   # list dead runs, halt over-retried ones
+uv run python -m fleet.recovery halt <run_id> "<reason>"   # give up on one failed or stale run (logs run.halted)
 uv run python -m fleet.sync sync|export|import
 uv run python -u -m fleet.worker <name> [--budget-s 30]   # claim, run and report tasks until the budget ends
 uv run python -m fleet.dlq [redrive <task_id>]            # list dead-lettered tasks, or put one back on the queue

@@ -12,6 +12,7 @@ event time, which a long step can make look dead.
 
 import argparse
 import os
+import sys
 import time
 
 from fleet import db
@@ -68,14 +69,29 @@ def halt(run_id, reason):
         db.log(con, run_id, "run.halted", stage="validation", reason=reason)
 
 
+def halt_one(run_id, reason, found):
+    """Halt a run a person gave up on. Only a run dead_runs() lists: never a done or live one."""
+    if run_id not in {r[0] for r in found}:
+        sys.exit(f"refused: {run_id} is not a failed or stale run")
+    halt(run_id, reason)
+    print(f"halted {run_id}; fleet.run resumes it only with --force")
+
+
 def main():
     parser = argparse.ArgumentParser(prog="uv run python -m fleet.recovery")
     parser.add_argument("--idle-seconds", type=int, default=IDLE_SECONDS)
     parser.add_argument("--max-attempts", type=int, default=MAX_ATTEMPTS)
+    commands = parser.add_subparsers(dest="command")
+    cmd = commands.add_parser("halt", help="give up on one failed or stale run")
+    cmd.add_argument("run_id")
+    cmd.add_argument("reason")
     args = parser.parse_args()
 
     db.init()  # a fresh agent.db has no tables yet; safe to repeat
     found = dead_runs(args.idle_seconds)
+    if args.command == "halt":
+        halt_one(args.run_id, args.reason, found)
+        return
     if not found:
         print(f"no dead runs (none failed, none quiet for more than {args.idle_seconds}s)")
         return

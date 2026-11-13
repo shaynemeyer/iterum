@@ -2,6 +2,18 @@
 
 Decisions and why they were made. Newest first. Entries are never deleted; a decision that is reversed is marked "Superseded by" the entry that replaces it. Open decisions live in `open-questions.md`.
 
+## 2026-11-13: A failed run needs a person until it is resumed or halted
+
+**Decision.** `iterum status` keeps counting every `failed` run as needing a person (exit 1), with no time window. A person closes one with `fleet.recovery halt <run_id> "<reason>"`, which calls the existing `recovery.halt()` (status `halted`, `run.halted` event with the reason) and refuses any run `dead_runs()` does not list, so never a `done` or live run.
+
+**Context.** The first `status` slice exited 1 on the real `agent.db` for two failed runs from 2026-11-12, and would have forever: `dead_runs()` returns every failed run.
+
+**Alternatives.** Count a failed run only within a recent window (say 24 hours): needs no new command, but a failure nobody read drops out of view by itself, the wrong default for unattended runs (`overnight-design.md`).
+
+**Evidence.** Scratch databases, 2026-11-13: halting a failed run moved `status` from exit 1 to 0 and logged `run.halted` (stage `validation`) with the reason; resume then refused without `--force` and resumed with it; halt refused a `done` run, a run with a fresh heartbeat and an unknown id, changing no row and no event; `fleet.recovery` with no arguments still listed a failed run and halted it at 3 attempts.
+
+**Affects.** `fleet/recovery.py`, `CLAUDE.md`, `cli-plan.md`.
+
 ## 2026-11-13: Iterum ships as one `iterum` command
 
 **Decision.** Option (a) of the open question "Should Iterum ship as one `iterum` command instead of `python -m fleet.*`?": a packaged CLI. `pyproject.toml` builds `fleet` with `uv_build` as a namespace package and defines `[project.scripts] iterum = "fleet.cli:main"`; it is installed once with `uv tool install --editable .`. `fleet/cli.py` maps one word per command to a module and runs it with `runpy.run_module(..., run_name="__main__")`, so no module changes; it line-buffers stdout and stderr in place of `-u`. `python -m fleet.*` keeps working. The rest of the question moves into `cli-plan.md`: a plain `iterum status` (increment 2) before any Rich dependency, and where the fixed default database lives (increment 4). Removed from `open-questions.md`.
