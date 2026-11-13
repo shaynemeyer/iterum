@@ -2,6 +2,18 @@
 
 Decisions and why they were made. Newest first. Entries are never deleted; a decision that is reversed is marked "Superseded by" the entry that replaces it. Open decisions live in `open-questions.md`.
 
+## 2026-11-13: The fix loop is opt-in, feeds back 2,000 characters, and counts retries per process
+
+**Decision.** `fleet.run --fix-retries N` (default 0): when a step after a prompt step fails, the last prompt step before it reruns with the failing step's error (last 2,000 characters) appended, then every step after it. Each attempt is logged (`step.failed`, `fix.retry`); the run fails as before once retries run out. Each retry gets the full per-step cap and passes the ceiling check like any step. Retries count per process.
+
+**Context.** The user chose the fix loop as the first overnight increment (`overnight-design.md` section 5). The design left open how many retries, the cap per retry and trimming (section 6).
+
+**Alternatives.** On by default (a plan would start spending on retries without being asked); counting retries across resumes from `fix.retry` events (more code, and a resume is already a person's decision); feeding back the whole error (the merge gate already trims to 2,000).
+
+**Evidence.** Free test with a fake `claude` that writes broken code until the prompt carries the check's error: fails without the flag; with `--fix-retries 2`, one retry, then `done`; a fake that never fixes fails after two `fix.retry` events. The built-in plan still runs. `work-completed.md`, 2026-11-13.
+
+**Affects.** `fleet/run.py`, `fleet/replay.py` (refuses `fix.retry` runs through its allow-list).
+
 ## 2026-11-13: Report pages carry one inline script
 
 **Decision.** Report pages include one fixed inline script for sortable tables and instant chart tooltips. It is a constant in `fleet/report_html.py` with no ledger data in it; it reads only the page's already-escaped DOM, fetches nothing and stores nothing. Pages stay self-contained and offline, and work unchanged with scripts off. Supersedes "no scripts" in the entry "A day's report is a static page beside the database" below.

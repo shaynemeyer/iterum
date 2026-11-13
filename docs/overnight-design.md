@@ -54,6 +54,7 @@ Each step is useful alone, so the work can stop after any of them.
    - Free test: a fake `claude` script on `PATH` that writes broken code first and correct code when the prompt contains the error. The check fails once, is fed back, passes.
    - Paid test, with the user's OK: one real Haiku feature where a first try breaks the build, if it happens.
    - Unknown: how often a retry with the error text fixes a real model mistake. The paid test is the first evidence.
+   - **Built 2026-11-13** as `--fix-retries N` (opt-in, default 0); the free test passed (`work-completed.md`). Open: the paid test, and the gaps listed in `todo.md`.
 2. **`/fleet-plan`**: sentence, then clarifying questions until none are open, then plan document, then "Implement this feature?". A test: a deliberately vague request must produce questions, not a plan.
 3. **A night's queue and a morning report.**
 

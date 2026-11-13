@@ -31,6 +31,7 @@ from fleet.proc import group_alive, stop_on_sigterm
 HEARTBEAT = 10  # seconds between heartbeat_at updates; fleet.recovery's expiry must be several of these
 CLAIM_TTL = float(os.environ.get("ITERUM_CLAIM_TTL", claim.DEFAULT_TTL))  # seconds; must be several HEARTBEATs
 MAX_TURNS = 10  # a prompt step's --max-turns; a guess until the first paid run
+ERROR_TAIL = 2000  # characters of a failed step's error fed back to a fix retry, as fleet.merge keeps of a failed check
 # Only the file tools exist in a prompt step's session; edits need no approval, and anything that
 # would ask is denied, since nobody is there to answer (`claude --help`, Claude Code 2.1.322).
 # --restricted confines the file tools to the working directory and ignores user and project
@@ -175,15 +176,45 @@ def recorded_command_hashes(con, run_id):
     return {r["seq"]: r["h"] for r in rows if r["h"]}
 
 
+def fail_step(con, run_id, seq, error):
+    """Mark one step failed and log step.failed, inside the caller's db.write()."""
+    con.execute(
+        "UPDATE steps SET status='failed', ended_at=? WHERE run_id=? AND seq=?",
+        (time.time(), run_id, seq),
+    )
+    db.log(con, run_id, "step.failed", stage="tool_execution", seq=seq, error=error)
+
+
 def record_failure(run_id, seq, error):
     """Mark the step and the run failed, so the ledger tells a failure from a crash."""
     with db.write() as con:
-        con.execute(
-            "UPDATE steps SET status='failed', ended_at=? WHERE run_id=? AND seq=?",
-            (time.time(), run_id, seq),
-        )
-        db.log(con, run_id, "step.failed", stage="tool_execution", seq=seq, error=error)
+        fail_step(con, run_id, seq, error)
     db.finish_run(run_id, "failed")
+
+
+def record_retry(run_id, seq, error, prompt_seq, attempt):
+    """Fail the step, keep the run running, and log fix.retry: the prompt step at prompt_seq runs again with the error."""
+    with db.write() as con:
+        fail_step(con, run_id, seq, error)
+        db.log(
+            con, run_id, "fix.retry", stage="tool_execution", seq=seq,
+            prompt_seq=prompt_seq, attempt=attempt, error_tail=error[-ERROR_TAIL:],
+        )
+
+
+def last_prompt_index(plan, i):
+    """The index of the last prompt step before plan[i], or None."""
+    return next((j for j in range(i - 1, -1, -1) if is_prompt(plan[j][2])), None)
+
+
+def with_feedback(cmd, feedback):
+    """A prompt step's command with the failure it must fix appended; any other command unchanged."""
+    if not feedback or not is_prompt(cmd):
+        return cmd
+    seq, intent, error = feedback
+    note = (f"\n\nA previous attempt did not pass. Step {seq} ({intent}) failed after your edits with:\n"
+            f"{error[-ERROR_TAIL:]}\nFix the files so that step passes.")
+    return {**cmd, "prompt": cmd["prompt"] + note}
 
 
 def mark_running(run_id):
@@ -279,7 +310,7 @@ def run_branch(target):
     return branch
 
 
-def execute(run_id, plan, branch=None, target="main", cap_usd=None):
+def execute(run_id, plan, branch=None, target="main", cap_usd=None, fix_retries=0):
     try:
         fences = claim_files(run_id, plan)
     except claim.Refused as e:
@@ -290,7 +321,7 @@ def execute(run_id, plan, branch=None, target="main", cap_usd=None):
     lost = []  # the heartbeat thread appends why it lost a claim
     threading.Thread(target=beat, args=(run_id, stop, fences, lost), daemon=True).start()
     try:
-        run_steps(run_id, plan, lost, cap_usd)
+        run_steps(run_id, plan, lost, cap_usd, fix_retries=fix_retries)
     finally:
         stop.set()
     if fences:
@@ -334,13 +365,22 @@ def do_step(cmd, run_id, seq, cap_usd):
     return shell(cmd, run_id, seq)
 
 
-def run_steps(run_id, plan, lost, cap_usd=None, do_step=do_step):
-    """Run every uncommitted step, write-ahead. fleet.replay passes its own do_step to reuse recorded results."""
+def run_steps(run_id, plan, lost, cap_usd=None, do_step=do_step, fix_retries=0):
+    """Run every uncommitted step, write-ahead. fleet.replay passes its own do_step to reuse recorded results.
+
+    Fix loop: when a step after a prompt step fails, and fewer than fix_retries retries were made in this
+    process, the last prompt step before it runs again with the error appended, then every step after it.
+    The recorded command_hash stays the plan's, so a resume still matches the plan.
+    """
     done = committed_seqs(run_id)
     if done:
         print(f"resuming {run_id}, {len(done)} step(s) already committed")
-
-    for seq, intent, cmd, _ in plan:
+    feedback = None  # (seq, intent, error) of the failure the next prompt step must fix
+    retries = 0
+    i = 0
+    while i < len(plan):
+        seq, intent, cmd, _ = plan[i]
+        i += 1
         if seq in done:
             print(f"  step {seq}  already committed, skipping")
             continue
@@ -361,12 +401,23 @@ def run_steps(run_id, plan, lost, cap_usd=None, do_step=do_step):
 
         fail_if_lost(run_id, seq, lost)
         try:
-            result = do_step(cmd, run_id, seq, cap_usd)  # <-- the side effect
+            result = do_step(with_feedback(cmd, feedback), run_id, seq, cap_usd)  # <-- the side effect
         except RuntimeError as e:
             fail_if_lost(run_id, seq, lost)  # a step killed for a lost claim reports why
+            p = last_prompt_index(plan, i - 1)
+            if retries < fix_retries and p is not None:
+                retries += 1
+                record_retry(run_id, seq, str(e), plan[p][0], retries)
+                print(f"  step {seq}  {intent}  -> failed; fix retry {retries}/{fix_retries} from step {plan[p][0]}")
+                feedback = (seq, intent, str(e))
+                done -= {s for s, *_ in plan[p:]}
+                i = p
+                continue
             record_failure(run_id, seq, str(e))
             raise
         fail_if_lost(run_id, seq, lost)  # the step may have finished before the kill reached it
+        if is_prompt(cmd):
+            feedback = None
 
         # ---- record the commit AFTER ----
         with db.write() as con:
@@ -576,6 +627,8 @@ if __name__ == "__main__":
     parser.add_argument("--force", action="store_true", help="resume a halted run")
     parser.add_argument("--target", default="main", help="the branch fleet.merge lands on; a plan that declares files may not run on it")
     parser.add_argument("--allow-claude", metavar="USD", type=float, help="run prompt steps, each capped at this many USD (billed)")
+    parser.add_argument("--fix-retries", metavar="N", type=int, default=0,
+                        help="when a step after a prompt step fails, rerun the prompt step with the error, up to N times (each billed)")
     args = parser.parse_args()
     stop_on_sigterm()
     if not args.plan:
@@ -598,4 +651,4 @@ if __name__ == "__main__":
     else:
         run_id = db.start_run("worker-1", args.plan or "six step demo")
         print(f"run {run_id} started")
-    execute(run_id, plan, branch, args.target, args.allow_claude)
+    execute(run_id, plan, branch, args.target, args.allow_claude, args.fix_retries)

@@ -8,7 +8,9 @@ Decisions not made yet. When one is answered, record it in `decision-log.md`, ad
 
 **Blocks.** Nothing yet.
 
-**Settled by.** Deciding where to start; the note proposes the fix loop first, tested free with a fake `claude`.
+**Partly settled** 2026-11-13: the fix loop came first and is built (`--fix-retries`, decision log). The rest of section 6 of `overnight-design.md` is still open.
+
+**Settled by.** The paid fix-loop test, then the decisions on `/fleet-plan`, the night's queue and the morning report.
 
 ## What should Iterum's reports look like, and where?
 

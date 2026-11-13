@@ -2,6 +2,14 @@
 
 Items moved here from `todo.md` once done. Newest first.
 
+## Fix loop in `fleet.run`
+
+Completed 2026-11-13. From `overnight-design.md` section 5, step 1 (not in `todo.md`).
+
+**Change.** `--fix-retries N` on `fleet.run` (decision log, 2026-11-13). New: `fail_step()`, `record_retry()`, `last_prompt_index()`, `with_feedback()`, and the `fix.retry` event.
+
+**Evidence.** A scratch git repo, a scratch database and a fake `claude` on `PATH` that writes `return "helo"` until its prompt contains `check failed: greet`. Plan: prompt step, check, commit. Before the change: step 2 fails, run `failed`. With `--fix-retries 2`: step 2 fails, `fix.retry` attempt 1, step 1 reruns with the assertion text in its prompt, steps 2 and 3 commit, run `done`. A fake that never fixes: two retries, then `failed`, exit 1. No flag: as before. `eval add` on the retried run: `not replayable: it has ['fix.retry']`. The built-in plan: six steps committed.
+
 ## Rewrite the project site's intro for overnight work
 
 Completed 2026-11-13. Not from `todo.md`: the old intro ("a small Python harness ... built on one SQLite file") assumed readers already knew what a harness is.
