@@ -161,7 +161,7 @@ Checks: `fleet.merge_drill` and `fleet.claims_drill` still pass; a land without 
 
 ### 4. A fixed default database
 
-Decided 2026-11-13 (decision log): `$XDG_DATA_HOME/iterum/agent.db`, else `~/.local/share/iterum/agent.db`; move the existing database; create on first use. Built the same day (`db.default_path()`, `db.init()` creates the folder): resolution checked with `XDG_DATA_HOME` unset, empty, relative and absolute, and under `ITERUM_DB`; from three folders outside the repo, `status`, `receiver`, `run` and `check_receiver()` named the one default database and no folder got a stray `agent.db`; the three drills pass. Left: move the real database.
+Decided 2026-11-13 (decision log): `$XDG_DATA_HOME/iterum/agent.db`, else `~/.local/share/iterum/agent.db`; move the existing database; create on first use. Built the same day (`db.default_path()`, `db.init()` creates the folder): resolution checked with `XDG_DATA_HOME` unset, empty, relative and absolute, and under `ITERUM_DB`; from three folders outside the repo, `status`, `receiver`, `run` and `check_receiver()` named the one default database and no folder got a stray `agent.db`; the three drills pass. The real database moved there the same day while nothing had it open: 51 runs, 1,056 events and its SHA-256 the same before and after, integrity check ok, and `iterum status` from `/` with no `ITERUM_DB` shows it. Increment 4 done 2026-11-13.
 
 ```mermaid
 flowchart TD
