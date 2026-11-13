@@ -9,7 +9,7 @@ import json
 from datetime import datetime
 from html import escape
 
-from fleet.report_html import CSS, STEP_STATUS, clock, duration, usd, worked_until
+from fleet.report_html import STEP_STATUS, clock, duration, page, usd, worked_until
 
 EXTRA_CSS = "tr.fail td { color: var(--critical); } pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: .8rem; margin: 4px 0; }"
 
@@ -85,9 +85,8 @@ def render(run):
     tiles = [(escape(run["status"]), failed), (duration(run["started_at"], worked_until(run)), ended_note(run)),
              (sum(s["status"] == "committed" for s in run["steps"]), f'of {len(run["steps"])} steps committed'),
              (usd(run["cost_usd"]), f'{run["requests"]} model requests')]
-    head = (f'<h1>Run {escape(run["run_id"])}</h1><p class="meta">{escape(run["plan"])} &middot; {escape(run["agent"])} &middot; {escape(run["db"])}</p>'
-            '<div class="tiles">' + "".join(f'<div class="card tile"><div class="v">{v}</div><div class="k">{k}</div></div>' for v, k in tiles) + "</div>")
+    tiles_html = '<div class="tiles">' + "".join(f'<div class="card tile"><div class="v">{v}</div><div class="k">{k}</div></div>' for v, k in tiles) + "</div>"
     body = (f'<h2>Steps</h2><div class="card">{timeline(run)}</div>'
             f'<h2>Events</h2>{events_table(run)}<h2>Merges</h2>{merges_table(run)}')
-    return (f'<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">'
-            f'<title>Iterum run {escape(run["run_id"])}</title><style>{CSS}{EXTRA_CSS}</style></head><body><main>{head}{body}</main></body></html>')
+    return page(f'Iterum run {run["run_id"]}', "Run report", escape(run["run_id"]),
+                f'{escape(run["plan"])} &middot; {escape(run["agent"])} &middot; {escape(run["db"])}', tiles_html + body, EXTRA_CSS)

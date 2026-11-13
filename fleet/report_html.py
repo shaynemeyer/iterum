@@ -6,44 +6,68 @@ palette (categorical slots 1-8, status good/warning/critical), validated light a
 
 from datetime import datetime
 from html import escape
+from pathlib import Path
 
 SERIES = 8  # categorical slots; further models fold into "other"
 STEP_STATUS = {"committed": "good", "failed": "critical", "proposed": "warning"}
 
 CSS = """
 :root { color-scheme: light;
-  --page: #f9f9f7; --surface: #fcfcfb; --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781;
-  --grid: #e1e0d9; --axis: #c3c2b7; --ring: rgba(11,11,11,0.10);
+  --page: #f4f8f7; --surface: #ffffff; --ink: #1e293b; --ink-2: #52606d; --muted: #7b8a96;
+  --grid: #e3ecea; --axis: #c3d3cf; --ring: #d7e3e0; --accent: #0b7a6e; --band: #1e293b; --band-ink: #e8f3f1;
   --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100; --s5: #e87ba4; --s6: #008300; --s7: #6250d6; --s8: #e34948;
-  --other: #898781; --good: #0ca30c; --warning: #fab219; --critical: #d03b3b; }
+  --other: #898781; --good: #0ca30c; --warning: #fab219; --serious: #ec835a; --critical: #d03b3b;
+  --display: "Bricolage Grotesque", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { color-scheme: dark;
-  --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7; --grid: #2c2c2a; --axis: #383835; --ring: rgba(255,255,255,0.10);
+  --page: #0e1520; --surface: #162030; --ink: #e8f3f1; --ink-2: #9fb0bd; --grid: #213049; --axis: #33445f; --ring: #24324a; --accent: #5cc8b8; --band: #0b1220;
   --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #008300; --s7: #9085e9; --s8: #e66767; } }
 :root[data-theme="dark"] { color-scheme: dark;
-  --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7; --grid: #2c2c2a; --axis: #383835; --ring: rgba(255,255,255,0.10);
+  --page: #0e1520; --surface: #162030; --ink: #e8f3f1; --ink-2: #9fb0bd; --grid: #213049; --axis: #33445f; --ring: #24324a; --accent: #5cc8b8; --band: #0b1220;
   --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #008300; --s7: #9085e9; --s8: #e66767; }
 * { box-sizing: border-box; }
-body { margin: 0; background: var(--page); color: var(--ink); font: 15px/1.5 system-ui, -apple-system, sans-serif; }
+body { margin: 0; background: var(--page); color: var(--ink); font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
+.band { background: var(--band); color: var(--band-ink); }
+.band .in { max-width: 960px; margin: 0 auto; padding: 14px 16px; display: flex; align-items: center; gap: 10px; font-family: var(--mono); font-weight: 700; }
+.band svg { width: 28px; height: 28px; border-radius: 6px; flex: none; }
+.band .kind { margin-left: auto; font-weight: 400; font-size: .8rem; letter-spacing: .12em; text-transform: uppercase; opacity: .75; }
 main { max-width: 960px; margin: 0 auto; padding: 24px 16px 48px; }
-h1 { font-size: 1.5rem; margin: 0 0 4px; } h2 { font-size: 1.05rem; margin: 32px 0 8px; }
+h1, h2 { font-family: var(--display); letter-spacing: -.02em; line-height: 1.15; }
+h1 { font-size: clamp(1.7rem, 4vw, 2.3rem); font-weight: 800; margin: 0 0 6px; }
+h2 { font-size: 1.15rem; font-weight: 700; margin: 34px 0 10px; }
+code { font-family: var(--mono); font-size: .85em; }
 .meta, .muted { color: var(--ink-2); font-size: .85rem; overflow-wrap: anywhere; }
-.card { background: var(--surface); border: 1px solid var(--ring); border-radius: 8px; padding: 12px 16px; }
+.card { background: var(--surface); border: 1px solid var(--ring); border-radius: 10px; padding: 12px 16px; }
 .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
-.tile .v { font-size: 1.6rem; font-weight: 600; } .tile .k { color: var(--ink-2); font-size: .85rem; }
+.tile .v { font-family: var(--display); font-size: 1.7rem; font-weight: 700; } .tile .k { color: var(--ink-2); font-size: .85rem; }
 .scroll { overflow-x: auto; }
 table { border-collapse: collapse; width: 100%; font-size: .88rem; }
 th { text-align: left; color: var(--ink-2); font-weight: 500; border-bottom: 1px solid var(--axis); padding: 6px 8px; }
 td { border-bottom: 1px solid var(--grid); padding: 6px 8px; vertical-align: top; }
 td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
-code { font-size: .85em; }
 .dot { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
 .legend { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: .85rem; color: var(--ink-2); margin: 4px 0 8px; }
 .flag { list-style: none; padding: 0; margin: 0; } .flag li { padding: 4px 0; }
 svg text { fill: var(--muted); font-size: 11px; }
 details summary { cursor: pointer; color: var(--ink-2); font-size: .85rem; margin-top: 8px; }
 td.steps { white-space: nowrap; }
-@media print { tr, .card { break-inside: avoid; } }
+@media print { .band { background: none; color: var(--ink); border-bottom: 1px solid var(--ring); } tr, .card { break-inside: avoid; } }
 """
+
+LOGO = Path(__file__).resolve().parent.parent / "assets" / "favicon.svg"
+
+
+def logo():
+    """The Iterum mark, unmodified, inline; empty when assets/ is not beside fleet/ (a non-editable install)."""
+    return LOGO.read_text() if LOGO.exists() else ""
+
+
+def page(title, kind, heading, meta, body, extra_css=""):
+    """A whole report page: the masthead band, then the heading, meta line and body."""
+    return (f'<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">'
+            f'<title>{escape(title)}</title><style>{CSS}{extra_css}</style></head><body>'
+            f'<div class="band"><div class="in">{logo()}<span>iterum</span><span class="kind">{escape(kind)}</span></div></div>'
+            f'<main><h1>{heading}</h1><p class="meta">{meta}</p>{body}</main></body></html>')
 
 
 def clock(ts):
@@ -181,13 +205,12 @@ def quiet(data):
 
 def render(data):
     """The whole page for one day's report."""
-    head = (f'<h1>Iterum: {escape(data["date"])}</h1><p class="meta">{escape(data["device"] or "-")} &middot; '
-            f'{escape(data["db"])} &middot; generated {datetime.fromtimestamp(data["generated_at"]).strftime("%Y-%m-%d %H:%M")}</p>')
+    meta = (f'{escape(data["device"] or "-")} &middot; {escape(data["db"])} &middot; '
+            f'generated {datetime.fromtimestamp(data["generated_at"]).strftime("%Y-%m-%d %H:%M")}')
     body = (f'<h2>Needs a person</h2>{person_list(data["needs_person"])}'
             f'<h2>The day in numbers</h2>{tiles(data["numbers"])}'
             f'<h2>Runs</h2>{runs_table(data["runs"])}'
             + (f'<h2>Earlier runs with activity</h2>{earlier_table(data["earlier_runs"])}' if data["earlier_runs"] else "") +
             f'<h2>Spend by hour</h2><div class="card">{spend_chart(data["spend_by_hour"])}</div>'
             f'<h2>Landed</h2>{landed_table(data["landed"])}')
-    return (f'<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">'
-            f'<title>Iterum report {escape(data["date"])}</title><style>{CSS}</style></head><body><main>{head}{body}</main></body></html>')
+    return page(f'Iterum report {data["date"]}', "Daily report", escape(data["date"]), meta, body)

@@ -8,10 +8,10 @@ legend and a table. A plan's runs are dots: filled when the run finished, hollow
 from datetime import date
 from html import escape
 
-from fleet.report_html import CSS, model_colours, usd
+from fleet.report_html import model_colours, page, usd
 
 STATUS_TONE = {"done": "good", "failed": "critical", "halted": "serious", "budget_exhausted": "warning", "running": "warning"}
-EXTRA_CSS = ":root { --serious: #ec835a; } .bar { display: inline-block; height: 8px; border-radius: 2px; background: var(--critical); vertical-align: 0; }"
+EXTRA_CSS = ".bar { display: inline-block; height: 8px; border-radius: 2px; background: var(--critical); vertical-align: 0; }"
 
 
 def status_colours(statuses):
@@ -153,8 +153,5 @@ def render(data):
             f'<h2>Failures by stage</h2>{stages_table(data["stages"])}'
             f'<h2>Cost per plan</h2><div class="card">{plans_chart(data["plans"])}</div>'
             f'<h2>Context per session</h2>{context_table(data["context"])}')
-    head = (f'<h1>Iterum: {escape(data["first"])} to {escape(data["last"])}</h1>'
-            f'<p class="meta">{data["days"]} days &middot; {escape(data["db"])}</p>')
-    return (f'<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">'
-            f'<title>Iterum report {escape(data["first"])} to {escape(data["last"])}</title><style>{CSS}{EXTRA_CSS}</style></head>'
-            f'<body><main>{head}{body}</main></body></html>')
+    return page(f'Iterum report {data["first"]} to {data["last"]}', f'{data["days"]}-day report',
+                f'{escape(data["first"])} to {escape(data["last"])}', f'{data["days"]} days &middot; {escape(data["db"])}', body, EXTRA_CSS)

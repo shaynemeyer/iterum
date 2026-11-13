@@ -18,14 +18,6 @@ Raised 2026-11-13. `iterum report` writes an HTML page (and a PDF with `--pdf`) 
 
 **Settled by.** What the CSVs are for (a spreadsheet, another tool, sharing): one specific table favours option 2.
 
-## Navigation between reports
-
-Raised 2026-11-13. Daily reports pile up in `reports/` with nothing linking them. Each page could link to the previous and next report that exists, and `iterum report` could rewrite an `index.html` in `reports/` listing every report, newest first (date or range, runs, spend). Plain links, no scripts. To check: the links resolve from both the HTML and a PDF's folder, and a day with no report (nothing written) is skipped, not linked.
-
 ## Readable small values in report charts
 
 Raised 2026-11-13. On a linear scale, small spend vanishes beside a large day: Haiku's spend on 2026-11-12 is invisible next to the $2.02 Opus hour, and one costly plan squeezes the cost-per-plan dots. Options: a total label on each bar, a log-scale option, or a second chart for the small series. The table views and hover titles already give the values. Settled by whether the charts are read for totals or for small series.
-
-## Iterum's look for reports
-
-Raised 2026-11-13. The report pages use a plain system font and the dataviz reference colours. They could take the gh-pages site's fonts, page colours and the Septa logo in the header, so a report reads as Iterum. Chart colours stay as they are (validated for colour-blind safety, light and dark). Wait until the reports have been used for a while.

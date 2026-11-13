@@ -119,6 +119,15 @@ Checks: start a scratch `fleet.run`, watch its steps appear; the server refuses 
 
 Only once `tasks` and `eval_results` hold real rows. Checks as in increment 2.
 
+## Making the reports look like Iterum
+
+Asked for 2026-11-13: Iterum's look, a richer layout, links between pages, and interactivity (taken from `ideas.md`). Four steps, each checked before the next; interactivity last, because it is the only one that adds a script.
+
+1. **Iterum's look.** Done 2026-11-13: one shared `page()` in `fleet/report_html.py` gives all three pages the site's page and surface colours (light and dark), its heading and code fonts by name, and a masthead with the Iterum mark (`assets/favicon.svg`, inline and unmodified, as `assets/LICENSE.md` allows; omitted when `assets/` is not beside `fleet/`). The fonts are named, not fetched: the site loads them from Google Fonts, which would make every report a network request, so a report uses them only if they are installed and otherwise the system font. The chart colours were re-validated on the new surfaces (white, and `#162030` in dark): the same results as before, slot 3 under 3:1 on light (table views carry it), and warning and serious under 3:1 on light as the palette documents (every status mark is labelled). Checks: day, multi-day and run pages render in light and dark, with the logo; none scrolls sideways at 390 px; no `<script>` and no `https://` in a page; the PDF shows the masthead in print colours.
+2. **Links between pages.** Run ids link to run pages; previous and next day; `reports/index.html` listing every report.
+3. **Richer layout.** A summary banner (all clear, or what needs a person), sparklines in the tiles, tidier tables.
+4. **Interactivity.** Sortable tables, hover tooltips, a theme toggle: inline script only, still offline.
+
 ## Decisions to make before building
 
 1. Confirm today's report (A, one day) as the first target, and whether B, C, D or E follow at all.
