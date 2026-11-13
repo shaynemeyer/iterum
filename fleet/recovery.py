@@ -43,14 +43,21 @@ def dead_runs(idle_seconds=IDLE_SECONDS):
 
 
 def resume_is_safe(run_id, max_attempts=MAX_ATTEMPTS):
-    """Validate against retry history before restarting anything."""
+    """Validate against retry history before restarting anything.
+
+    A step's attempts are its step.proposed events less the fix loop's reruns of it: each fix.retry
+    reran every step from its prompt_seq to its failed seq once, and --fix-retries already bounds those.
+    """
     con = db.connect()
     try:
         row = con.execute(
-            "SELECT seq, COUNT(*) AS attempts FROM events"
-            " WHERE run_id=? AND kind='step.proposed' AND seq IS NOT NULL"
-            " GROUP BY seq ORDER BY attempts DESC LIMIT 1",
-            (run_id,),
+            "SELECT p.seq, COUNT(*) - ("
+            "   SELECT COUNT(*) FROM events f WHERE f.run_id=? AND f.kind='fix.retry'"
+            "   AND json_extract(f.payload, '$.prompt_seq') <= p.seq AND f.seq >= p.seq"
+            " ) AS attempts FROM events p"
+            " WHERE p.run_id=? AND p.kind='step.proposed' AND p.seq IS NOT NULL"
+            " GROUP BY p.seq ORDER BY attempts DESC LIMIT 1",
+            (run_id, run_id),
         ).fetchone()
     finally:
         con.close()

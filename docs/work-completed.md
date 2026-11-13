@@ -2,6 +2,18 @@
 
 Items moved here from `todo.md` once done. Newest first.
 
+## `iterum recovery` leaves out the fix loop's reruns
+
+Completed 2026-11-13. Moved from `todo.md` (fix loop follow-ups):
+
+> **`iterum recovery` may halt a retried run.** It halts a failed run whose most-proposed step reached `--max-attempts` (default 3); with 2 retries the prompt step is proposed 3 times. Not reproduced.
+
+**Reproduced.** On a copy of a run that failed after two fix retries and was never resumed, `iterum recovery` printed `HALT ... (step 2 already proposed 3 times)` and halted it; a run that failed once without retries got `RESUME (ok)`.
+
+**Change.** `resume_is_safe()` counts a step's `step.proposed` events less the `fix.retry` events whose range (`prompt_seq` to the failed `seq`) covers it (decision log, 2026-11-13).
+
+**Evidence.** The retried run: `RESUME (ok)`, stays `failed`. A shell-only run failing three times through two resumes: `HALT (step 1 already proposed 3 times)`. The retried run resumed once: `RESUME (ok)` (4 proposals, 2 from retries); resumed twice: `HALT (step 2 already proposed 3 times)`.
+
 ## A failed shell step keeps stdout, without color codes
 
 Completed 2026-11-13. Moved from `todo.md` (fix loop follow-ups):

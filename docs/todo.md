@@ -25,8 +25,7 @@ How this work has been done, and should continue: one small step at a time; repr
 
 Status: open, 2026-11-13. The loop is built (`work-completed.md`).
 
-1. **`iterum recovery` may halt a retried run.** It halts a failed run whose most-proposed step reached `--max-attempts` (default 3); with 2 retries the prompt step is proposed 3 times. Not reproduced.
-2. **Paid test**, with the user's OK: one Haiku feature with `--fix-retries`, to see whether a retry fixes a real mistake.
+1. **Paid test**, with the user's OK: one Haiku feature with `--fix-retries`, to see whether a retry fixes a real mistake.
 
 ## The `pgid` write window
 

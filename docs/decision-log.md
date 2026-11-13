@@ -2,6 +2,18 @@
 
 Decisions and why they were made. Newest first. Entries are never deleted; a decision that is reversed is marked "Superseded by" the entry that replaces it. Open decisions live in `open-questions.md`.
 
+## 2026-11-13: `--max-attempts` leaves out the fix loop's reruns
+
+**Decision.** `fleet.recovery`'s attempt count for a step is its `step.proposed` events less the `fix.retry` events covering it, so `--max-attempts` limits restarts and `--fix-retries` limits the fix loop.
+
+**Context.** With the defaults, `--fix-retries 2` reproposes the prompt and check steps twice, so a run that failed after its retries had 3 proposals and was halted without ever being resumed (reproduced, `work-completed.md`).
+
+**Alternatives.** Leave it and document it (a halted run only needs `--force`, and nothing resumes runs by itself yet, but the overnight work would); count only process starts (the ledger has no per-process event to count). A run killed partway through a retry pass is undercounted by one for the steps that pass did not reach.
+
+**Evidence.** `work-completed.md`, 2026-11-13.
+
+**Affects.** `fleet/recovery.py`, `resume_is_safe()`.
+
 ## 2026-11-13: The fix loop is opt-in, feeds back 2,000 characters, and counts retries per process
 
 **Decision.** `fleet.run --fix-retries N` (default 0): when a step after a prompt step fails, the last prompt step before it reruns with the failing step's error (last 2,000 characters) appended, then every step after it. Each attempt is logged (`step.failed`, `fix.retry`); the run fails as before once retries run out. Each retry gets the full per-step cap and passes the ceiling check like any step. Retries count per process.
