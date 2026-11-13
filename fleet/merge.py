@@ -170,12 +170,22 @@ def checked_out(repo, target):
     return f"branch refs/heads/{target}" in lines
 
 
+def held_fences(run_id):
+    """{resource: fence} for every claim the run still holds, live or expired; land() checks they are live."""
+    con = db.connect()
+    try:
+        rows = con.execute("SELECT resource, fence FROM claims WHERE run_id=? ORDER BY resource", (run_id,))
+        return {r["resource"]: r["fence"] for r in rows}
+    finally:
+        con.close()
+
+
 def main():
     parser = argparse.ArgumentParser(prog="uv run python -m fleet.merge")
     parser.add_argument("branch")
     parser.add_argument("--run-id", required=True)
     parser.add_argument("--fence", action="append", default=[], metavar="RESOURCE=FENCE",
-                        help="one per changed file, e.g. file:src/a.py=3")
+                        help="one per changed file, e.g. file:src/a.py=3; default: every claim the run holds")
     parser.add_argument("--repo", default=".")
     parser.add_argument("--target", default="main")
     parser.add_argument("--check", metavar="COMMAND",
@@ -187,7 +197,12 @@ def main():
     if checked_out(args.repo, args.target):
         sys.exit(f"refused: {args.target} is checked out in a worktree; landing would leave its index behind")
     db.init()
-    lock = Path(_git(args.repo, "rev-parse", "--path-format=absolute", "--git-common-dir")) / "iterum-merge.lock"
+    if not fences:
+        fences = held_fences(args.run_id)
+        if not fences:
+            sys.exit(f"refused: run {args.run_id} holds no claims; pass --fence")
+        print("fences from the database: " + " ".join(f"{r}={f}" for r, f in fences.items()))
+    lock =Path(_git(args.repo, "rev-parse", "--path-format=absolute", "--git-common-dir")) / "iterum-merge.lock"
     with open(lock, "w") as f:
         fcntl.flock(f, fcntl.LOCK_EX)  # one merge process per repo, so reconcile() sees no merge in flight
         reconcile(args.repo)

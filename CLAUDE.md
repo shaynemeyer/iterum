@@ -28,7 +28,7 @@ uv run python -u -m fleet.kill_drill                      # SIGKILL a worker mid
 uv run python -m fleet.view [trace <run_id> | stages [days] | context [session]]   # live sessions and runs, one run's trace, failures per stage, or context size per request
 uv run python -u -m fleet.telemetry [--port 4318]                # receive Claude Code telemetry; settings in .env.example
 uv run python -m fleet.governor [set <usd>]               # show the fleet's spend ceiling and headroom, or set the ceiling
-uv run python -m fleet.merge <branch> --run-id R --fence file:path=N [--repo .] [--target main] [--check CMD]   # land a branch if every changed file has a live claim (and CMD passes on the merged tree)
+uv run python -m fleet.merge <branch> --run-id R [--fence file:path=N ...] [--repo .] [--target main] [--check CMD]   # land a branch if every changed file has a live claim (and CMD passes on the merged tree); without --fence, the run's claims from the database
 uv run python -u -m fleet.merge_drill                     # drive the merge gate through refusals, the lock and a crash (a few seconds)
 uv run python -u -m fleet.claims_drill                    # fleet.run's declared claims: refusal, resume, renewal, paused-agent takeover (about 50s)
 uv run python -m fleet.approve [approve|deny <fingerprint> <who> | freeze <who> "<reason>" | thaw <who>]   # pending approvals and the freeze, or settle/change them

@@ -151,6 +151,8 @@ Plain text first, standard library only. Checks: a scratch database seeded with 
 
 ### 3. Shortcuts
 
+Progress 2026-11-13: `fleet.merge` without `--fence` lands with every claim the run holds (`held_fences()`). Same outcome as the pasted fences when the claim is live (lands) or expired (same refusal); where another run took the file over, both refuse (pasted: "behind the current"; from the database: "holds no claims"). `fleet.run` still prints the `--fence` command, which `fleet.claims_drill` reads back. Left: `who` defaults, `prog=` names.
+
 - `iterum land <branch>` reads the run's claims and fences from the database instead of a pasted `--fence` list; `--run-id` stays required unless the branch maps to one run.
 - `who` defaults to `ITERUM_DEVICE` for `freeze`, `thaw` and `approve`.
 - Each module's `prog=` shows `iterum <cmd>` in its usage line when run through the CLI.
