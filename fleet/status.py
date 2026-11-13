@@ -69,18 +69,31 @@ def queue_lines(con):
     return lines, bool(stranded or dead)
 
 
+def person_lines():
+    """Pending approvals and conflicts waiting for a person. Returns (lines, needs_person)."""
+    approvals = approve.pending()
+    conflicts = queue.human_tasks()
+    lines = ["NEEDS A PERSON" + ("" if approvals or conflicts else "  nothing")]
+    for a in approvals:
+        lines.append(f"  approval  {a['fingerprint'][:16]}  {a['action']}  {a['run_id']} step {a['seq']}")
+    for t in conflicts:
+        lines.append(f"  conflict  task {t['task_id']}")
+    return lines, bool(approvals or conflicts)
+
+
 def main():
-    """Print the status screen; exit 1 when a run or task needs a person."""
+    """Print the status screen; exit 1 when a run, task, approval or conflict needs a person."""
     if not Path(db.DB).exists():
         sys.exit(f"no database at {Path(db.DB).resolve()}")
     con = db.connect()
     try:
         runs, runs_need = run_lines(con)
         tasks, tasks_need = queue_lines(con)
-        print("\n".join([header(), "", fleet_line(con), spend_line(), "", *runs, "", *tasks]))
+        person, person_need = person_lines()
+        print("\n".join([header(), "", fleet_line(con), spend_line(), "", *runs, "", *tasks, "", *person]))
     finally:
         con.close()
-    sys.exit(1 if runs_need or tasks_need else 0)
+    sys.exit(1 if runs_need or tasks_need or person_need else 0)
 
 
 if __name__ == "__main__":

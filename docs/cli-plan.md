@@ -112,7 +112,7 @@ Checks:
 
 ### 2. `iterum status`
 
-Progress 2026-11-13: the first slice is built (`fleet/status.py`: FLEET, SPEND, RUNS; exit 1 on a stale or failed run). QUEUE followed (counts by status; stranded = `in_progress` with an expired lease, not yet reaped; dead-lettered with how many wait on each; exit 1 on either). Left: NEEDS A PERSON, CANARY, RECEIVER. Found: `recovery.dead_runs()` returns every failed run ever, so the real `agent.db` exits 1 for two failed runs from 2026-11-12 and always will; to settle before the exit code means anything. Settled the same day: a failed run still needs a person, and `fleet.recovery halt <run_id> "<reason>"` closes one (refused unless `dead_runs()` lists it); a halted run leaves `status`.
+Progress 2026-11-13: the first slice is built (`fleet/status.py`: FLEET, SPEND, RUNS; exit 1 on a stale or failed run). QUEUE followed (counts by status; stranded = `in_progress` with an expired lease, not yet reaped; dead-lettered with how many wait on each; exit 1 on either). NEEDS A PERSON followed (`approve.pending()`, `queue.human_tasks()`; exit 1 on either; a conflict task also counts as `ready` under QUEUE). Left: CANARY, RECEIVER. Found: `recovery.dead_runs()` returns every failed run ever, so the real `agent.db` exits 1 for two failed runs from 2026-11-12 and always will; to settle before the exit code means anything. Settled the same day: a failed run still needs a person, and `fleet.recovery halt <run_id> "<reason>"` closes one (refused unless `dead_runs()` lists it); a halted run leaves `status`.
 
 One screen, read-only, exit 1 when something needs a person. Every line comes from an existing function except stranded tasks, a new query over `tasks` and `leases` (`in_progress` with an expired lease).
 
