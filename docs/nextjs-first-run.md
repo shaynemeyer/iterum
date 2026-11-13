@@ -315,3 +315,12 @@ Run `281e105daebd` on `feat/tags-page`, plan `docs/.local-only/tags-page.json` (
 - The dry run (step 1 `echo dry`, scratch database) failed at step 3 as required, but with "/notes/tags has the wrong title", not "did not answer 200": without the page, `/notes/tags` still answers 200, probably through `app/notes/[slug]`. Not looked into; the check fails either way.
 - The paid run: all 4 steps committed on the first try, so the fix loop never ran (no `fix.retry` or `step.failed`). $0.00143, 4 turns, no denials; 3 `spend.reported` events totalling $0.00143, equal to `claude.finished`'s cost; at most 6,334 tokens per request. The diff is the one new file the prompt named.
 - Landed with `iterum land feat/tags-page --run-id 281e105daebd --check "bun install --frozen-lockfile && bun run build"`, fences read from the database (`file:app/notes/tags/page.tsx=1`): `merge.started`, `merge.landed`, `claim.released`; no check worktree left. `main` is at `bbd3ac5`. Governor headroom $0.6126.
+
+## Results: a page per tag, a second `--fix-retries` run, 2026-11-13
+
+Run `22cee9881c5c` on `feat/tag-pages`, plan `docs/.local-only/tag-pages.json`, run with `--allow-claude 0.05 --fix-retries 2`: (1) a Haiku prompt step creating `app/notes/tags/[tag]/page.tsx`, with no hint about this Next.js version, (2) build, (3) `check-tag-pages.sh`, (4) commit, every step claiming that one file. Picked because the eleventh run's dynamic route tripped a model, to give the fix loop a real mistake.
+
+- The check was proven first in a throwaway worktree: it fails on `main`, passes a hand-written correct page, and fails two wrong pages that build cleanly (`params` not awaited; every note under every tag). The dry run failed at step 3.
+- The paid run: all 4 steps committed on the first try, so the fix loop again never ran. $0.00166, 4 turns, no denials; 3 `spend.reported` events totalling $0.00166, equal to `claude.finished`'s cost; at most 6,735 tokens per request. The page types `params` as a `Promise` and awaits it, prerenders every tag and calls `notFound()` for an unknown one; the diff is the one new file.
+- Two Haiku runs with `--fix-retries` (this and the tags page), no retry: tasks this size do not produce a mistake reliably enough to test the loop with a real model.
+- Not landed yet; the run printed `iterum land feat/tag-pages --run-id 22cee9881c5c --fence 'file:app/notes/tags/[tag]/page.tsx=1'`.
