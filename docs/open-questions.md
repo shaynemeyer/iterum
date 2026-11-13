@@ -24,6 +24,16 @@ Decisions not made yet. When one is answered, record it in `decision-log.md`, ad
 
 **Settled by.** Choosing (a) to (d), where the default database lives, and whether a first dependency (Rich) is acceptable for the dashboard.
 
+## What should Iterum's reports look like, and where?
+
+**Context.** Everything is in `agent.db`, but it is only visible as text over seven commands, which answer "what is the state now" and not "how did today go" or "how is this changing". Proposed first target (2026-11-13): an HTML file of the current day's work, written by Iterum and shown back to the user. Sections, sources and increments are in `reporting-plan.md`.
+
+**Options.** (A) A static HTML file from `agent.db`, standard library and inline SVG, nothing leaving the machine; (B) the same page served live on `127.0.0.1`; (C) Rich in the terminal (first dependency); (D) a Textual TUI; (E) a published page, which needs local paths and session ids scrubbed first.
+
+**Blocks.** Nothing. Independent of `cli-plan.md`; becomes `iterum report` once that lands.
+
+**Settled by.** Confirming A as the first target, where report files are written, how a run that spans midnight counts, and whether `fleet.run` writes the report itself or it stays a command.
+
 ## Should `claude.finished` keep the whole result envelope?
 
 **Context.** `claude_step()` logs only `exit_code`, `session_id`, `total_cost_usd`, `num_turns`, `is_error` and `permission_denials`. The first paid run (2026-11-11) therefore kept no full copy of a success envelope for `claude-step-design.md`. Its `num_turns` was 5 against 3 API requests in telemetry, for reasons not known. The second Next.js run (`095cf7955377`) reported `num_turns: 11` under `--max-turns 10`, without failing, while its transcript shows about 7 rounds of tool calls; 7 `spend.reported` events arrived.
