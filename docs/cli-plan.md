@@ -68,7 +68,7 @@ Subprocesses already start Python as `sys.executable -m fleet.<module>` (the dri
 | `uv run python -u -m fleet.worker <name> [--budget-s N]` | `iterum worker <name> [--budget-s N]` |
 | `uv run python -m fleet.dlq [redrive <id>]` | `iterum dlq [redrive <id>]` |
 | `uv run python -m fleet.conflicts [resolve <id> "<d>"]` | `iterum conflicts [resolve <id> "<d>"]` |
-| `uv run python -m fleet.approve [approve\|deny\|freeze\|thaw ...]` | `iterum approve ...`, `iterum freeze "<reason>"`, `iterum thaw` |
+| `uv run python -m fleet.approve [approve\|deny\|freeze\|thaw ...]` | `iterum approve <fp>`, `iterum deny <fp>`, `iterum freeze "<reason>"`, `iterum thaw` |
 | `uv run python -m fleet.canary [...]` | `iterum canary [...]` |
 | `uv run python -m fleet.sync sync\|export\|import` | `iterum sync [export\|import]` |
 | `uv run python -m fleet.project` | `iterum project` |
@@ -151,7 +151,7 @@ Plain text first, standard library only. Checks: a scratch database seeded with 
 
 ### 3. Shortcuts
 
-Progress 2026-11-13: `fleet.merge` without `--fence` lands with every claim the run holds (`held_fences()`). Same outcome as the pasted fences when the claim is live (lands) or expired (same refusal); where another run took the file over, both refuse (pasted: "behind the current"; from the database: "holds no claims"). `fleet.run` still prints the `--fence` command, which `fleet.claims_drill` reads back. Left: `who` defaults, `prog=` names.
+Progress 2026-11-13: `fleet.merge` without `--fence` lands with every claim the run holds (`held_fences()`). Same outcome as the pasted fences when the claim is live (lands) or expired (same refusal); where another run took the file over, both refuse (pasted: "behind the current"; from the database: "holds no claims"). `fleet.run` still prints the `--fence` command, which `fleet.claims_drill` reads back. `who` now defaults to `ITERUM_DEVICE` for `approve`, `deny`, `freeze` and `thaw` (the long form still works; neither given exits 2 and writes nothing), and `iterum approve <fp>` / `iterum deny <fp>` map to those subcommands (before, `iterum approve <fp>` took the fingerprint as a command name); pending approvals are listed by `iterum status`. Left: `prog=` names.
 
 - `iterum land <branch>` reads the run's claims and fences from the database instead of a pasted `--fence` list; `--run-id` stays required unless the branch maps to one run.
 - `who` defaults to `ITERUM_DEVICE` for `freeze`, `thaw` and `approve`.

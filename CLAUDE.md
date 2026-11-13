@@ -31,7 +31,7 @@ uv run python -m fleet.governor [set <usd>]               # show the fleet's spe
 uv run python -m fleet.merge <branch> --run-id R [--fence file:path=N ...] [--repo .] [--target main] [--check CMD]   # land a branch if every changed file has a live claim (and CMD passes on the merged tree); without --fence, the run's claims from the database
 uv run python -u -m fleet.merge_drill                     # drive the merge gate through refusals, the lock and a crash (a few seconds)
 uv run python -u -m fleet.claims_drill                    # fleet.run's declared claims: refusal, resume, renewal, paused-agent takeover (about 50s)
-uv run python -m fleet.approve [approve|deny <fingerprint> <who> | freeze <who> "<reason>" | thaw <who>]   # pending approvals and the freeze, or settle/change them
+uv run python -m fleet.approve [approve|deny <fingerprint> [<who>] | freeze [<who>] "<reason>" | thaw [<who>]]   # pending approvals and the freeze, or settle/change them; who defaults to ITERUM_DEVICE
 uv run python -m fleet.canary [--baseline-hours 24] [--window-hours 1] [--tolerance 0.5]   # flag recent runs whose median events, seconds or cost moved past tolerance
 uv run python -m fleet.eval [--json | add <name> <run_id> [--expect JSON]]   # replay every eval case (exit 1 if a regression case fails), print {case: passed}, or add one from a run
 uv run python -m fleet.scorecard <before> [<after>]          # eval cases at two git revisions (default after: the working tree); exit 1 if one broke

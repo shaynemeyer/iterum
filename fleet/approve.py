@@ -13,6 +13,7 @@ mutable control state; the append-only record is the event logged with it.
 import argparse
 import hashlib
 import json
+import os
 import sys
 import time
 
@@ -132,15 +133,18 @@ def show():
 def main():
     parser = argparse.ArgumentParser(prog="uv run python -m fleet.approve")
     commands = parser.add_subparsers(dest="command")
+    who = {"nargs": "?", "default": os.environ.get("ITERUM_DEVICE"), "help": "default: ITERUM_DEVICE"}
     for name in ("approve", "deny"):
         cmd = commands.add_parser(name)
         cmd.add_argument("fingerprint")
-        cmd.add_argument("who")
+        cmd.add_argument("who", **who)
     cmd = commands.add_parser("freeze")
-    cmd.add_argument("who")
+    cmd.add_argument("who", **who)
     cmd.add_argument("reason")
-    commands.add_parser("thaw").add_argument("who")
+    commands.add_parser("thaw").add_argument("who", **who)
     args = parser.parse_args()
+    if args.command and not args.who:
+        parser.error("give who, or set ITERUM_DEVICE")
 
     db.init()  # a fresh agent.db has no tables yet; safe to repeat
     if args.command in ("approve", "deny"):
