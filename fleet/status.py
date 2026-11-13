@@ -1,11 +1,13 @@
-"""One screen of fleet state: freeze, spend, runs and queue. Reads only; exits 1 when something needs a person.
+"""One screen of fleet state: freeze, spend, receiver, runs, queue and what needs a person. Reads only; exits 1 when something needs a person.
 
     uv run python -m fleet.status        (or: iterum status)
 """
 
+import json
 import os
 import sys
 import time
+import urllib.request
 from pathlib import Path
 
 from fleet import approve, db, governor, queue, recovery
@@ -29,6 +31,24 @@ def spend_line():
         return "SPEND     no ceiling set"
     limit, spent, _ = s
     return f"SPEND     ceiling {limit:.2f}  spent {spent:.4f}  headroom {limit - spent:.4f} USD"
+
+
+def receiver_line():
+    """Whether the telemetry receiver answers, and with which database. Informational: no exit code.
+
+    The same probe as fleet.run's check_receiver(): GET on the logs endpoint answers {"db": path}.
+    """
+    endpoint = os.environ.get("OTEL_EXPORTER_OTLP_LOGS_ENDPOINT")
+    if not endpoint:
+        return "RECEIVER  not configured (OTEL_EXPORTER_OTLP_LOGS_ENDPOINT unset; source .env.example)"
+    try:
+        with urllib.request.urlopen(endpoint, timeout=2) as r:
+            receiver_db = json.load(r)["db"]
+    except OSError:
+        return f"RECEIVER  not answering at {endpoint}"
+    if receiver_db != str(Path(db.DB).resolve()):
+        return f"RECEIVER  up at {endpoint}, but writing to {receiver_db}"
+    return f"RECEIVER  up at {endpoint}, writing to this database"
 
 
 def run_lines(con):
@@ -90,7 +110,7 @@ def main():
         runs, runs_need = run_lines(con)
         tasks, tasks_need = queue_lines(con)
         person, person_need = person_lines()
-        print("\n".join([header(), "", fleet_line(con), spend_line(), "", *runs, "", *tasks, "", *person]))
+        print("\n".join([header(), "", fleet_line(con), spend_line(), receiver_line(), "", *runs, "", *tasks, "", *person]))
     finally:
         con.close()
     sys.exit(1 if runs_need or tasks_need or person_need else 0)
