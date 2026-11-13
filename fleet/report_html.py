@@ -10,6 +10,7 @@ from pathlib import Path
 
 SERIES = 8  # categorical slots; further models fold into "other"
 STEP_STATUS = {"committed": "good", "failed": "critical", "proposed": "warning"}
+RUN_STATUS = {"done": "good", "failed": "critical", "halted": "serious", "budget_exhausted": "warning", "running": "warning"}
 
 CSS = """
 :root { color-scheme: light;
@@ -55,6 +56,14 @@ td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; white-space:
 svg text { fill: var(--muted); font-size: 11px; }
 details summary { cursor: pointer; color: var(--ink-2); font-size: .85rem; margin-top: 8px; }
 td.steps { white-space: nowrap; }
+tbody tr:hover td, table tr:hover td { background: color-mix(in srgb, var(--accent) 6%, transparent); }
+.pill { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.pill i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.banner { display: flex; align-items: center; gap: 12px; margin: 18px 0 8px; padding: 12px 16px; border-radius: 10px; border: 1px solid var(--ring);
+  border-left: 5px solid var(--tone); background: color-mix(in srgb, var(--tone) 10%, var(--surface)); font-weight: 600; }
+.banner .icon { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--tone); color: #fff; font-size: .9rem; flex: none; }
+.spark { display: block; margin-top: 8px; } .spark polyline { fill: none; stroke: var(--accent); stroke-width: 2; }
+.spark circle { fill: var(--accent); } .spark .base { stroke: var(--grid); }
 @media print { .band { background: none; color: var(--ink); border-bottom: 1px solid var(--ring); } tr, .card { break-inside: avoid; } }
 """
 
@@ -109,6 +118,31 @@ def worked_until(run):
     """
     ends = [s["ended_at"] or s["started_at"] for s in run["steps"]]
     return max(ends) if ends else run["ended_at"]
+
+
+def pill(status):
+    """A run or step status as a coloured dot beside its label, so colour never carries it alone."""
+    tone = RUN_STATUS.get(status) or STEP_STATUS.get(status, "warning")
+    return f'<span class="pill"><i style="background:var(--{tone})"></i>{escape(status)}</span>'
+
+
+def banner(tone, icon, text):
+    """The summary line at the top of a page: an icon and a sentence on the tone's colour."""
+    return f'<div class="banner" style="--tone:var(--{tone})"><span class="icon" aria-hidden="true">{icon}</span><span>{text}</span></div>'
+
+
+def sparkline(points, label):
+    """A small line of (date, value) points, the last one marked, each with a hover title."""
+    if len(points) < 2:
+        return ""
+    w, h, pad = 120, 26, 3
+    top = max(v for _, v in points) or 1
+    xy = [(pad + i * (w - 2 * pad) / (len(points) - 1), h - pad - v / top * (h - 2 * pad)) for i, (_, v) in enumerate(points)]
+    dots = "".join(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{3 if i == len(xy) - 1 else 1.5}"><title>{escape(d)}: {escape(str(v))}</title></circle>'
+                   for i, ((x, y), (d, v)) in enumerate(zip(xy, points)))
+    line = " ".join(f"{x:.1f},{y:.1f}" for x, y in xy)
+    return (f'<svg class="spark" viewBox="0 0 {w} {h}" width="{w}" height="{h}" role="img" aria-label="{escape(label)}">'
+            f'<line class="base" x1="{pad}" y1="{h - pad}" x2="{w - pad}" y2="{h - pad}"/><polyline points="{line}"/>{dots}</svg>')
 
 
 def model_colours(spend_by_hour):
@@ -168,7 +202,7 @@ def runs_table(runs):
         return '<p class="muted">No runs started.</p>'
     rows = "".join(
         f'<tr><td>{clock(r["started_at"])}</td><td>{run_link(r["run_id"])}</td><td>{escape(r["plan"])}</td>'
-        f'<td>{escape(r["status"])}</td><td class=n>{duration(r["started_at"], worked_until(r))}</td>'
+        f'<td>{pill(r["status"])}</td><td class=n>{duration(r["started_at"], worked_until(r))}</td>'
         f'<td class=n>{usd(r["cost_usd"])}</td><td class=steps>{step_strip(r)}</td></tr>' for r in runs)
     return (f'<div class="scroll"><table><tr><th>Started</th><th>Run</th><th>Plan</th><th>Status</th><th class=n>Took</th>'
             f'<th class=n>Cost</th><th>Steps</th></tr>{rows}</table></div>')
@@ -179,7 +213,7 @@ def earlier_table(earlier):
     rows = "".join(
         f'<tr><td>{datetime.fromtimestamp(r["started_at"]).strftime("%Y-%m-%d")}</td><td>{run_link(r["run_id"])}</td>'
         f'<td>{escape(r["plan"])}</td><td>{", ".join(f"{escape(k)}" + (f" &times;{n}" if n > 1 else "") for k, n in r["events"].items())}</td>'
-        f'<td>{escape(r["status"])}</td></tr>' for r in earlier)
+        f'<td>{pill(r["status"])}</td></tr>' for r in earlier)
     return (f'<div class="scroll"><table><tr><th>Started</th><th>Run</th><th>Plan</th><th>That day</th><th>Status now</th></tr>'
             f'{rows}</table></div>')
 
@@ -202,13 +236,16 @@ def person_list(needs):
     return f'<ul class="flag">{"".join(items)}</ul>' if items else '<p class="muted">Nothing.</p>'
 
 
-def tiles(n):
-    """The day in numbers."""
+def tiles(n, trend=()):
+    """The day in numbers, each with a sparkline of the days before it."""
     statuses = ", ".join(f"{v} {escape(k)}" for k, v in sorted(n["runs_by_status"].items())) or "none"
     head = f'{usd(n["headroom_usd"])} headroom of {usd(n["ceiling_usd"])}' if n["ceiling_usd"] is not None else "no ceiling set"
     cells = [(n["runs_started"], f"runs started ({statuses})"), (n["steps_committed"], "steps committed"),
              (n["merges_landed"], f'merges landed, {n["merges_refused"]} refused'), (usd(n["spend_usd"]), f"spent; {head}")]
-    return '<div class="tiles">' + "".join(f'<div class="card tile"><div class="v">{v}</div><div class="k">{k}</div></div>' for v, k in cells) + "</div>"
+    keys = [("runs", "runs started"), ("steps", "steps committed"), ("merges", "merges landed"), ("spend", "spend in USD")]
+    sparks = [sparkline([(t["date"], round(t[key], 4)) for t in trend], f"{label}, last {len(trend)} days") for key, label in keys]
+    return '<div class="tiles">' + "".join(f'<div class="card tile"><div class="v">{v}</div><div class="k">{k}</div>{s}</div>'
+                                           for (v, k), s in zip(cells, sparks)) + "</div>"
 
 
 def quiet(data):
@@ -217,12 +254,21 @@ def quiet(data):
     return not (data["runs"] or data["earlier_runs"] or data["landed"] or n["spend_usd"] or n["merges_refused"] or any(data["needs_person"].values()))
 
 
+def day_banner(data):
+    """'All clear', or how many things need a person."""
+    needs = data["needs_person"]
+    count = sum(len(v) for v in needs.values())
+    if not count:
+        return banner("good", "&#10003;", "All clear: nothing needs a person.")
+    return banner("critical", "!", f'{count} thing{"s" if count > 1 else ""} need{"" if count > 1 else "s"} a person; see below.')
+
+
 def render(data, nav=()):
     """The whole page for one day's report; nav is the masthead's [(label, href)]."""
     meta = (f'{escape(data["device"] or "-")} &middot; {escape(data["db"])} &middot; '
             f'generated {datetime.fromtimestamp(data["generated_at"]).strftime("%Y-%m-%d %H:%M")}')
-    body = (f'<h2>Needs a person</h2>{person_list(data["needs_person"])}'
-            f'<h2>The day in numbers</h2>{tiles(data["numbers"])}'
+    body = (day_banner(data) + f'<h2>Needs a person</h2>{person_list(data["needs_person"])}'
+            f'<h2>The day in numbers</h2>{tiles(data["numbers"], data.get("trend", ()))}'
             f'<h2>Runs</h2>{runs_table(data["runs"])}'
             + (f'<h2>Earlier runs with activity</h2>{earlier_table(data["earlier_runs"])}' if data["earlier_runs"] else "") +
             f'<h2>Spend by hour</h2><div class="card">{spend_chart(data["spend_by_hour"])}</div>'

@@ -8,15 +8,14 @@ legend and a table. A plan's runs are dots: filled when the run finished, hollow
 from datetime import date
 from html import escape
 
-from fleet.report_html import model_colours, page, usd
+from fleet.report_html import RUN_STATUS, banner, model_colours, page, usd
 
-STATUS_TONE = {"done": "good", "failed": "critical", "halted": "serious", "budget_exhausted": "warning", "running": "warning"}
 EXTRA_CSS = ".bar { display: inline-block; height: 8px; border-radius: 2px; background: var(--critical); vertical-align: 0; }"
 
 
 def status_colours(statuses):
     """{status: css colour} from the status palette; unknown statuses read as warning."""
-    return {s: f"var(--{STATUS_TONE.get(s, 'warning')})" for s in statuses}
+    return {s: f"var(--{RUN_STATUS.get(s, 'warning')})" for s in statuses}
 
 
 def axis_labels(dates, left, slot, h):
@@ -141,13 +140,22 @@ def quiet(data):
     return not (data["runs"] or data["spend"]["days"] or data["stages"] or data["plans"])
 
 
+def days_banner(data):
+    """How many runs there were, how many did not finish, and what was spent."""
+    total = sum(sum(d["by_status"].values()) for d in data["runs"])
+    bad = sum(n for d in data["runs"] for s, n in d["by_status"].items() if s != "done")
+    spent = sum(d["total_usd"] for d in data["spend"]["days"])
+    text = f'{total} runs, {bad} not finished, {usd(spent)} spent.'
+    return banner("good", "&#10003;", text) if not bad else banner("serious", "!", text)
+
+
 def render(data, nav=()):
     """The whole page for a multi-day report; nav is the masthead's [(label, href)]."""
     dates = dates_of(data)
     spend = {d["date"]: d["by_model"] for d in data["spend"]["days"]}
     runs = {d["date"]: d["by_status"] for d in data["runs"]}
     statuses = sorted({s for v in runs.values() for s in v})
-    body = (f'<h2>Spend per day</h2><div class="card">{stacked(dates, spend, model_colours(spend), "Spend per day by model", usd) if spend else "<p class=muted>No spend reported.</p>"}</div>'
+    body = (days_banner(data) + f'<h2>Spend per day</h2><div class="card">{stacked(dates, spend, model_colours(spend), "Spend per day by model", usd) if spend else "<p class=muted>No spend reported.</p>"}</div>'
             f'<h2>Spend against the ceiling</h2><div class="card">{since_ceiling(dates, data["spend"])}</div>'
             f'<h2>Runs per day</h2><div class="card">{stacked(dates, runs, status_colours(statuses), "Runs per day by status", str) if runs else "<p class=muted>No runs started.</p>"}</div>'
             f'<h2>Failures by stage</h2>{stages_table(data["stages"])}'

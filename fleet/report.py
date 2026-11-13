@@ -92,6 +92,24 @@ def numbers(con, start, end, day_runs):
     }
 
 
+def trend(con, day, days=7):
+    """[{date, runs, steps, merges, spend}] for the `days` days ending on `day`, oldest first, for the tiles' sparklines."""
+    out = []
+    for back in range(days - 1, -1, -1):
+        d = day - timedelta(days=back)
+        start, end = day_window(d)
+        count = lambda sql, *args: con.execute(sql, args).fetchone()[0]
+        out.append({
+            "date": d.isoformat(),
+            "runs": count("SELECT COUNT(*) FROM runs WHERE started_at>=? AND started_at<?", start, end),
+            "steps": count("SELECT COUNT(*) FROM events WHERE kind='step.committed' AND ts>=? AND ts<?", start, end),
+            "merges": count("SELECT COUNT(*) FROM events WHERE kind='merge.landed' AND ts>=? AND ts<?", start, end),
+            "spend": count("SELECT COALESCE(SUM(json_extract(payload,'$.cost_usd')),0) FROM events WHERE kind=? AND ts>=? AND ts<?",
+                           telemetry.KIND, start, end),
+        })
+    return out
+
+
 def needs_person(con, start, end, now):
     """Merges refused in the window and, when `now` (today's report), what iterum status flags at this moment.
 
@@ -142,6 +160,7 @@ def report(day):
             "db": str(Path(db.DB).resolve()), "generated_at": time.time(),
             "needs_person": needs_person(con, start, end, now=day == date.today()),
             "numbers": numbers(con, start, end, day_runs),
+            "trend": trend(con, day),
             "runs": day_runs,
             "earlier_runs": earlier_runs(con, start, end),
             "spend_by_hour": spend_by_hour(con, start, end),

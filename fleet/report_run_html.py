@@ -9,7 +9,7 @@ import json
 from datetime import datetime
 from html import escape
 
-from fleet.report_html import STEP_STATUS, clock, duration, page, usd, worked_until
+from fleet.report_html import RUN_STATUS, STEP_STATUS, banner, clock, duration, page, usd, worked_until
 
 EXTRA_CSS = "tr.fail td { color: var(--critical); } pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: .8rem; margin: 4px 0; }"
 
@@ -86,7 +86,9 @@ def render(run, nav=()):
              (sum(s["status"] == "committed" for s in run["steps"]), f'of {len(run["steps"])} steps committed'),
              (usd(run["cost_usd"]), f'{run["requests"]} model requests')]
     tiles_html = '<div class="tiles">' + "".join(f'<div class="card tile"><div class="v">{v}</div><div class="k">{k}</div></div>' for v, k in tiles) + "</div>"
+    outcome = f'{escape(run["status"].capitalize())}: {failed}.'
+    icon = "&#10003;" if RUN_STATUS.get(run["status"]) == "good" else "!"
     body = (f'<h2>Steps</h2><div class="card">{timeline(run)}</div>'
             f'<h2>Events</h2>{events_table(run)}<h2>Merges</h2>{merges_table(run)}')
     return page(f'Iterum run {run["run_id"]}', "Run report", escape(run["run_id"]),
-                f'{escape(run["plan"])} &middot; {escape(run["agent"])} &middot; {escape(run["db"])}', tiles_html + body, EXTRA_CSS, nav=nav)
+                f'{escape(run["plan"])} &middot; {escape(run["agent"])} &middot; {escape(run["db"])}', banner(RUN_STATUS.get(run["status"], "warning"), icon, outcome) + tiles_html + body, EXTRA_CSS, nav=nav)
