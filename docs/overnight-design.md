@@ -34,6 +34,14 @@ Every run passed first time, at $0.0011 to $0.0020 per prompt step. Each paid st
 
 1. **A failure ends the work.** When the build or check fails after a prompt step, the run fails and waits for a person. (One earlier run had a model-made syntax error, fixed by hand and resumed.) Working all night needs a **fix loop**: feed the failing step's output back into the prompt step and try again, a few times, within the cap.
 2. **Turning a sentence into a plan.** Today a person, or Claude in a session, writes the plan and check. Idea: a `/fleet-plan` skill that reads the repo, writes the plan, the check script and a short plan document in plain words (files, prompt, build, what the check looks for, model, cap), proves the check fails on `main`, and asks "Implement this feature?". For an overnight run this happens before leaving: the plan and the budget are approved up front, not per step.
+
+   **Rule (user requirement, 2026-11-12): no plan with open questions.** `/fleet-plan` always asks clarifying questions first, and keeps asking until nothing about the feature is unresolved: what it should do, which files, what counts as done (the check), anything the request leaves open. Only then does it write the plan. The plan document ends with an "Open questions" line that must read "None"; if anything is still open, there is no plan and no "Implement?" question. The reason: an unattended run cannot ask, so any ambiguity left at planning time becomes a guess made at night.
+
+   **Rule (user requirement, 2026-11-12): small, parallel chunks.** `/fleet-plan` breaks a feature into small chunks, each one prompt step (or one run), sized to use well under 100K tokens of context, and runs chunks in parallel wherever they can be. The reason is context rot: models use long contexts less reliably, and performance "consistently degrades with increasing input length" (Chroma's report, summarised in `context-rot.md`). 100K is the user's budget, not a threshold from the report, which finds degradation growing with length rather than starting at a fixed size.
+   - **Parallel needs disjoint files.** Two chunks can run at once only if they claim different files; claims would refuse an overlap anyway. Chunks that build on each other run in order, as queue tasks with `depends_on`.
+   - **The plan document shows the breakdown:** each chunk's files, what it depends on, which chunks run in parallel, and an estimated context size.
+   - **Checking the budget after a run is already possible.** Every `spend.reported` event records `input_tokens`, `cache_read_tokens` and `cache_creation_tokens`, and `fleet.view context` sums them per request. The six feature steps of 2026-11-12 peaked at 5,801 to 7,623 tokens per request. Estimating before the run is harder: files read and turns taken are only known afterwards.
+   - **Merged chunks can still break each other,** as the staged refusal showed: each chunk's check passes alone and the merged tree fails. Landing each chunk with `fleet.merge --check` in dependency order catches that.
 3. **The model cannot run anything.** No shell in a prompt step. The fix loop works around it: the harness runs build and tests, the model reads the errors.
 4. **Nothing keeps it moving.** No process resumes a dead run or restarts a dead telemetry receiver. Idea: each feature is a queue task whose work is one `fleet.run` plan, and a worker drains the list overnight.
 5. **A morning report.** Branches that passed and are ready to land; branches that failed, with the failing step's error; cost per feature. Landing stays a morning decision for a person (proposal: no unattended landing).
@@ -46,7 +54,7 @@ Each step is useful alone, so the work can stop after any of them.
    - Free test: a fake `claude` script on `PATH` that writes broken code first and correct code when the prompt contains the error. The check fails once, is fed back, passes.
    - Paid test, with the user's OK: one real Haiku feature where a first try breaks the build, if it happens.
    - Unknown: how often a retry with the error text fixes a real model mistake. The paid test is the first evidence.
-2. **`/fleet-plan`**: sentence to plan document to "Implement this feature?".
+2. **`/fleet-plan`**: sentence, then clarifying questions until none are open, then plan document, then "Implement this feature?". A test: a deliberately vague request must produce questions, not a plan.
 3. **A night's queue and a morning report.**
 
 ## 6. Open decisions
@@ -56,6 +64,8 @@ Each step is useful alone, so the work can stop after any of them.
 - **Retries:** how many, whether each retry gets the full cap, and whether the error text is trimmed (the merge gate keeps the last 2,000 characters of a failed check).
 - **Unattended landing:** proposal no; the morning report lists the land commands.
 - **Budget for a night:** the fleet ceiling as is, or a separate ceiling per night.
+- **The 100K context budget:** how to estimate a chunk's size before running it, and what happens when a run exceeds it (split the chunk and retry, or only report it in the morning).
+- **One chunk, one run, or one queue task?** Parallel chunks need separate branches (each run claims on its own branch); dependent chunks need ordering. Whether a feature becomes several `fleet.run` plans driven by the queue, or one plan with several prompt steps, is open.
 
 ## 7. Related discussion from the same session
 
