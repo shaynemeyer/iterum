@@ -86,9 +86,16 @@ def _default_do_work(task):
 
 
 def _load_do_work():
+    """FLEET_WORK_MODULE's do_work, or the shell runner.
+
+    The current folder is appended to sys.path, as `python -m` would put it first: the
+    `iterum` script starts with only its own folder there. Appended, so a file in the
+    project cannot shadow the standard library.
+    """
     mod = os.environ.get("FLEET_WORK_MODULE")
     if not mod:
         return _default_do_work
+    sys.path.append(os.getcwd())
     return getattr(importlib.import_module(mod), "do_work")
 
 
