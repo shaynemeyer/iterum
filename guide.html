@@ -228,7 +228,7 @@ footer { color: var(--muted); font-size: 0.86rem; border-top: 1px solid var(--li
         <thead><tr><th>Run from</th><th>Commands</th><th>Why there</th></tr></thead>
         <tbody>
           <tr><td><b>App repo</b>, on a feature branch</td><td><code>fleet.run --plan</code><br><code>fleet.merge</code><br><code>fleet.sweep</code></td><td>Steps run in the current folder; the branch check and the landing use this repo.</td></tr>
-          <tr><td><b>Iterum repo</b></td><td><code>fleet.telemetry</code>, <code>fleet.governor</code>, <code>fleet.recovery</code>, <code>fleet.view</code><br><code>fleet.worker</code>, <code>fleet.dlq</code>, <code>fleet.conflicts</code><br><code>fleet.sync</code>, <code>fleet.project</code>, <code>doctor.py</code>, <code>seed-ledger.py</code><br>the drills, <code>fleet.run</code> with no plan, <code>fleet.eval</code>, <code>fleet.scorecard</code></td><td>They work on the harness and its database, not on your app. <code>fleet.sync</code> must run from the repo root.</td></tr>
+          <tr><td><b>Iterum repo</b></td><td><code>fleet.telemetry</code>, <code>fleet.governor</code>, <code>fleet.recovery</code>, <code>fleet.view</code><br><code>fleet.worker</code>, <code>fleet.dlq</code>, <code>fleet.conflicts</code>, <code>fleet.approve</code>, <code>fleet.canary</code><br><code>fleet.sync</code>, <code>fleet.project</code>, <code>doctor.py</code>, <code>seed-ledger.py</code><br>the drills, <code>fleet.run</code> with no plan, <code>fleet.eval</code>, <code>fleet.scorecard</code></td><td>They work on the harness and its database, not on your app. <code>fleet.sync</code> must run from the repo root.</td></tr>
         </tbody>
       </table>
     </div>
@@ -662,12 +662,17 @@ uv run python -m fleet.dlq redrive &lt;task_id&gt;        <span class="c"># put 
 uv run python -m fleet.conflicts                    <span class="c"># tasks waiting for a person</span>
 uv run python -m fleet.conflicts resolve &lt;task_id&gt; "keep the newer schema"
 FLEET_WORK_MODULE=mypackage.mywork uv run python -u -m fleet.worker worker-1   <span class="c"># your own do_work(task)</span></pre></div>
+  <div class="col stack"><p><b>Freezing the queue.</b> When output looks wrong, stop new work before you investigate. A frozen queue hands out no tasks; workers finish the ones they hold. The freeze is per machine, and it does not stop <code>fleet.run</code>.</p></div>
+  <div class="term"><button type="button">Copy</button><pre>uv run python -m fleet.approve freeze you "output looks wrong since 03:00"
+uv run python -m fleet.approve                      <span class="c"># FROZEN or not, and pending approvals</span>
+uv run python -m fleet.approve thaw you             <span class="c"># last, after the fix is queued</span></pre></div>
+  <div class="note"><b>Approvals.</b> <code>fleet.approve</code> also lists and settles approval requests: <code>fleet.approve approve|deny &lt;fingerprint&gt; &lt;who&gt;</code>. Requests come from <code>approve.require()</code>, which nothing in Iterum calls yet, so the list stays empty until your own code calls it.</div>
 </section>
 
 <!-- 11 -->
 <section class="chapter" id="watch">
   <header><div class="eyebrow">Chapter 11</div><h2>Seeing what happened</h2></header>
-  <div class="col stack"><p>Every view is read-only. The live-session half needs the <code>claude</code> CLI; without it you still get everything from the ledger.</p></div>
+  <div class="col stack"><p>Every view is read-only except <code>fleet.canary</code>, which logs a <code>canary.fired</code> event when it fires. The live-session half needs the <code>claude</code> CLI; without it you still get everything from the ledger.</p></div>
   <div class="tbl">
     <table>
       <thead><tr><th>Command</th><th>Shows</th></tr></thead>
@@ -678,10 +683,12 @@ FLEET_WORK_MODULE=mypackage.mywork uv run python -u -m fleet.worker worker-1   <
         <tr><td><code>uv run python -m fleet.view context [session]</code></td><td>Context size per session, or per request in one session</td></tr>
         <tr><td><code>uv run python -m fleet.governor</code></td><td>Ceiling, spend and headroom</td></tr>
         <tr><td><code>uv run python -m fleet.recovery</code></td><td>Failed runs and running runs whose heartbeat went stale</td></tr>
+        <tr><td><code>uv run python -m fleet.canary</code></td><td>Recent runs that look unlike the day before</td></tr>
         <tr><td><code>sqlite3 agent.db "select kind, payload from events where run_id='&lt;id&gt;'"</code></td><td>The raw ledger for one run, including <code>claude.finished</code> (cost, turns, denials)</td></tr>
       </tbody>
     </table>
   </div>
+  <div class="note"><b>What the canary compares.</b> Median events, seconds and cost per run for finished <code>fleet.run</code> runs in the last hour, against the 24 hours before; it fires past a 50% change (<code>--tolerance</code>). It needs 5 earlier runs, and cost needs <code>fleet.telemetry</code>. It flags change, not wrong output: a fleet that got cheaper and faster overnight is worth a look.</div>
 </section>
 
 <!-- 12 -->
