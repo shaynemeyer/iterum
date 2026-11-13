@@ -117,8 +117,8 @@ Nothing in the code uses these rates. Because of the modifiers above, the fleet 
 `fleet/governor.py` sums those events against a fleet-wide ceiling:
 
 ```bash
-uv run python -m fleet.governor            # ceiling, spend since it was set, headroom
-uv run python -m fleet.governor set 5.00   # set or change the ceiling in USD
+iterum budget            # ceiling, spend since it was set, headroom
+iterum budget set 5.00   # set or change the ceiling in USD
 ```
 
 Spend counts only while the telemetry receiver is running, and only from the time the ceiling was first set. Before each step, `fleet.run` checks the headroom and halts the run, so it can be resumed, when a shell step would start with none left or a prompt step's cap is more than what is left.

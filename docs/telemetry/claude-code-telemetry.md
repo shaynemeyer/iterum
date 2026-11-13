@@ -179,7 +179,7 @@ Content is off by default. Identity is on [Docs].
 
 Decision recorded 2026-11-10 in [decision-log.md](../decision-log.md). Spend becomes ledger events, one per `api_request`. The ledger's `events` table is the only one that syncs between devices, and it is append-only, which matches one record per request.
 
-`fleet/telemetry.py` is the receiver. Start it with `uv run python -m fleet.telemetry` (port 4318), and give Claude Code the settings in `.env.example`, which also shortens the logs export interval to 1000 ms (see [T5]–[T6]). Each `api_request` becomes one `spend.reported` event with stage `governance`, which `fleet.view stages` leaves out because spending is not a failure. The payload keeps `request_id`, `model`, `cost_usd`, token counts, `duration_ms` and `session_id`.
+`fleet/telemetry.py` is the receiver. Start it with `iterum receiver` (port 4318), and give Claude Code the settings in `.env.example`, which also shortens the logs export interval to 1000 ms (see [T5]–[T6]). Each `api_request` becomes one `spend.reported` event with stage `governance`, which `fleet.view stages` leaves out because spending is not a failure. The payload keeps `request_id`, `model`, `cost_usd`, token counts, `duration_ms` and `session_id`.
 
 ```mermaid
 flowchart LR

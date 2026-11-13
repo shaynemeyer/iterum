@@ -27,7 +27,7 @@ flowchart LR
 Each computer writes only its own file, so git never has a conflict to resolve. Events are never edited, so merging is simply adding the events a computer hasn't seen yet. One command does all of it:
 
 ```bash
-uv run python -m fleet.sync sync
+iterum sync
 ```
 
 ## Before you start
@@ -89,10 +89,10 @@ To keep sync files somewhere else, set `ITERUM_SYNC_DIR` to a folder inside any 
 
 ### Step 3. Run your first sync
 
-From the Iterum folder:
+From any folder:
 
 ```bash
-uv run python -m fleet.sync sync
+iterum sync
 ```
 
 You should see something like:
@@ -134,7 +134,7 @@ export ITERUM_DEVICE=desktop
 ### Step 3. Sync
 
 ```bash
-uv run python -m fleet.sync sync
+iterum sync
 ```
 
 You should see the first computer's events arrive:
@@ -145,14 +145,14 @@ imported 9 new events from 2 files in /Users/you/private-data/iterum
 knowledge rebuilt
 ```
 
-`sync` creates `agent.db` on this computer if it doesn't exist yet.
+`sync` creates the database (`~/.local/share/iterum/agent.db` by default) on this computer if it doesn't exist yet.
 
 ### Step 4. Check both computers agree
 
 Run `sync` once more on **each** computer, then run this on each:
 
 ```bash
-sqlite3 agent.db "select device, count(*) from events group by device"
+sqlite3 ~/.local/share/iterum/agent.db "select device, count(*) from events group by device"
 ```
 
 Both computers should show the same devices and the same counts.
@@ -162,7 +162,7 @@ Both computers should show the same devices and the same counts.
 Run `sync` whenever you want your computers to catch up, for example when you start or finish working:
 
 ```bash
-uv run python -m fleet.sync sync
+iterum sync
 ```
 
 What it does, in order:
@@ -210,16 +210,16 @@ If the computer is rebuilt from scratch, follow [Part 2](#part-2-add-another-com
 | `There is no tracking information for the current branch`, then `git pull failed` | The repo has no remote, or `main` isn't linked to it | `git -C ~/private-data push -u origin main` |
 | `git push failed` | Usually another computer pushed between your pull and push | Run `sync` again |
 | `sqlite3.IntegrityError` or `ProgrammingError` during import | A damaged line in an `events-*.jsonl` file | Nothing was imported. Find the change with `git -C ~/private-data log -p` and restore the file from history |
-| `fleet.project` reports DRIFT after an import | New events produced new knowledge | Expected; the next run reports MATCH |
+| `iterum project` reports DRIFT after an import | New events produced new knowledge | Expected; the next run reports MATCH |
 
 ## Single steps
 
 For when you want just one part of `sync`:
 
 ```bash
-uv run python -m fleet.sync export    # write this computer's events
-uv run python -m fleet.sync import    # merge every computer's events
-uv run python -m fleet.project        # rebuild knowledge
+iterum sync export    # write this computer's events
+iterum sync import    # merge every computer's events
+iterum project        # rebuild knowledge
 ```
 
 ## Settings
@@ -228,4 +228,4 @@ uv run python -m fleet.project        # rebuild knowledge
 | --- | --- | --- |
 | `ITERUM_DEVICE` | required | This computer's unique name |
 | `ITERUM_SYNC_DIR` | `~/private-data/iterum` | Folder for sync files, inside a git repo with a remote |
-| `ITERUM_DB` | `agent.db` | Path to this computer's database |
+| `ITERUM_DB` | `~/.local/share/iterum/agent.db` | Path to this computer's database (`$XDG_DATA_HOME/iterum/agent.db` when that is set) |

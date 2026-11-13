@@ -26,18 +26,17 @@ The harness limits what one run can do (`CLAUDE.md`):
     [3, "commit it", "git add app/page.tsx && git commit -m '<message>'", ["file:app/page.tsx"]]]
    ```
 
-   Then land it with the `fleet.merge` command the run prints.
+   Then land it with the `iterum land` command the run prints.
 
-   `fleet.run` runs each step, and checks the branch, in the directory it starts from, so start it from the app's repo, not this one. From there, `fleet` needs `PYTHONPATH` pointing at this repo, and `ITERUM_DB` must be one absolute path shared by `fleet.telemetry`, `fleet.run` and `fleet.merge` (`check_receiver()` compares the receiver's database with the run's):
+   `iterum run` runs each step, and checks the branch, in the directory it starts from, so start it from the app's repo, not this one. With `iterum` installed (`uv tool install --editable <iterum>`), the run, the receiver and the landing all use the default database from any folder (`check_receiver()` compares the receiver's database with the run's):
 
    ```bash
-   source <iterum>/.env.example
-   export ITERUM_DB=<iterum>/agent.db ITERUM_DEVICE=<device> PYTHONPATH=<iterum>
-   uv run --project <iterum> python -u -m fleet.run --plan <plan.json> --allow-claude 0.10
-   uv run --project <iterum> python -m fleet.merge <branch> --run-id <run_id> --fence file:app/page.tsx=<n>
+   source <iterum>/.env.example                  # telemetry settings, for prompt steps under a ceiling
+   iterum run <plan.json> --allow-claude 0.10
+   iterum land <branch> --run-id <run_id> --check "<build command>"   # fences: the run's own claims
    ```
 
-   Before the paid run, the same plan with step 1 replaced by a shell `echo` and step 3 by `git status`, on a scratch `ITERUM_DB`, checks the paths, the branch and the claims for free.
+   Before the paid run, the same plan with step 1 replaced by a shell `echo` and step 3 by `git status`, on a scratch `ITERUM_DB`, checks the paths, the branch and the claims for free. The runs recorded below used the older setup (an absolute `ITERUM_DB`, `PYTHONPATH=<iterum>` and `uv run --project <iterum> python -u -m fleet.run`), from before the `iterum` command existed (2026-11-13).
 4. **Later runs,** one feature each (an API route, a second page), each on its own branch, growing toward the app.
 
 ## What to watch, and record
