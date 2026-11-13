@@ -16,3 +16,6 @@ build-backend = "uv_build"
 module-name = "fleet"
 module-root = ""
 namespace = true
+
+[project.scripts]
+iterum = "fleet.cli:main"

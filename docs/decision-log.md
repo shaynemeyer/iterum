@@ -2,6 +2,18 @@
 
 Decisions and why they were made. Newest first. Entries are never deleted; a decision that is reversed is marked "Superseded by" the entry that replaces it. Open decisions live in `open-questions.md`.
 
+## 2026-11-13: Iterum ships as one `iterum` command
+
+**Decision.** Option (a) of the open question "Should Iterum ship as one `iterum` command instead of `python -m fleet.*`?": a packaged CLI. `pyproject.toml` builds `fleet` with `uv_build` as a namespace package and defines `[project.scripts] iterum = "fleet.cli:main"`; it is installed once with `uv tool install --editable .`. `fleet/cli.py` maps one word per command to a module and runs it with `runpy.run_module(..., run_name="__main__")`, so no module changes; it line-buffers stdout and stderr in place of `-u`. `python -m fleet.*` keeps working. The rest of the question moves into `cli-plan.md`: a plain `iterum status` (increment 2) before any Rich dependency, and where the fixed default database lives (increment 4). Removed from `open-questions.md`.
+
+**Context.** Every command needed `uv run python -u -m fleet.<module>`, and a run from the app repo also needed `PYTHONPATH`, `--project` and an absolute `ITERUM_DB` (`nextjs-first-run.md`).
+
+**Alternatives.** (b) the same with a Rich dashboard: Iterum's first dependency, deferred to after a plain `iterum status`. (c) a Textual TUI: set aside 2026-11-13. (d) keep `python -m` and document it better: keeps every piece of setup.
+
+**Evidence.** `cli-plan.md` increment 1's six checks, 2026-11-13, through the installed tool (`~/.local/bin/iterum`), each on a scratch `ITERUM_DB`. 1: `iterum <cmd> --help` reaches each argparse module's own help. 2: `iterum drill merge|claims|kill`, run in parallel from a folder outside the repo, passed with no FAIL line. 3: `iterum drill run` committed 6 of 6 steps (from the repo root: the built-in plan's step 2 is `ls fleet`, which fails from any other folder, under `python -m` too); `iterum resume` of a killed run skipped 3 committed steps and finished. 4: SIGINT and SIGTERM during step 4 gave returncode -2 under `iterum`, the same as `.venv/bin/python -u -m fleet.run` (through `uv run` the baseline reads 130, uv's own exit), and the last committed step line reached the piped file. 5: `uv run python -m fleet.<module>` still starts every module. 6: the hook command `gate_settings()` builds under the tool's Python refused an edit to a file another run had claimed (exit 2) and allowed an unclaimed one (exit 0).
+
+**Affects.** `pyproject.toml`, `fleet/cli.py`; `cli-plan.md`; README and `CLAUDE.md` wait for increment 5.
+
 ## 2026-11-12: Concurrent runs may each pass the ceiling by one step; accepted, not reserved
 
 **Decision.** Keep the spend ceiling as it is: a headroom check reserves nothing, so each run that checks at the same moment can pass the ceiling by one step's spend. Stated in `fleet/governor.py` and `CLAUDE.md`. Settles the open question "Can concurrent runs share one spend ceiling?"

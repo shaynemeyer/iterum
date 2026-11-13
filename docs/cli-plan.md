@@ -1,6 +1,6 @@
 # Plan: one `iterum` command
 
-Draft, 2026-11-13. Answers the open question "Should Iterum ship as one `iterum` command instead of `python -m fleet.*`?" (`open-questions.md`) with option (a), then (b). Nothing here is built yet.
+Draft, 2026-11-13. Answers the open question "Should Iterum ship as one `iterum` command instead of `python -m fleet.*`?" (`open-questions.md`) with option (a), then (b). Increment 1 is built (decision log, 2026-11-13).
 
 ## Why
 
@@ -94,6 +94,8 @@ flowchart TD
 ```
 
 ### 1. Package and dispatcher
+
+Done 2026-11-13; check results in the decision log. Check 3 ran from the repo root: the built-in plan's `ls fleet` step needs it.
 
 - `pyproject.toml`: a `[build-system]` using `uv_build`, `[tool.uv.build-backend]` with `module-name = "fleet"`, `module-root = ""` and `namespace = true` (the uv docs: "Namespace package modules are identified by a `.` in the `module-name`", and for a namespace root with several children, `module-name = "foo"` with `namespace = true`; [build backend](https://docs.astral.sh/uv/concepts/build-backend/)), and `[project.scripts] iterum = "fleet.cli:main"`. Entry points need a build system ([entry points](https://docs.astral.sh/uv/concepts/projects/config/#entry-points)). Use the `uv_build` version constraint `uv init` prints at the time, not one copied from here.
 - `fleet/cli.py`: the command map, `sys.argv` rewrite, `runpy.run_module`, and `sys.stdout.reconfigure(line_buffering=True)` and the same for stderr ([io](https://docs.python.org/3/library/io.html#io.TextIOWrapper.reconfigure)) in place of `-u`.

@@ -10,20 +10,6 @@ Decisions not made yet. When one is answered, record it in `decision-log.md`, ad
 
 **Settled by.** Deciding where to start; the note proposes the fix loop first, tested free with a fake `claude`.
 
-## Should Iterum ship as one `iterum` command instead of `python -m fleet.*`?
-
-**Context.** Every command is `uv run python -u -m fleet.<module> ...`, and from the app repo a run also needs `export ITERUM_DB=<absolute path>`, `export PYTHONPATH=<iterum>`, `source <iterum>/.env.example` and `uv run --project <iterum>` (`nextjs-first-run.md`). Each piece exists for a reason (`fleet` is a namespace package, so `-m`; `-u` so output is not lost; `ITERUM_DB` defaults to `agent.db` in the current folder, so a relative path in the app repo makes a second database), but none of it is the work. Reading state is also spread over seven commands (`fleet.view`, `fleet.recovery`, `fleet.governor`, `fleet.dlq`, `fleet.conflicts`, `fleet.approve`, `fleet.canary`), and nothing lists stranded tasks. A TUI was considered (2026-11-13) and set aside for now: it would keep every one of those invocations and add a dependency (`pyproject.toml` has `dependencies = []`).
-
-**Options.** (a) A packaged CLI: `[project.scripts]` defines `iterum` ([uv: entry points](https://docs.astral.sh/uv/concepts/projects/config/#entry-points)), installed once with `uv tool install --editable <iterum>` ([uv: tools](https://docs.astral.sh/uv/concepts/tools/)); subcommands (`iterum status`, `run`, `resume`, `land`, `receiver`, `freeze`, `approve`, `queue`, `dlq`, `doctor`, `eval`, `sweep`, ...) call each module's existing `main()`; the database defaults to one fixed place instead of the current folder. (b) The same plus an `iterum status` dashboard, plain or with Rich (Iterum's first dependency). (c) A Textual TUI later, on top of (a). (d) Keep `python -m` and document it better.
-
-**To verify first.** How the build backend packages a namespace package with no `__init__.py`; that `gate_settings()` still finds `fleet/gate.py` from an installed tool; that the entry point keeps output unbuffered as `-u` does; where the fixed database lives and how `ITERUM_DB` still overrides it.
-
-**Plan.** `cli-plan.md` (2026-11-13): packaging and a thin dispatcher with no behaviour change, then `iterum status`, shortcuts, a fixed default database, and docs, each checked before the next.
-
-**Blocks.** Nothing. Every command works today.
-
-**Settled by.** Choosing (a) to (d), where the default database lives, and whether a first dependency (Rich) is acceptable for the dashboard.
-
 ## What should Iterum's reports look like, and where?
 
 **Context.** Everything is in `agent.db`, but it is only visible as text over seven commands, which answer "what is the state now" and not "how did today go" or "how is this changing". Proposed first target (2026-11-13): an HTML file of the current day's work, written by Iterum and shown back to the user. Sections, sources and increments are in `reporting-plan.md`.
