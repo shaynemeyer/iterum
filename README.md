@@ -28,6 +28,8 @@ Every event carries a UUIDv7 `uid` and the `device` that wrote it, so ledgers fr
 
 | Path | What it does |
 | --- | --- |
+| `fleet/cli.py` | The `iterum` command: one word per module below |
+| `fleet/status.py` | One screen of fleet state; exits 1 when something needs a person |
 | `fleet/doctor.py` | Audits seven harness layers on this machine and writes `harness-audit.json` |
 | `fleet/db.py` | `agent.db` access; every write runs in `BEGIN IMMEDIATE` |
 | `fleet/schema.sql` | Tables for runs, events, knowledge, claims, the task queue, budgets, evals and approvals |
@@ -50,7 +52,7 @@ Every event carries a UUIDv7 `uid` and the `device` that wrote it, so ledgers fr
 
 ## Setup
 
-Requires Python 3.14 and [uv](https://docs.astral.sh/uv/). The doctor also checks for the `claude` CLI. `uv` creates the environment on first run; there's no separate install step.
+Requires Python 3.14 and [uv](https://docs.astral.sh/uv/). The doctor also checks for the `claude` CLI.
 
 Name this device once, in your shell profile (for example `~/.zshrc`), then open a new terminal:
 
@@ -62,19 +64,32 @@ Then, in order:
 
 ```bash
 git clone https://github.com/shaynemeyer/iterum.git && cd iterum
-uv run fleet/doctor.py            # audit this machine, writes harness-audit.json
-uv run scripts/seed-ledger.py     # record the audit in agent.db
-uv run python -m fleet.project    # rebuild knowledge from the ledger
+uv tool install --editable .      # installs the iterum command
+iterum doctor                     # audit this machine, writes harness-audit.json
+uv run scripts/seed-ledger.py     # record the audit in the ledger
+iterum project                    # rebuild knowledge from the ledger
 ```
 
-The first `fleet.project` run reports DRIFT and exits 1 while the knowledge table is still empty. Run it again to confirm MATCH.
+If your shell cannot find `iterum`, run `uv tool update-shell` and open a new terminal. The install is editable, so a `git pull` updates the command.
+
+The first `iterum project` run reports DRIFT and exits 1 while the knowledge table is still empty. Run it again to confirm MATCH.
+
+## Everyday commands
+
+```bash
+iterum status                     # one screen; exits 1 when something needs a person
+iterum run plan.json              # run a plan, from the repo it works on
+iterum land <branch> --run-id R   # land the run's branch while its claims are live
+```
+
+`iterum --help` lists the rest, and `uv run python -m fleet.<module>` still works for each.
 
 ## Sync across devices
 
 Put `ITERUM_SYNC_DIR` inside a private git repo with a remote, then run:
 
 ```bash
-uv run python -m fleet.sync sync
+iterum sync
 ```
 
 It exports this device's events, commits only that file, pulls, pushes, imports every device's events and rebuilds knowledge. A new device runs the same command to restore everything. See [docs/sync.md](docs/sync.md) for setup, rules and troubleshooting.
@@ -84,13 +99,13 @@ It exports this device's events, commits only that file, pulls, pushes, imports 
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `ITERUM_DEVICE` | required | Names this device in every event |
-| `ITERUM_DB` | `agent.db` | Path to the database |
+| `ITERUM_DB` | `~/.local/share/iterum/agent.db` | Path to the database (`$XDG_DATA_HOME/iterum/agent.db` when that is set) |
 | `ITERUM_SYNC_DIR` | `~/private-data/iterum` | Private folder for exported events |
 | `ITERUM_CLAIM_TTL` | `300` | Seconds a `fleet.run` file claim lasts between renewals |
 | `ITERUM_IDLE_SECONDS` | `60` | Heartbeat age after which a `running` run counts as dead |
 | `ITERUM_MAX_ATTEMPTS` | `3` | Attempts at one step before `fleet.recovery` halts the run |
 
-`agent.db` and `harness-audit.json` hold local data and are git-ignored. Keep the sync folder in a private repo.
+`agent.db` lives outside the repo by default; `harness-audit.json` is written to the current folder and git-ignored. Keep the sync folder in a private repo.
 
 ## License
 
