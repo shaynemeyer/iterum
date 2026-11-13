@@ -25,9 +25,8 @@ How this work has been done, and should continue: one small step at a time; repr
 
 Status: open, 2026-11-13. The loop is built (`work-completed.md`).
 
-1. **What the fix loop feeds back.** `shell()`'s error carries only stderr. A build that prints its errors to stdout would feed back little more than "exit 1". Checked 2026-11-13 on Next.js 16.4.6 (`bun run build`, stdout and stderr captured apart, in a throwaway worktree): a syntax error (Turbopack) goes to stderr, with ANSI color codes even when piped; a type error goes to stdout (`app/hello-message.tsx(21,14): error TS2322 ...`), and stderr says only `Failed to type check.`. Every check script in `docs/.local-only/` writes its failure to stderr. So type errors are lost today.
-2. **`iterum recovery` may halt a retried run.** It halts a failed run whose most-proposed step reached `--max-attempts` (default 3); with 2 retries the prompt step is proposed 3 times. Not reproduced.
-3. **Paid test**, with the user's OK: one Haiku feature with `--fix-retries`, to see whether a retry fixes a real mistake.
+1. **`iterum recovery` may halt a retried run.** It halts a failed run whose most-proposed step reached `--max-attempts` (default 3); with 2 retries the prompt step is proposed 3 times. Not reproduced.
+2. **Paid test**, with the user's OK: one Haiku feature with `--fix-retries`, to see whether a retry fixes a real mistake.
 
 ## The `pgid` write window
 

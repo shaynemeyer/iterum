@@ -2,6 +2,16 @@
 
 Items moved here from `todo.md` once done. Newest first.
 
+## A failed shell step keeps stdout, without color codes
+
+Completed 2026-11-13. Moved from `todo.md` (fix loop follow-ups):
+
+> **What the fix loop feeds back.** `shell()`'s error carries only stderr. A build that prints its errors to stdout would feed back little more than "exit 1". Checked 2026-11-13 on Next.js 16.4.6 (`bun run build`, stdout and stderr captured apart, in a throwaway worktree): a syntax error (Turbopack) goes to stderr, with ANSI color codes even when piped; a type error goes to stdout (`app/hello-message.tsx(21,14): error TS2322 ...`), and stderr says only `Failed to type check.`. Every check script in `docs/.local-only/` writes its failure to stderr. So type errors are lost today.
+
+**Change.** `shell()`'s error now holds stdout then stderr, ANSI control sequences removed, cut to the last `ERROR_TAIL` (2,000) characters, so `step.failed` and the fix loop's feedback carry both.
+
+**Evidence.** A check that prints its failure, in color, to stdout: before, the retry prompt read only `step failed with exit 1: `; after, it read `check failed: greet returned helo` with no escape codes, and the run finished `done`. The stderr plan still retried and finished. In a throwaway worktree of the Next.js app, a one-step `bun run build` plan: a type error's `step.failed` now holds `app/hello-message.tsx(21,14): error TS2322 ...`, and a syntax error's holds the code frame without color codes. The built-in plan still runs.
+
 ## Fix loop in `fleet.run`
 
 Completed 2026-11-13. From `overnight-design.md` section 5, step 1 (not in `todo.md`).

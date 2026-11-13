@@ -15,6 +15,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import shlex
 import signal
 import sqlite3
@@ -32,6 +33,7 @@ HEARTBEAT = 10  # seconds between heartbeat_at updates; fleet.recovery's expiry 
 CLAIM_TTL = float(os.environ.get("ITERUM_CLAIM_TTL", claim.DEFAULT_TTL))  # seconds; must be several HEARTBEATs
 MAX_TURNS = 10  # a prompt step's --max-turns; a guess until the first paid run
 ERROR_TAIL = 2000  # characters of a failed step's error fed back to a fix retry, as fleet.merge keeps of a failed check
+ANSI = re.compile(r"\x1b\[[0-9;?]*[A-Za-z]")  # terminal control sequences (CSI), such as colors; the Next.js build prints them even when piped
 # Only the file tools exist in a prompt step's session; edits need no approval, and anything that
 # would ask is denied, since nobody is there to answer (`claude --help`, Claude Code 2.1.322).
 # --restricted confines the file tools to the working directory and ignores user and project
@@ -65,10 +67,15 @@ def _spawn(args, run_id, seq, env=None):
 
 
 def shell(cmd, run_id, seq):
-    """One shell step's side effect. Returns a short result string."""
+    """One shell step's side effect. Returns a short result string.
+
+    A failure's error keeps stdout and stderr, color codes removed, cut to the last ERROR_TAIL
+    characters: a Next.js type error is printed on stdout only (todo.md, fix loop follow-ups).
+    """
     code, stdout, stderr = _spawn(cmd, run_id, seq)
     if code != 0:
-        raise RuntimeError(f"step failed with exit {code}: {stderr.strip()}")
+        output = ANSI.sub("", f"{stdout.strip()}\n{stderr.strip()}".strip())
+        raise RuntimeError(f"step failed with exit {code}:\n{output[-ERROR_TAIL:]}")
     return stdout.strip()[:200]
 
 
