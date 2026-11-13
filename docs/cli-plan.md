@@ -161,7 +161,7 @@ Checks: `fleet.merge_drill` and `fleet.claims_drill` still pass; a land without 
 
 ### 4. A fixed default database
 
-Decide first, then build:
+Decided 2026-11-13 (decision log): `$XDG_DATA_HOME/iterum/agent.db`, else `~/.local/share/iterum/agent.db`; move the existing database; create on first use. Not built yet.
 
 ```mermaid
 flowchart TD

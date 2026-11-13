@@ -2,6 +2,18 @@
 
 Decisions and why they were made. Newest first. Entries are never deleted; a decision that is reversed is marked "Superseded by" the entry that replaces it. Open decisions live in `open-questions.md`.
 
+## 2026-11-13: The default database lives in the XDG data folder
+
+**Decision.** Without `ITERUM_DB`, the database is `$XDG_DATA_HOME/iterum/agent.db`, or `~/.local/share/iterum/agent.db` when `XDG_DATA_HOME` is unset or empty. `ITERUM_DB` still wins. The existing `<iterum>/agent.db` moves there once, while nothing has it open, so no `ITERUM_DB` is needed afterwards. A command that finds no database creates it (and its folder), as `db.init()` does today; `iterum status` still refuses a missing one. Settles the open question "Where should the default database live?" (`cli-plan.md` increment 4).
+
+**Context.** The default was `agent.db` in the current folder, so `iterum` run in the app repo without `ITERUM_DB` would quietly create a second, empty database there.
+
+**Alternatives.** `~/.iterum/agent.db` (the plan's proposal; shorter, but a new dot-folder outside any convention); `~/Library/Application Support/iterum` (macOS-only, a path with a space); the iterum checkout (no move, but data in the source tree, and wrong for a non-editable install); keeping `ITERUM_DB` in the shell profile instead of moving the file.
+
+**Evidence.** The XDG base directory spec: user data goes in `$XDG_DATA_HOME`, and "If $XDG_DATA_HOME is either not set or empty, a default equal to $HOME/.local/share should be used" ([spec](https://specifications.freedesktop.org/basedir-spec/latest/)). uv already keeps its tools under `~/.local/share/uv` on this machine. The real `agent.db` had no `-wal`/`-shm` files while nothing held it open (2026-11-13), so a move needs only the main file then.
+
+**Affects.** `fleet/db.py`, `fleet/doctor.py`, `cli-plan.md` increment 4; README and `CLAUDE.md` (increment 5); the `ITERUM_DB=<iterum>/agent.db` setup in `nextjs-first-run.md` becomes optional.
+
 ## 2026-11-13: A failed run needs a person until it is resumed or halted
 
 **Decision.** `iterum status` keeps counting every `failed` run as needing a person (exit 1), with no time window. A person closes one with `fleet.recovery halt <run_id> "<reason>"`, which calls the existing `recovery.halt()` (status `halted`, `run.halted` event with the reason) and refuses any run `dead_runs()` does not list, so never a `done` or live run.
