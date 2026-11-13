@@ -2,6 +2,7 @@
 
     iterum report [--date YYYY-MM-DD] [--out page.html] [--open] [--pdf]   # writes reports/report-<date>.html beside the database
     iterum report --json [--date YYYY-MM-DD]                       # the same data as JSON
+    iterum report --days N --json                                  # the last N days as data
 
 A run belongs to the day it started. Spend counts every `spend.reported` event in
 the day, interactive sessions included. Times are epoch seconds; the day is local.
@@ -17,7 +18,7 @@ import time
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
-from fleet import approve, db, governor, queue, recovery, report_html, telemetry
+from fleet import approve, db, governor, queue, recovery, report_days, report_html, telemetry
 
 
 def day_window(day):
@@ -184,9 +185,15 @@ def main():
     parser.add_argument("--out", type=Path, help="where to write the page (default: reports/ beside the database)")
     parser.add_argument("--open", action="store_true", help="open the page (or the PDF) afterwards (macOS `open`)")
     parser.add_argument("--pdf", action="store_true", help="also print the page to a PDF beside it, with headless Chrome")
+    parser.add_argument("--days", type=int, metavar="N", help="the last N days (today included); needs --json for now")
     args = parser.parse_args()
     if not Path(db.DB).exists():
         sys.exit(f"no database at {Path(db.DB).resolve()}")
+    if args.days:
+        if not args.json:
+            parser.error("--days needs --json until its page is built")
+        print(json.dumps(report_days.days_report(args.days), indent=2))
+        return
     data = report(args.date)
     if report_html.quiet(data):
         span = data["ledger_span"]

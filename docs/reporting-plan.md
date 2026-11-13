@@ -103,6 +103,8 @@ Checks: a day with runs, a day with a failed run (it shows under "Needs a person
 
 ### 3. Longer windows
 
+Progress 2026-11-13: the data first. `fleet/report_days.py`, `iterum report --days N --json`: spend per day by model with the ceiling and since when, runs per day by status, failures and events per stage, context per session (first, last, peak, every request), and runs per plan with status and cost. Days are calendar days, today included; stages and context reuse `view.STAGES`, `view.is_failure()` and `view.CONTEXT_SQL`. Checks, `--days 8` on the real database: failures per stage over the same rolling window equal `iterum view stages 8` (coordination 3 of 248, tool_execution 3 of 272, validation 2 of 2, planning 0 of 203); all 75 session peaks equal `iterum view context`; spend and runs per day equal hand-written SQL; the plans account for all 51 runs. An empty database gives empty sections. Left: the page, then `--run`.
+
 `--days N`: spend per day against the ceiling, runs per day by status, failures per stage (counts, not only rates), context growth per session, cost per plan (one dot per run, pass or fail marked). A run's own page (`--run <id>`) draws the step timeline from today's report at full size.
 
 Checks: failures per stage match `fleet.view stages N`; context peaks match `fleet.view context`; a failed run's page names the same stage as `fleet.view trace`.
