@@ -4,6 +4,7 @@
     iterum report --json [--date YYYY-MM-DD]                       # the same data as JSON
     iterum report --days N [--out page.html] [--open] [--pdf] [--json]   # the last N days
     iterum report --run RUN_ID [--out page.html] [--open] [--pdf] [--json]   # one run
+    iterum report --serve [--port 8780]                                    # live pages on 127.0.0.1
 
 A run belongs to the day it started. Spend counts every `spend.reported` event in
 the day, interactive sessions included. Times are epoch seconds; the day is local.
@@ -245,12 +246,18 @@ def main():
     parser.add_argument("--date", type=date.fromisoformat, default=date.today(), help="YYYY-MM-DD, default today")
     parser.add_argument("--days", type=int, metavar="N", help="the last N days, today included, instead of one day")
     parser.add_argument("--run", metavar="RUN_ID", help="one run: its steps over time, its events and its merges")
+    parser.add_argument("--serve", action="store_true", help="serve live pages on 127.0.0.1, rebuilt per request")
+    parser.add_argument("--port", type=int, default=8780, help="port for --serve (default 8780)")
     parser.add_argument("--out", type=Path, help="where to write the page (default: reports/ beside the database)")
     parser.add_argument("--open", action="store_true", help="open the page (or the PDF) afterwards (macOS `open`)")
     parser.add_argument("--pdf", action="store_true", help="also print the page to a PDF beside it, with headless Chrome")
     args = parser.parse_args()
     if not Path(db.DB).exists():
         sys.exit(f"no database at {Path(db.DB).resolve()}")
+    if args.serve:
+        from fleet import report_serve  # report_serve imports this module
+        report_serve.serve(args.port)
+        return
     if args.run:
         data = report_run.run_report(args.run)
         if data is None:

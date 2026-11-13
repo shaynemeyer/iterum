@@ -111,6 +111,8 @@ Checks: failures per stage match `fleet.view stages N`; context peaks match `fle
 
 ### 4. Local live dashboard
 
+Done 2026-11-13: `fleet/report_serve.py`, `iterum report --serve [--port 8780]`. Binds `127.0.0.1` only; `/` is today, `/report-<date>.html` any day, `/run-<id>.html` any run, each rebuilt from the database per request with a 5-second meta refresh and `Cache-Control: no-store`; previous and next day always resolve, since every page is built on demand. A request whose `Host` is not `127.0.0.1` or `localhost` gets 403, so a web page cannot read the ledger through DNS rebinding. Ctrl-C and SIGTERM (`proc.stop_on_sigterm()`) stop it with "stopped" and exit 0. Checks: routes answer 200 or 404 (bad dates, unknown runs, other paths); a foreign `Host` gets 403; the machine's LAN address is refused and `lsof` shows only `127.0.0.1:8781` listening; during the built-in drill on the same scratch database the run page went from 3 to 4 to 6 committed steps and `done`, and today's page linked the run; SIGINT and SIGTERM each exit 0 and free the port. Found while checking: SIGINT first seemed not to stop it, because a shell starts background jobs with SIGINT ignored; started with SIGINT at its default, as a terminal's Ctrl-C delivers it, the server stops.
+
 `python -m fleet.report --serve [--port N]` binds `127.0.0.1` only and serves the same page, rebuilt per request, with a meta refresh.
 
 Checks: start a scratch `fleet.run`, watch its steps appear; the server refuses connections on any other interface; Ctrl-C stops it cleanly.
