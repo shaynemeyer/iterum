@@ -145,6 +145,9 @@ nav ul a:hover { color: var(--mint); }
 .split { display: grid; grid-template-columns: .9fr 1.1fr; gap: 56px; align-items: center; }
 .split .term { transform: none; }
 .split .term-body { min-height: 0; }
+.shot { margin: 0; border-radius: 12px; overflow: hidden; border: 1px solid var(--line); box-shadow: var(--shadow); background: var(--surface); }
+.shot img { display: block; width: 100%; height: auto; }
+.shot + figcaption, .shotcap { color: var(--muted); font-size: .85rem; margin-top: 10px; text-align: center; }
 .tags { display: flex; flex-direction: column; gap: 12px; margin-top: 28px; }
 .tagrow { display: flex; align-items: center; gap: 14px; }
 .tag { font-family: var(--mono); font-size: .78rem; font-weight: 700; padding: 5px 0; width: 78px; text-align: center; border-radius: 6px; flex: none; }
@@ -231,6 +234,7 @@ footer img { width: 72px; height: auto; }
     <ul class="links">
       <li><a href="#why">Why</a></li>
       <li><a href="#how">How it works</a></li>
+      <li><a href="#reports">Reports</a></li>
       <li><a href="#sync">Sync</a></li>
       <li><a href="#start">Get started</a></li>
       <li><a href="guide.html">User guide</a></li>
@@ -244,6 +248,7 @@ footer img { width: 72px; height: auto; }
       <ul>
         <li><a href="#why">Why</a></li>
         <li><a href="#how">How it works</a></li>
+        <li><a href="#reports">Reports</a></li>
         <li><a href="#sync">Sync</a></li>
         <li><a href="#start">Get started</a></li>
         <li><a href="guide.html">User guide</a></li>
@@ -371,8 +376,6 @@ footer img { width: 72px; height: auto; }
         <p class="tables">fleet/approve.py</p><h3>Approval gate</h3><p>An irreversible action waits for a recorded human decision, bound to its exact parameters, and a restart does not ask again. A freeze stops workers claiming new tasks. Nothing calls the gate yet.</p></div>
       <div class="card reveal"><div class="icon i3"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3-7 4 14 3-7h4"/></svg></div>
         <p class="tables">fleet/canary.py</p><h3>Canary</h3><p>Flags recent runs whose events, seconds or cost per run moved away from the day before. It catches change, not wrong output, and a fleet that got cheaper and faster overnight is worth a look.</p></div>
-      <div class="card reveal"><div class="icon i4"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l4 4v14H6z"/><path d="M9 17v-3M12 17v-6M15 17v-4"/></svg></div>
-        <p class="tables">fleet/report.py</p><h3>Reports</h3><p>A day, several days or one run as a self-contained HTML page (or PDF): what needs a person, spend and runs with their trend, every step and event. Pages link to each other, open offline, and can be served live on localhost.</p></div>
     </div>
   </div>
 </section>
@@ -399,6 +402,26 @@ footer img { width: 72px; height: auto; }
 <span class="dim">before: 84970c6be3dbcf7f</span>
 <span class="dim">after:  84970c6be3dbcf7f</span>
 <span class="t-ok">MATCH</span> - the projection is rebuildable from the ledger</div>
+    </div>
+  </div>
+</section>
+
+<section id="reports" style="padding-top:40px">
+  <div class="wrap split">
+    <div class="reveal">
+      <p class="eyebrow">Reports</p>
+      <h2>Your fleet's day, on one page</h2>
+      <p class="sub">One command turns the ledger into a page you can read over coffee: whether anything needs you, what ran, what it cost, and what landed. It opens offline, prints to PDF, and nothing leaves your machine.</p>
+      <div class="tags">
+        <div class="tagrow"><span class="tag match">DAY</span><span>What needs a person, the day in numbers with 7-day trends, every run and its steps, spend by hour, merges.</span></div>
+        <div class="tagrow"><span class="tag match">WEEK</span><span>Spend against your ceiling, runs and failures per day, cost per plan.</span></div>
+        <div class="tagrow"><span class="tag match">RUN</span><span>One run step by step, every event in order, the failure named.</span></div>
+      </div>
+      <div class="oneliner reveal" style="margin-top:28px"><span class="p">❯</span> iterum report --open</div>
+    </div>
+    <div class="reveal">
+      <figure class="shot"><picture><source srcset="img/report-day-dark.png" media="(prefers-color-scheme: dark)"><img src="img/report-day-light.png" alt="A daily Iterum report: a banner saying 2 things need a person, tiles for runs, steps, merges and spend with 7-day trend lines, a table of runs with their steps, and spend by hour by model" width="1000" loading="lazy"></picture></figure>
+      <p class="shotcap">Example data. <a href="guide.html#reports">More in the guide</a>.</p>
     </div>
   </div>
 </section>
