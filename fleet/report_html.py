@@ -127,6 +127,16 @@ def runs_table(runs):
             f'<th class=n>Cost</th><th>Steps</th></tr>{rows}</table></div>')
 
 
+def earlier_table(earlier):
+    """Runs started on an earlier day that something happened to on this one."""
+    rows = "".join(
+        f'<tr><td>{datetime.fromtimestamp(r["started_at"]).strftime("%Y-%m-%d")}</td><td><code>{escape(r["run_id"])}</code></td>'
+        f'<td>{escape(r["plan"])}</td><td>{", ".join(f"{escape(k)}" + (f" &times;{n}" if n > 1 else "") for k, n in r["events"].items())}</td>'
+        f'<td>{escape(r["status"])}</td></tr>' for r in earlier)
+    return (f'<div class="scroll"><table><tr><th>Started</th><th>Run</th><th>Plan</th><th>That day</th><th>Status now</th></tr>'
+            f'{rows}</table></div>')
+
+
 def landed_table(landed):
     """Each merge that landed."""
     if not landed:
@@ -155,22 +165,20 @@ def tiles(n):
 
 
 def quiet(data):
-    """True when the day has nothing to show."""
+    """True when the day has nothing to show; fleet.report then writes no page."""
     n = data["numbers"]
-    return not (data["runs"] or data["landed"] or n["spend_usd"] or n["merges_refused"] or any(data["needs_person"].values()))
+    return not (data["runs"] or data["earlier_runs"] or data["landed"] or n["spend_usd"] or n["merges_refused"] or any(data["needs_person"].values()))
 
 
 def render(data):
     """The whole page for one day's report."""
     head = (f'<h1>Iterum: {escape(data["date"])}</h1><p class="meta">{escape(data["device"] or "-")} &middot; '
             f'{escape(data["db"])} &middot; generated {datetime.fromtimestamp(data["generated_at"]).strftime("%Y-%m-%d %H:%M")}</p>')
-    if quiet(data):
-        body = f'<p>Nothing happened on {escape(data["date"])}.</p>'
-    else:
-        body = (f'<h2>Needs a person</h2>{person_list(data["needs_person"])}'
-                f'<h2>The day in numbers</h2>{tiles(data["numbers"])}'
-                f'<h2>Runs</h2>{runs_table(data["runs"])}'
-                f'<h2>Spend by hour</h2><div class="card">{spend_chart(data["spend_by_hour"])}</div>'
-                f'<h2>Landed</h2>{landed_table(data["landed"])}')
+    body = (f'<h2>Needs a person</h2>{person_list(data["needs_person"])}'
+            f'<h2>The day in numbers</h2>{tiles(data["numbers"])}'
+            f'<h2>Runs</h2>{runs_table(data["runs"])}'
+            + (f'<h2>Earlier runs with activity</h2>{earlier_table(data["earlier_runs"])}' if data["earlier_runs"] else "") +
+            f'<h2>Spend by hour</h2><div class="card">{spend_chart(data["spend_by_hour"])}</div>'
+            f'<h2>Landed</h2>{landed_table(data["landed"])}')
     return (f'<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">'
             f'<title>Iterum report {escape(data["date"])}</title><style>{CSS}</style></head><body><main>{head}{body}</main></body></html>')

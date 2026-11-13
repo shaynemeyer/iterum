@@ -54,6 +54,22 @@ def runs(con, start, end):
     return out
 
 
+def earlier_runs(con, start, end):
+    """Runs started before the window that logged events in it: what happened to them that day."""
+    out = []
+    for r in con.execute(
+        "SELECT r.run_id, r.task, r.status, r.started_at, GROUP_CONCAT(e.kind, ' ') AS kinds FROM runs r"
+        " JOIN events e USING (run_id) WHERE r.started_at<? AND e.ts>=? AND e.ts<?"
+        " GROUP BY r.run_id ORDER BY MIN(e.ts)", (start, start, end),
+    ):
+        kinds = {}
+        for k in r["kinds"].split(" "):
+            kinds[k] = kinds.get(k, 0) + 1
+        out.append({"run_id": r["run_id"], "plan": Path(r["task"]).name, "status": r["status"],
+                    "started_at": r["started_at"], "events": kinds})
+    return out
+
+
 def numbers(con, start, end, day_runs):
     """Counts and spend for the day, and the fleet's headroom now."""
     statuses = {}
@@ -107,6 +123,12 @@ def landed(con, start, end):
             for run_id, ts, p in payloads(con, "merge.landed", start, end)]
 
 
+def ledger_span(con):
+    """(first, last) local dates with any event, or None for an empty ledger."""
+    lo, hi = con.execute("SELECT MIN(ts), MAX(ts) FROM events").fetchone()
+    return None if lo is None else [datetime.fromtimestamp(lo).date().isoformat(), datetime.fromtimestamp(hi).date().isoformat()]
+
+
 def report(day):
     """Every section of the day's report, as one dict."""
     start, end = day_window(day)
@@ -119,8 +141,10 @@ def report(day):
             "needs_person": needs_person(con, start, end, now=day == date.today()),
             "numbers": numbers(con, start, end, day_runs),
             "runs": day_runs,
+            "earlier_runs": earlier_runs(con, start, end),
             "spend_by_hour": spend_by_hour(con, start, end),
             "landed": landed(con, start, end),
+            "ledger_span": ledger_span(con),
         }
     finally:
         con.close()
@@ -164,6 +188,12 @@ def main():
     if not Path(db.DB).exists():
         sys.exit(f"no database at {Path(db.DB).resolve()}")
     data = report(args.date)
+    if report_html.quiet(data):
+        span = data["ledger_span"]
+        where = f"; the ledger has events from {span[0]} to {span[1]}" if span else "; the ledger is empty"
+        print(f"no activity recorded on {data['date']}{where}; no report written", file=sys.stderr)
+        if not args.json:
+            return
     if args.json:
         print(json.dumps(data, indent=2))
         return

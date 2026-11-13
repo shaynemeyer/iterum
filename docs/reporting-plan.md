@@ -51,7 +51,7 @@ The user's framing (2026-11-13): Iterum generates an HTML file of the current da
 | Spend by hour | bars, split by model | `spend.reported` |
 | Landed | each `merge.landed`: branch, files, whether `--check` ran | `merge.*` events |
 
-A day with no activity produces a one-line page saying so. The same data functions back `--days N` later.
+A day with no activity writes no page; the command says so, with the dates the ledger covers (decision log, "No report on a day with no activity"). The same data functions back `--days N` later.
 
 ## How it fits together
 
@@ -95,7 +95,7 @@ Checks: for a past day with known activity in the real `agent.db`, the counts ma
 
 ### 2. Today's report as HTML
 
-Done 2026-11-13 (decision log, "A day's report is a static page beside the database"): `fleet/report_html.py` renders the page; `iterum report [--date D] [--out path] [--open]` writes it to `reports/` beside the database and prints the path. Colours are the dataviz reference palette, models in fixed slots validated light and dark (slot 3 is under 3:1 on the light surface, so the spend chart carries a table view); step and status colours always sit beside a text label; hover is native SVG `<title>`. Found while checking: current state shown on past days (fixed: only today's report shows it). Haiku's spend is barely visible beside an Opus peak on the linear scale; the table and hover give its values. Added the same day: `--pdf` prints the page to a PDF beside it with headless Chrome (`--print-to-pdf`; Chrome on `PATH` or at the macOS app path, else a clear refusal), and print CSS keeps a run's step count on one line and rows whole across pages; the 2026-11-12 PDF is 4 pages, light scheme.
+Done 2026-11-13 (decision log, "A day's report is a static page beside the database"): `fleet/report_html.py` renders the page; `iterum report [--date D] [--out path] [--open]` writes it to `reports/` beside the database and prints the path. Colours are the dataviz reference palette, models in fixed slots validated light and dark (slot 3 is under 3:1 on the light surface, so the spend chart carries a table view); step and status colours always sit beside a text label; hover is native SVG `<title>`. Found while checking: current state shown on past days (fixed: only today's report shows it). Haiku's spend is barely visible beside an Opus peak on the linear scale; the table and hover give its values. Added the same day: `--pdf` prints the page to a PDF beside it with headless Chrome (`--print-to-pdf`; Chrome on `PATH` or at the macOS app path, else a clear refusal), and print CSS keeps a run's step count on one line and rows whole across pages; the 2026-11-12 PDF is 4 pages, light scheme. Also: runs started earlier that log events on the day are listed ("Earlier runs with activity"), and a day with no activity writes no page (decision log).
 
 `python -m fleet.report [--date D] [--out path] [--open]` writes the page described in "The first target".
 

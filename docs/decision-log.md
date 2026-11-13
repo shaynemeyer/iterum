@@ -2,6 +2,18 @@
 
 Decisions and why they were made. Newest first. Entries are never deleted; a decision that is reversed is marked "Superseded by" the entry that replaces it. Open decisions live in `open-questions.md`.
 
+## 2026-11-13: No report on a day with no activity; older runs count on the day they change
+
+**Decision.** When a day has no activity (no runs started, no events on older runs, no spend, nothing landed or refused, and for today nothing needing a person), `iterum report` writes no page or PDF: it says so on stderr, with the dates the ledger covers ("no activity recorded on 2026-11-10; the ledger has events from 2026-11-06 to 2026-11-13; no report written"), and exits 0; `--json` still prints the empty data with the same message. A run started on an earlier day that logs events on this one (a halt, a resume) is listed under "Earlier runs with activity". Supersedes the one-line "Nothing happened" page in the entry below.
+
+**Context.** The user, 2026-11-13: the report "should also tell the user when there is no data for the day", "and not generate a report if there is nothing". Today's report had read "Nothing happened" although two runs were halted that morning: runs were listed only on the day they started.
+
+**Alternatives.** A one-line page (the earlier behavior: the empty file looks like a report until opened); exit 1 on an empty day (it is not a failure).
+
+**Evidence.** 2026-11-10 on the real database wrote no file, even with `--pdf`, and printed the span; an empty ledger says so; today's report lists the two `run.halted` runs; the 2026-11-12 page is unchanged apart from its generated time; a run backdated a day and resumed twice shows `step.proposed ×4, step.failed ×3`.
+
+**Affects.** `fleet/report.py`, `fleet/report_html.py`, `reporting-plan.md`, `CLAUDE.md`.
+
 ## 2026-11-13: A day's report is a static page beside the database
 
 **Decision.** `iterum report` writes one self-contained HTML page for a day (option A of the open question "What should Iterum's reports look like, and where?"): inline CSS and SVG, no scripts, every ledger value through `html.escape`. It goes to `reports/report-<date>.html` in the database's folder (`~/.local/share/iterum/reports/` by default), with `--out` to put it elsewhere and `--json` for the data. A run belongs to the day it started. "Needs a person" lists merges refused that day, and only in today's report the current dead runs, pending approvals and conflicts. It stays a command; `fleet.run` does not write it. The open question keeps B to E and automatic writing.
