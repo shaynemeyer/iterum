@@ -112,6 +112,8 @@ Checks:
 
 ### 2. `iterum status`
 
+Progress 2026-11-13: the first slice is built (`fleet/status.py`: FLEET, SPEND, RUNS; exit 1 on a stale or failed run). Left: QUEUE with stranded tasks, NEEDS A PERSON, CANARY, RECEIVER. Found: `recovery.dead_runs()` returns every failed run ever, so the real `agent.db` exits 1 for two failed runs from 2026-11-12 and always will; to settle before the exit code means anything.
+
 One screen, read-only, exit 1 when something needs a person. Every line comes from an existing function except stranded tasks, a new query over `tasks` and `leases` (`in_progress` with an expired lease).
 
 ```text
