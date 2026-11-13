@@ -1,6 +1,6 @@
 """Drive the merge gate through refusals, a paused agent, the lock and a crash, and check each outcome.
 
-    uv run python -u -m fleet.merge_drill
+    iterum drill merge
 
 Works in a temporary directory with its own repo and database, so it never
 touches agent.db. Takes a few seconds. Exits 1 if any check fails.

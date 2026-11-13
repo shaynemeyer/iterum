@@ -1,7 +1,7 @@
 """List dead-lettered tasks and put them back on the queue.
 
-    uv run python -m fleet.dlq
-    uv run python -m fleet.dlq redrive <task_id>
+    iterum dlq
+    iterum dlq redrive <task_id>
 """
 
 import argparse

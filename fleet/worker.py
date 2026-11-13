@@ -1,8 +1,8 @@
 """The loop each worker runs: claim, work, report exactly one outcome.
 
-    uv run python -u -m fleet.worker worker-1
-    uv run python -u -m fleet.worker worker-1 --budget-s 30
-    FLEET_WORK_MODULE=mypackage.mywork uv run python -u -m fleet.worker worker-1
+    iterum worker worker-1
+    iterum worker worker-1 --budget-s 30
+    FLEET_WORK_MODULE=mypackage.mywork iterum worker worker-1
 
 `do_work` is yours. The default below runs whatever shell command the task
 payload carries, because that is the smallest thing that is real work rather

@@ -1,6 +1,6 @@
 """Receive Claude Code telemetry and record each API request's cost in the ledger.
 
-    uv run python -m fleet.telemetry [--port 4318]
+    iterum receiver [--port 4318]
 
 Claude Code posts OTLP logs as http/json to /v1/logs (see .env.example).
 Each `claude_code.api_request` record becomes one `spend.reported` event,

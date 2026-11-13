@@ -1,8 +1,8 @@
 """Find runs that died and decide whether it is safe to restart them.
 
-    uv run python -m fleet.recovery
-    uv run python -m fleet.recovery --idle-seconds 120 --max-attempts 5
-    ITERUM_IDLE_SECONDS=120 uv run python -m fleet.recovery
+    iterum recovery
+    iterum recovery --idle-seconds 120 --max-attempts 5
+    ITERUM_IDLE_SECONDS=120 iterum recovery
 
 A run is dead if it is `failed`, or still `running` with a heartbeat older than
 the idle time. A live run.py refreshes heartbeat_at every HEARTBEAT seconds,

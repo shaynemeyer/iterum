@@ -1,9 +1,9 @@
 """Read-only views of the fleet.
 
-    uv run python -m fleet.view                   # live sessions, then ledger runs per agent
-    uv run python -m fleet.view trace <run_id>    # one run, stage by stage, failing stage named
-    uv run python -m fleet.view stages [days]     # failures per stage, default last 7 days
-    uv run python -m fleet.view context [session] # context size per session, or per request in one
+    iterum view                   # live sessions, then ledger runs per agent
+    iterum view trace <run_id>    # one run, stage by stage, failing stage named
+    iterum view stages [days]     # failures per stage, default last 7 days
+    iterum view context [session] # context size per session, or per request in one
 
 `roster()` shells out to `claude agents --json` and returns [] when the CLI is
 not there, so every command above works with no Claude Code installed. You get
@@ -32,7 +32,7 @@ STAGES = (
 # Substrings of an event kind that mark a failure, shared by trace() and stages().
 FAILURE_KINDS = ("failed", "halted", "dead_letter", "refused", "reaped")
 
-USAGE = "usage: uv run python -m fleet.view [trace <run_id> | stages [days] | context [session]]"
+USAGE = "usage: iterum view [trace <run_id> | stages [days] | context [session]]"
 
 
 def is_failure(kind):

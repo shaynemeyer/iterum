@@ -9,8 +9,8 @@ Nothing is reserved between a headroom check and the step it allows, so runs
 that check at the same moment each pass on the same headroom and each can
 pass the ceiling by one step's spend (decision log, 2026-11-12).
 
-    uv run python -m fleet.governor
-    uv run python -m fleet.governor set <usd>
+    iterum budget
+    iterum budget set <usd>
 """
 
 import argparse

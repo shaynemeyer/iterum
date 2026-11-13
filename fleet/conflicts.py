@@ -1,7 +1,7 @@
 """List the conflicts waiting for a person, and settle them.
 
-    uv run python -m fleet.conflicts
-    uv run python -m fleet.conflicts resolve <task_id> "<decision>"
+    iterum conflicts
+    iterum conflicts resolve <task_id> "<decision>"
 """
 
 import argparse

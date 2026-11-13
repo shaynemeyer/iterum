@@ -1,9 +1,9 @@
 """Turn your own failures into a regression suite.
 
-    uv run python -m fleet.eval                                  # replay every case
-    uv run python -m fleet.eval add <name> <run_id>              # a regression case
-    uv run python -m fleet.eval add <name> <run_id> --expect J   # a capability case
-    uv run python -m fleet.eval --json                           # {case: passed}, nothing stored (fleet.scorecard)
+    iterum eval                                  # replay every case
+    iterum eval add <name> <run_id>              # a regression case
+    iterum eval add <name> <run_id> --expect J   # a capability case
+    iterum eval --json                           # {case: passed}, nothing stored (fleet.scorecard)
 
 The cases come from your own ledger, so nothing ships with this repo. Each case is
 replayed through fleet.run's own code (see fleet.replay). A regression case expects

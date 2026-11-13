@@ -1,6 +1,6 @@
 """Compare two versions of the harness code on the same eval cases. Show what moved.
 
-    uv run python -m fleet.scorecard <before> [<after>]
+    iterum scorecard <before> [<after>]
 
 Each version is a git revision, scored by its own `fleet.eval --json` in a temporary
 worktree (`fleet.merge.run_check`). Without <after>, the working tree as it is now,

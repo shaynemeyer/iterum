@@ -1,11 +1,11 @@
 """Resumable runs. Every step is written to the ledger BEFORE it executes.
 
-    uv run python -u -m fleet.run                     # the six-step drill plan below
-    uv run python -u -m fleet.run --plan myplan.json  # your own plan
-    uv run python -u -m fleet.run --resume <run_id>   # pick up uncommitted steps
-    uv run python -u -m fleet.run --resume <run_id> --plan myplan.json   # resuming your own plan
-    uv run python -u -m fleet.run --resume <run_id> --force           # resume a halted run after review
-    uv run python -u -m fleet.run --plan myplan.json --allow-claude 0.50   # a plan with prompt steps, each capped at $0.50 (billed)
+    iterum drill run                           # the six-step drill plan below, from the repo root
+    iterum run myplan.json                     # your own plan
+    iterum resume <run_id>                     # pick up uncommitted steps
+    iterum resume <run_id> --plan myplan.json  # resuming your own plan
+    iterum resume <run_id> --force             # resume a halted run after review
+    iterum run myplan.json --allow-claude 0.50   # a plan with prompt steps, each capped at $0.50 (billed)
 
 Always with `-u`. A killed process does not flush its buffers, so without it
 output that is piped or redirected is lost and you conclude the wrapper did nothing.

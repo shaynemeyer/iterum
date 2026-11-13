@@ -4,7 +4,7 @@ Knowledge is a projection: everything in it must be derivable from
 `layer.checked` events. If the rebuilt table differs from the stored one,
 something wrote knowledge without recording an event.
 
-Run from the repo root: `uv run python -m fleet.project`
+Run with `iterum project`.
 
 Not read-only: it always replaces the knowledge table with the rebuild.
 Prints MATCH and exits 0 when the fingerprints agree, or DRIFT and exits 1

@@ -2,6 +2,14 @@
 
 Items moved here from `todo.md` once done. Newest first.
 
+## One `iterum` command
+
+Completed 2026-11-13 (`9d0077f` to this commit). Moved from `todo.md` (item 5):
+
+> **`iterum` CLI, increments 2 to 5 (`cli-plan.md`).** Increment 1 (package and dispatcher) is done (decision log, 2026-11-13). Next: `iterum status`, then shortcuts, a fixed default database, and docs (README, `CLAUDE.md`), each checked before the next.
+
+**Done.** All five increments of `cli-plan.md`: the packaged `iterum` command (`uv tool install --editable .`); `iterum status` (exit 1 when a run, task, approval or conflict needs a person) and `fleet.recovery halt`; shortcuts (`iterum land` reads the run's fences from the database, `who` defaults to `ITERUM_DEVICE`, hints print `iterum` commands); the default database at `~/.local/share/iterum/agent.db` with the real one moved there; and docs (README, `CLAUDE.md`, the published guide and landing page, `sync.md`, `pricing.md`, the telemetry doc, `nextjs-first-run.md`'s setup block, module docstrings). Along the way: the built-in drill refuses to run outside the repo root, and `iterum worker` finds `FLEET_WORK_MODULE` in the current folder. Skipped: per-module usage names (`cli-plan.md` increment 3). **Evidence:** per increment in `cli-plan.md` and the decision log, 2026-11-13.
+
 ## Two runs starting together on a new database
 
 Completed 2026-11-12. Moved from `todo.md`:

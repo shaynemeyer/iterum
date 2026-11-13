@@ -1,6 +1,6 @@
 """Run each model-mix plan several times and compare pass rate beside cost.
 
-    uv run python -u -m fleet.sweep plan-a.json plan-b.json [...] [--repeats 5] [--base main] [--allow-claude <usd>]
+    iterum sweep plan-a.json plan-b.json [...] [--repeats 5] [--base main] [--allow-claude <usd>]
 
 Run it from the repo the plans work on, as fleet.run. Each repeat starts every plan
 in a rotated order (the first request pays to write the prompt cache, so a fixed order

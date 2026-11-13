@@ -1,6 +1,6 @@
 """Kill a worker with SIGKILL mid-task and prove the queue recovers.
 
-    uv run python -u -m fleet.kill_drill
+    iterum drill kill
 
 Works in a temporary directory with its own database, so it never touches
 agent.db. It uses the real lease, so a run takes about 50 seconds. Exits 1 if

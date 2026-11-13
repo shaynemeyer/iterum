@@ -4,10 +4,10 @@ An approval row records that someone, under the name given, decided about one
 exact action at one time. Nothing checks who typed the name, and `approvals` is
 mutable control state; the append-only record is the event logged with it.
 
-    uv run python -m fleet.approve
-    uv run python -m fleet.approve approve|deny <fingerprint> <who>
-    uv run python -m fleet.approve freeze <who> <reason>
-    uv run python -m fleet.approve thaw <who>
+    iterum status                                # FROZEN or not, and pending approvals
+    iterum approve|deny <fingerprint> [<who>]    # who defaults to ITERUM_DEVICE
+    iterum freeze [<who>] "<reason>"
+    iterum thaw [<who>]
 """
 
 import argparse

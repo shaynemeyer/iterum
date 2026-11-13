@@ -1,6 +1,6 @@
 """Drive fleet.run's declared claims through a refusal, a resume, renewal and a paused-agent takeover.
 
-    uv run python -u -m fleet.claims_drill
+    iterum drill claims
 
 Works in a temporary directory with its own repo and database, so it never
 touches agent.db. Uses a 20-second claim TTL, so a run takes about a minute.

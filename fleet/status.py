@@ -1,6 +1,6 @@
 """One screen of fleet state: freeze, spend, receiver, runs, queue, what needs a person, canary. Reads only; exits 1 when something needs a person.
 
-    uv run python -m fleet.status        (or: iterum status)
+    iterum status        (or: uv run python -m fleet.status)
 """
 
 import json

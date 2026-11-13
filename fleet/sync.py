@@ -7,10 +7,10 @@ from retired or renamed devices: they are the only shared copy of those events.
 Settings: ITERUM_DEVICE (required) names this device. ITERUM_SYNC_DIR is the
 sync folder, default ~/private-data/iterum.
 
-Run from the repo root:
-  uv run python -m fleet.sync sync      # export, commit, pull, push, import, rebuild
-  uv run python -m fleet.sync export    # write this device's events
-  uv run python -m fleet.sync import    # merge every device's events
+From any folder:
+  iterum sync           # export, commit, pull, push, import, rebuild
+  iterum sync export    # write this device's events
+  iterum sync import    # merge every device's events
 
 `sync` needs ITERUM_SYNC_DIR to sit inside a git repo with a remote. It commits
 only this device's file, so other data in the same repo is left alone.
@@ -110,6 +110,6 @@ def sync():
 if __name__ == "__main__":
     commands = {"sync": sync, "export": export, "import": import_only}
     if len(sys.argv) != 2 or sys.argv[1] not in commands:
-        sys.exit(f"usage: python -m fleet.sync {{{'|'.join(commands)}}}")
+        sys.exit(f"usage: iterum sync [{'|'.join(c for c in commands if c != 'sync')}]")
     db.init()  # a brand-new device has no tables yet; safe to repeat
     commands[sys.argv[1]]()

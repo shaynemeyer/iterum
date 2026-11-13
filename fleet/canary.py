@@ -6,7 +6,7 @@ seconds and cost per run. Cost is the run's `spend.reported` events, so it is
 zero without fleet.telemetry, and a zero baseline is never compared.
 Queue tasks are not runs and are not watched.
 
-    uv run python -m fleet.canary [--baseline-hours 24] [--window-hours 1] [--tolerance 0.5]
+    iterum canary [--baseline-hours 24] [--window-hours 1] [--tolerance 0.5]
 
 Prints each alert and logs one `canary.fired` event when any fire.
 """
