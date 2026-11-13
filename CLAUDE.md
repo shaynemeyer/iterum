@@ -12,6 +12,7 @@ Python 3.14 is required (`uuid.uuid7()`, and the unparenthesized `except A, B:` 
 
 ```bash
 iterum status                                   # freeze, spend, receiver, runs, queue, what needs a person, canary; exit 1 when something needs a person
+iterum report [--date D] [--out page.html] [--open] [--json]   # a day's work as one HTML page in reports/ beside the database, or the data as JSON
 iterum doctor                                   # audit this machine, writes ./harness-audit.json
 uv run scripts/seed-ledger.py                   # from the repo root: record ./harness-audit.json as layer.checked events
 iterum project                                  # rebuild knowledge; exits 1 on DRIFT (first run always DRIFT)

@@ -1,6 +1,7 @@
-"""A day's work from agent.db, as plain data. Reads only.
+"""A day's work from agent.db: an HTML page, or the data as JSON. Reads only.
 
-    iterum report --json [--date YYYY-MM-DD]     (or: uv run python -m fleet.report ...)
+    iterum report [--date YYYY-MM-DD] [--out page.html] [--open]   # writes reports/report-<date>.html beside the database
+    iterum report --json [--date YYYY-MM-DD]                       # the same data as JSON
 
 A run belongs to the day it started. Spend counts every `spend.reported` event in
 the day, interactive sessions included. Times are epoch seconds; the day is local.
@@ -9,12 +10,13 @@ the day, interactive sessions included. Times are epoch seconds; the day is loca
 import argparse
 import json
 import os
+import subprocess
 import sys
 import time
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
-from fleet import approve, db, governor, queue, recovery, telemetry
+from fleet import approve, db, governor, queue, recovery, report_html, telemetry
 
 
 def day_window(day):
@@ -71,17 +73,20 @@ def numbers(con, start, end, day_runs):
     }
 
 
-def needs_person(con, start, end):
-    """What iterum status would flag now, plus merges refused in the window."""
+def needs_person(con, start, end, now):
+    """Merges refused in the window and, when `now` (today's report), what iterum status flags at this moment.
+
+    Dead runs, pending approvals and conflicts are current state, not the day's, so a past day leaves them out.
+    """
     return {
-        "dead_runs": [{"run_id": r[0], "status": r[3], "idle_s": r[4]} for r in recovery.dead_runs()],
+        "dead_runs": [{"run_id": r[0], "status": r[3], "idle_s": r[4]} for r in recovery.dead_runs()] if now else [],
         "refused_merges": [
             {"run_id": run_id, "branch": p["branch"], "reason": p.get("reason")}
             for run_id, _, p in payloads(con, "merge.refused", start, end)
         ],
         "approvals": [{"fingerprint": a["fingerprint"], "action": a["action"], "scope": a["run_id"], "seq": a["seq"]}
-                      for a in approve.pending()],
-        "conflicts": [t["task_id"] for t in queue.human_tasks()],
+                      for a in approve.pending()] if now else [],
+        "conflicts": [t["task_id"] for t in queue.human_tasks()] if now else [],
     }
 
 
@@ -110,7 +115,7 @@ def report(day):
         return {
             "date": day.isoformat(), "device": os.environ.get("ITERUM_DEVICE"),
             "db": str(Path(db.DB).resolve()), "generated_at": time.time(),
-            "needs_person": needs_person(con, start, end),
+            "needs_person": needs_person(con, start, end, now=day == date.today()),
             "numbers": numbers(con, start, end, day_runs),
             "runs": day_runs,
             "spend_by_hour": spend_by_hour(con, start, end),
@@ -120,15 +125,31 @@ def report(day):
         con.close()
 
 
+def default_out(day):
+    """reports/report-<date>.html in the database's folder."""
+    return Path(db.DB).resolve().parent / "reports" / f"report-{day.isoformat()}.html"
+
+
 def main():
-    """Print the day's report as JSON."""
+    """Write the day's page and print its path, or print the data as JSON."""
     parser = argparse.ArgumentParser(prog="iterum report")
-    parser.add_argument("--json", action="store_true", help="print the data as JSON (the only output so far)")
+    parser.add_argument("--json", action="store_true", help="print the data as JSON instead of writing the page")
     parser.add_argument("--date", type=date.fromisoformat, default=date.today(), help="YYYY-MM-DD, default today")
+    parser.add_argument("--out", type=Path, help="where to write the page (default: reports/ beside the database)")
+    parser.add_argument("--open", action="store_true", help="open the page afterwards (macOS `open`)")
     args = parser.parse_args()
     if not Path(db.DB).exists():
         sys.exit(f"no database at {Path(db.DB).resolve()}")
-    print(json.dumps(report(args.date), indent=2))
+    data = report(args.date)
+    if args.json:
+        print(json.dumps(data, indent=2))
+        return
+    out = args.out or default_out(args.date)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(report_html.render(data))
+    print(out)
+    if args.open:
+        subprocess.run(["open", str(out)], check=False)
 
 
 if __name__ == "__main__":

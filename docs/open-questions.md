@@ -12,13 +12,13 @@ Decisions not made yet. When one is answered, record it in `decision-log.md`, ad
 
 ## What should Iterum's reports look like, and where?
 
-**Context.** Everything is in `agent.db`, but it is only visible as text over seven commands, which answer "what is the state now" and not "how did today go" or "how is this changing". Proposed first target (2026-11-13): an HTML file of the current day's work, written by Iterum and shown back to the user. Sections, sources and increments are in `reporting-plan.md`.
+**Context.** Everything is in `agent.db`, but it is only visible as text over seven commands, which answer "what is the state now" and not "how did today go" or "how is this changing". Partly settled 2026-11-13 (decision log, "A day's report is a static page beside the database"): `iterum report` writes option A for one day. What is left is below. Sections, sources and increments are in `reporting-plan.md`.
 
 **Options.** (A) A static HTML file from `agent.db`, standard library and inline SVG, nothing leaving the machine; (B) the same page served live on `127.0.0.1`; (C) Rich in the terminal (first dependency); (D) a Textual TUI; (E) a published page, which needs local paths and session ids scrubbed first.
 
-**Blocks.** Nothing. Independent of `cli-plan.md`; becomes `iterum report` once that lands.
+**Blocks.** Nothing; `reporting-plan.md` increments 3 and 4 build on A.
 
-**Settled by.** Confirming A as the first target, where report files are written, how a run that spans midnight counts, and whether `fleet.run` writes the report itself or it stays a command.
+**Settled by.** Whether B, C, D or E follow at all, and whether `fleet.run` writes the report itself when a run ends or it stays a command (built as a command).
 
 ## Should `claude.finished` keep the whole result envelope?
 

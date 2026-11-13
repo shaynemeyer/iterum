@@ -95,6 +95,8 @@ Checks: for a past day with known activity in the real `agent.db`, the counts ma
 
 ### 2. Today's report as HTML
 
+Done 2026-11-13 (decision log, "A day's report is a static page beside the database"): `fleet/report_html.py` renders the page; `iterum report [--date D] [--out path] [--open]` writes it to `reports/` beside the database and prints the path. Colours are the dataviz reference palette, models in fixed slots validated light and dark (slot 3 is under 3:1 on the light surface, so the spend chart carries a table view); step and status colours always sit beside a text label; hover is native SVG `<title>`. Found while checking: current state shown on past days (fixed: only today's report shows it). Haiku's spend is barely visible beside an Opus peak on the linear scale; the table and hover give its values.
+
 `python -m fleet.report [--date D] [--out path] [--open]` writes the page described in "The first target".
 
 Checks: a day with runs, a day with a failed run (it shows under "Needs a person"), and a day with nothing; open each in a browser, light and dark; numbers on the page match increment 1's `--json`; an intent containing `<script>` shows as text; the page names the plan file, never its full path.

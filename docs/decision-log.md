@@ -2,6 +2,18 @@
 
 Decisions and why they were made. Newest first. Entries are never deleted; a decision that is reversed is marked "Superseded by" the entry that replaces it. Open decisions live in `open-questions.md`.
 
+## 2026-11-13: A day's report is a static page beside the database
+
+**Decision.** `iterum report` writes one self-contained HTML page for a day (option A of the open question "What should Iterum's reports look like, and where?"): inline CSS and SVG, no scripts, every ledger value through `html.escape`. It goes to `reports/report-<date>.html` in the database's folder (`~/.local/share/iterum/reports/` by default), with `--out` to put it elsewhere and `--json` for the data. A run belongs to the day it started. "Needs a person" lists merges refused that day, and only in today's report the current dead runs, pending approvals and conflicts. It stays a command; `fleet.run` does not write it. The open question keeps B to E and automatic writing.
+
+**Context.** `reporting-plan.md`, increments 1 and 2. The location was the plan's recommendation; the user went ahead without choosing another ("do next").
+
+**Alternatives.** The current folder (a report lands in whichever repo you ran it from); counting a run on every day it had events (the same run in two reports); showing current state in every report (built first: a past day with no activity showed today's failed run under "Needs a person", so an empty day never read as empty).
+
+**Evidence.** Increment 2's checks, 2026-11-13: the 2026-11-12 page's tiles, 38 run rows, 9 landed merges and 10 spend segments equal `--json`; a step intent `<script>alert(1)</script>` and a plan `<i>evil.json` render as text, with no `<script>` element in any page; 2026-01-01 reads "Nothing happened"; in Chrome, light and dark render, and at 390 px no page scrolls sideways.
+
+**Affects.** `fleet/report.py`, `fleet/report_html.py`, `reporting-plan.md`, `open-questions.md`.
+
 ## 2026-11-13: The default database lives in the XDG data folder
 
 **Decision.** Without `ITERUM_DB`, the database is `$XDG_DATA_HOME/iterum/agent.db`, or `~/.local/share/iterum/agent.db` when `XDG_DATA_HOME` is unset or empty. `ITERUM_DB` still wins. The existing `<iterum>/agent.db` moves there once, while nothing has it open, so no `ITERUM_DB` is needed afterwards. A command that finds no database creates it (and its folder), as `db.init()` does today; `iterum status` still refuses a missing one. Settles the open question "Where should the default database live?" (`cli-plan.md` increment 4).

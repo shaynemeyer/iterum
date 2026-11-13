@@ -30,6 +30,7 @@ Every event carries a UUIDv7 `uid` and the `device` that wrote it, so ledgers fr
 | --- | --- |
 | `fleet/cli.py` | The `iterum` command: one word per module below |
 | `fleet/status.py` | One screen of fleet state; exits 1 when something needs a person |
+| `fleet/report.py`, `fleet/report_html.py` | A day's work as one self-contained HTML page, or as JSON |
 | `fleet/doctor.py` | Audits seven harness layers on this machine and writes `harness-audit.json` |
 | `fleet/db.py` | `agent.db` access; every write runs in `BEGIN IMMEDIATE` |
 | `fleet/schema.sql` | Tables for runs, events, knowledge, claims, the task queue, budgets, evals and approvals |
@@ -78,6 +79,7 @@ The first `iterum project` run reports DRIFT and exits 1 while the knowledge tab
 
 ```bash
 iterum status                     # one screen; exits 1 when something needs a person
+iterum report --open              # today's work as an HTML page
 iterum run plan.json              # run a plan, from the repo it works on
 iterum land <branch> --run-id R   # land the run's branch while its claims are live
 ```
