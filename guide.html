@@ -207,7 +207,7 @@ footer { color: var(--muted); font-size: 0.86rem; border-top: 1px solid var(--li
   <div class="cards">
     <div class="card"><span class="k">Free</span><h3>Shell steps</h3><p>Run any command. Nothing is billed. Every drill and dry run in this guide is free.</p></div>
     <div class="card"><span class="k">Billed</span><h3>Prompt steps</h3><p>Run <code>claude -p</code> on your account. Each is capped, and nothing runs without <code>--allow-claude</code>.</p></div>
-    <div class="card"><span class="k">Rule of thumb</span><h3>Always from a repo</h3><p>Run every command through <code>uv</code>, from the repo the plan works on, with <code>-m</code> for <code>fleet</code> modules.</p></div>
+    <div class="card"><span class="k">Rule of thumb</span><h3>Plans from the app repo</h3><p>Install <code>iterum</code> once. Run plans and landings from the repo they work on; everything else runs from any folder.</p></div>
   </div>
   <div class="stack col">
     <h3>A typical session</h3>
@@ -222,22 +222,21 @@ footer { color: var(--muted); font-size: 0.86rem; border-top: 1px solid var(--li
   </div>
   <div class="stack" id="where">
     <h3>Where to run what</h3>
-    <p class="col">Work happens in two folders. Commands that change your app run from the <b>app repo</b>, because steps run in the folder you start from and the merge gate lands the branch there. Everything about the harness itself runs from the <b>Iterum repo</b>. Both must use the same database.</p>
+    <p class="col">Install <code>iterum</code> once (<a href="#start">Before you start</a>) and its commands run from any folder against one database, <code>~/.local/share/iterum/agent.db</code>. Where you start still matters for two kinds of command: those that change your app run from the <b>app repo</b>, because steps run in the folder you start from and the merge gate lands the branch there; two harness commands need the <b>Iterum repo</b>.</p>
     <div class="tbl">
       <table>
         <thead><tr><th>Run from</th><th>Commands</th><th>Why there</th></tr></thead>
         <tbody>
-          <tr><td><b>App repo</b>, on a feature branch</td><td><code>fleet.run --plan</code><br><code>fleet.merge</code><br><code>fleet.sweep</code></td><td>Steps run in the current folder; the branch check and the landing use this repo.</td></tr>
-          <tr><td><b>Iterum repo</b></td><td><code>fleet.telemetry</code>, <code>fleet.governor</code>, <code>fleet.recovery</code>, <code>fleet.view</code><br><code>fleet.worker</code>, <code>fleet.dlq</code>, <code>fleet.conflicts</code>, <code>fleet.approve</code>, <code>fleet.canary</code><br><code>fleet.sync</code>, <code>fleet.project</code>, <code>doctor.py</code>, <code>seed-ledger.py</code><br>the drills, <code>fleet.run</code> with no plan, <code>fleet.eval</code>, <code>fleet.scorecard</code></td><td>They work on the harness and its database, not on your app. <code>fleet.sync</code> must run from the repo root.</td></tr>
+          <tr><td><b>App repo</b>, on a feature branch</td><td><code>iterum run</code><br><code>iterum land</code><br><code>iterum sweep</code></td><td>Steps run in the current folder; the branch check and the landing use this repo.</td></tr>
+          <tr><td><b>Iterum repo</b></td><td><code>iterum drill run</code><br><code>uv run scripts/seed-ledger.py</code></td><td>The built-in drill lists <code>fleet/</code> and writes <code>out/</code> in the current folder; the seed script is not part of the installed command.</td></tr>
+          <tr><td><b>Anywhere</b></td><td>everything else: <code>iterum status</code>, <code>receiver</code>, <code>budget</code>, <code>recovery</code>, <code>view</code>, <code>worker</code>, <code>dlq</code>, <code>conflicts</code>, <code>approve</code>, <code>freeze</code>, <code>canary</code>, <code>sync</code>, <code>project</code>, <code>doctor</code>, <code>eval</code>, <code>scorecard</code>, the other drills</td><td>They work on the harness and its database, not on your app.</td></tr>
         </tbody>
       </table>
     </div>
-    <div class="term-label">From the app repo, once per terminal</div>
-    <div class="term"><button type="button">Copy</button><pre>export ITERUM_DB=&lt;iterum&gt;/agent.db       <span class="c"># absolute: a relative path would make a new, empty agent.db in the app</span>
-export PYTHONPATH=&lt;iterum&gt;               <span class="c"># so python can find the fleet package</span>
-source &lt;iterum&gt;/.env.example             <span class="c"># telemetry, for prompt steps under a ceiling</span>
-uv run --project &lt;iterum&gt; python -u -m fleet.run --plan feature.json</pre></div>
-    <p class="col">A feature session therefore uses two terminals: the telemetry receiver in the Iterum repo, and the plan and the landing in the app repo (<a href="#workflow">Shipping a feature</a>).</p>
+    <div class="term-label">From the app repo</div>
+    <div class="term"><button type="button">Copy</button><pre>source &lt;iterum&gt;/.env.example             <span class="c"># telemetry, for prompt steps under a ceiling; once per terminal</span>
+iterum run feature.json</pre></div>
+    <p class="col">A feature session therefore uses two terminals: the telemetry receiver, and the plan and the landing in the app repo (<a href="#workflow">Shipping a feature</a>).</p>
   </div>
 </header>
 
@@ -245,33 +244,35 @@ uv run --project &lt;iterum&gt; python -u -m fleet.run --plan feature.json</pre>
 <section class="chapter" id="start">
   <header><div class="eyebrow">Chapter 01</div><h2>Before you start</h2></header>
   <div class="col stack">
-    <p>You need <b>Python 3.14</b> (Iterum uses <code>uuid.uuid7()</code>) and <a href="https://docs.astral.sh/uv/">uv</a>. Prompt steps also need the <code>claude</code> CLI, signed in. There is no install step: <code>uv</code> builds the environment on the first run.</p>
+    <p>You need <b>Python 3.14</b> (Iterum uses <code>uuid.uuid7()</code>) and <a href="https://docs.astral.sh/uv/">uv</a>. Prompt steps also need the <code>claude</code> CLI, signed in.</p>
     <p>Every event records which machine wrote it, so name this machine once, in your shell profile:</p>
   </div>
   <div class="term"><button type="button">Copy</button><pre><span class="c"># ~/.zshrc or ~/.bashrc, then open a new terminal</span>
 export ITERUM_DEVICE=laptop</pre></div>
   <div class="col stack">
-    <p>Then audit the machine and record the audit as the first events in the ledger:</p>
+    <p>Then install the <code>iterum</code> command, audit the machine, and record the audit as the first events in the ledger:</p>
   </div>
-  <div class="term"><button type="button">Copy</button><pre>uv run fleet/doctor.py            <span class="c"># writes ./harness-audit.json</span>
+  <div class="term"><button type="button">Copy</button><pre>git clone https://github.com/shaynemeyer/iterum.git &amp;&amp; cd iterum
+uv tool install --editable .      <span class="c"># installs iterum; editable, so a git pull updates it</span>
+iterum doctor                     <span class="c"># writes ./harness-audit.json</span>
 uv run scripts/seed-ledger.py     <span class="c"># records it as layer.checked events</span>
-uv run python -m fleet.project    <span class="c"># builds knowledge; the first run always reports DRIFT</span></pre></div>
-  <div class="note"><b>Why <code>-m</code>?</b> <code>fleet</code> is a namespace package with no <code>__init__.py</code>, so <code>python fleet/run.py</code> fails with <code>ModuleNotFoundError</code>. Use <code>uv run python -m fleet.run</code>. Only <code>doctor.py</code> and <code>gate.py</code> run as scripts.</div>
+iterum project                    <span class="c"># builds knowledge; the first run always reports DRIFT</span></pre></div>
+  <div class="note"><b>Shell cannot find <code>iterum</code>?</b> Run <code>uv tool update-shell</code> and open a new terminal. Each <code>iterum</code> command runs a module as <code>python -m</code> would, so <code>uv run python -m fleet.&lt;module&gt;</code> from the Iterum repo still works. The database is created on first use at <code>~/.local/share/iterum/agent.db</code>.</div>
 </section>
 
 <!-- 02 -->
 <section class="chapter" id="first-run">
   <header><div class="eyebrow">Chapter 02</div><h2>Your first run: kill it, then resume it</h2></header>
   <div class="col stack">
-    <p>With no plan, <code>fleet.run</code> runs a built-in six-step drill made of shell commands. Step 5 sleeps for 20 seconds so you have time to kill it. Use a throwaway database while you learn:</p>
+    <p><code>iterum drill run</code> runs a built-in six-step plan made of shell commands, from the Iterum repo. Step 5 sleeps for 20 seconds so you have time to kill it. Use a throwaway database while you learn:</p>
   </div>
   <ol class="steps">
     <li><div><p>Start the drill against a scratch database.</p>
       <div class="term"><button type="button">Copy</button><pre>export ITERUM_DB=/tmp/scratch.db
-uv run python -u -m fleet.run</pre></div></div></li>
+iterum drill run</pre></div></div></li>
     <li><div><p>When step 5 starts, press <b>Ctrl-C</b> (or close the terminal). Steps 1 to 4 are already <code>committed</code>; step 5 is left <code>proposed</code>, with no outcome.</p></div></li>
     <li><div><p>Resume it with the run id it printed. Resume waits until the run's heartbeat is 60 seconds old, so a live run is never resumed by mistake. Add <code>--force</code> only if you know the old process is gone.</p>
-      <div class="term"><button type="button">Copy</button><pre>uv run python -u -m fleet.run --resume &lt;run_id&gt;</pre></div>
+      <div class="term"><button type="button">Copy</button><pre>iterum resume &lt;run_id&gt;</pre></div>
       <p>It skips steps 1 to 4, reruns step 5, and finishes with <code>run &lt;run_id&gt; done</code>.</p></div></li>
   </ol>
   <figure>
@@ -347,14 +348,14 @@ uv run python -u -m fleet.run</pre></div></div></li>
  [3, "commit it",     "git add app/page.tsx &amp;&amp; git commit -m 'Welcome'", ["file:app/page.tsx"]]]</pre></div>
   <div class="term-label">From the app repo, with the settings from <a href="#where">Where to run what</a></div>
   <div class="term"><button type="button">Copy</button><pre>git switch -c feat/welcome                     <span class="c"># a plan that declares files must not run on main</span>
-uv run --project &lt;iterum&gt; python -u -m fleet.run --plan feature.json</pre></div>
+iterum run feature.json</pre></div>
   <div class="col stack">
     <h3>Rules that keep plans safe</h3>
     <ul class="plain">
       <li><b>Declare files and you need a branch.</b> A plan with resources refuses to run on <code>--target</code> (default <code>main</code>), because its commits would skip the merge gate.</li>
       <li><b>All files are claimed before step 1,</b> in sorted order, and renewed by a heartbeat at half <code>ITERUM_CLAIM_TTL</code> (default 300 s). If another run holds one, the run is refused before anything runs, and the message names that run.</li>
       <li><b>A failing command fails the run.</b> Fix the command for that step in the plan file and resume; committed steps stay committed.</li>
-      <li><b>Run from the repo the plan works on.</b> Steps run in the directory you start from. From outside the Iterum repo, add <code>PYTHONPATH=&lt;iterum&gt;</code> and <code>uv run --project &lt;iterum&gt;</code>, and keep <code>ITERUM_DB</code> an absolute path.</li>
+      <li><b>Run from the repo the plan works on.</b> Steps run in the directory you start from. <code>iterum</code> finds the same database from any folder; if you set <code>ITERUM_DB</code>, make it an absolute path.</li>
     </ul>
   </div>
 </section>
@@ -368,7 +369,7 @@ uv run --project &lt;iterum&gt; python -u -m fleet.run --plan feature.json</pre>
   <div class="term"><button type="button">Copy</button><pre>[[1, "404 page", {"prompt": "Create app/not-found.tsx ... Create no other file.", "model": "claude-haiku-5-5"}, ["file:app/not-found.tsx"]],
  [2, "build",    "bun run build",                                                                      ["file:app/not-found.tsx"]],
  [3, "commit",   "git add app/not-found.tsx &amp;&amp; git commit -m 'Add a 404 page'",                       ["file:app/not-found.tsx"]]]</pre></div>
-  <div class="term"><button type="button">Copy</button><pre>uv run python -u -m fleet.run --plan feature.json --allow-claude 0.05   <span class="c"># each prompt step capped at $0.05</span></pre></div>
+  <div class="term"><button type="button">Copy</button><pre>iterum run feature.json --allow-claude 0.05   <span class="c"># each prompt step capped at $0.05</span></pre></div>
   <div class="cards">
     <div class="card"><span class="k">It can</span><h3>Read, Edit and Write</h3><p>Only those three tools, only inside the working directory (<code>--restricted</code>). Edits need no approval.</p></div>
     <div class="card"><span class="k">It cannot</span><h3>Run commands</h3><p>No shell, no MCP servers, no web. Put the build and your checks in shell steps after it.</p></div>
@@ -428,7 +429,7 @@ uv run --project &lt;iterum&gt; python -u -m fleet.run --plan feature.json</pre>
 
         <rect x="616" y="60" width="128" height="96" rx="8" class="box-a"/>
         <text x="680" y="84" text-anchor="middle" class="h">5 Land</text>
-        <text x="680" y="106" text-anchor="middle" class="s">fleet.merge with</text>
+        <text x="680" y="106" text-anchor="middle" class="s">iterum land with</text>
         <text x="680" y="122" text-anchor="middle" class="s">--check</text>
 
         <rect x="762" y="60" width="118" height="96" rx="8" class="box"/>
@@ -449,18 +450,17 @@ uv run --project &lt;iterum&gt; python -u -m fleet.run --plan feature.json</pre>
     <figcaption><b>Free stages first.</b> A check that already passes on <code>main</code> proves nothing, and a dry run that fails anywhere but the check means the plan is wrong. Both cost nothing to find out.</figcaption>
   </figure>
   <div class="term-label">The paid run and the landing, from the app's repo</div>
-  <div class="term"><button type="button">Copy</button><pre><span class="c"># terminal 1, from the Iterum repo: the receiver, on the same database the run uses</span>
-ITERUM_DB=&lt;iterum&gt;/agent.db uv run python -u -m fleet.telemetry
+  <div class="term"><button type="button">Copy</button><pre><span class="c"># terminal 1, anywhere: the receiver, on the same database the run uses</span>
+iterum receiver
 
 <span class="c"># terminal 2, from the app repo, on a feature branch</span>
 source &lt;iterum&gt;/.env.example
-export ITERUM_DB=&lt;iterum&gt;/agent.db PYTHONPATH=&lt;iterum&gt;
-uv run --project &lt;iterum&gt; python -u -m fleet.run --plan feature.json --allow-claude 0.05
+iterum run feature.json --allow-claude 0.05
 <span class="o">run 12c0572d5ec1 done
-land with: uv run python -m fleet.merge feat/home-copy --run-id 12c0572d5ec1 --fence file:app/page.tsx=5</span>
+land with: iterum land feat/home-copy --run-id 12c0572d5ec1 --fence file:app/page.tsx=5</span>
 
-uv run --project &lt;iterum&gt; python -m fleet.merge feat/home-copy --run-id 12c0572d5ec1 \
-  --fence file:app/page.tsx=5 --check "bun install --frozen-lockfile &amp;&amp; bun run build"</pre></div>
+iterum land feat/home-copy --run-id 12c0572d5ec1 \
+  --check "bun install --frozen-lockfile &amp;&amp; bun run build"   <span class="c"># fences: the run's own claims</span></pre></div>
   <div class="note"><b>What it costs.</b> Six Haiku feature steps on 2026-11-12 cost between $0.0011 and $0.0020 each, 3 to 5 turns, against a $0.05 cap.</div>
 </section>
 
@@ -469,7 +469,7 @@ uv run --project &lt;iterum&gt; python -m fleet.merge feat/home-copy --run-id 12
   <header><div class="eyebrow">Chapter 06</div><h2>Landing a branch</h2></header>
   <div class="col stack">
     <p>A finished run prints its <code>land with:</code> command, with one <code>--fence</code> per claimed file. Paste it as printed: fences with shell characters, like <code>[slug]</code>, are already quoted. Add <code>--check</code> to build the merged tree before it lands.</p>
-    <p><code>fleet.merge</code> builds the merge without touching your working tree, runs the check in a temporary worktree, then, in one transaction, requires a live claim at the given fence for every changed file and moves the target branch only if it has not moved since. Landing releases the claims.</p>
+    <p><code>iterum land</code> builds the merge without touching your working tree, runs the check in a temporary worktree, then, in one transaction, requires a live claim at the given fence for every changed file and moves the target branch only if it has not moved since. Landing releases the claims.</p>
   </div>
   <div class="tbl">
     <table>
@@ -489,7 +489,7 @@ uv run --project &lt;iterum&gt; python -m fleet.merge feat/home-copy --run-id 12
 <section class="chapter" id="stopped">
   <header><div class="eyebrow">Chapter 07</div><h2>When a run stops</h2></header>
   <div class="col stack">
-    <p>Every <code>fleet.run</code> start lists runs that look dead and counts failed ones. <code>fleet.recovery</code> gives the full list and halts any run whose same step has been tried too often. Find the run's status, then follow its path:</p>
+    <p>Every <code>iterum run</code> start lists runs that look dead and counts failed ones. <code>iterum recovery</code> gives the full list and halts any run whose same step has been tried too often. Find the run's status, then follow its path:</p>
   </div>
   <figure>
     <div class="fig">
@@ -514,7 +514,7 @@ uv run --project &lt;iterum&gt; python -m fleet.merge feat/home-copy --run-id 12
         <text x="470" y="41" class="s">nothing to do; resume refuses it</text>
         <text x="470" y="92" class="m">fix the failed step's command,</text>
         <text x="470" y="108" class="m acc">--resume &lt;id&gt; --plan p.json</text>
-        <text x="470" y="152" class="m">fleet.governor set &lt;usd&gt;, then</text>
+        <text x="470" y="152" class="m">iterum budget set &lt;usd&gt;, then</text>
         <text x="470" y="168" class="m acc">--resume &lt;id&gt; --plan p.json</text>
         <text x="470" y="212" class="m">a person looks first, then</text>
         <text x="470" y="228" class="m acc">--resume &lt;id&gt; --force</text>
@@ -522,11 +522,13 @@ uv run --project &lt;iterum&gt; python -m fleet.merge feat/home-copy --run-id 12
         <text x="470" y="288" class="m acc">--resume &lt;id&gt; --plan p.json</text>
       </svg>
     </div>
-    <figcaption><b>Every stop names its way back.</b> A run is <code>halted</code> by <code>fleet.recovery</code> when one step has been proposed <code>--max-attempts</code> times (default 3), so a person decides before it runs again.</figcaption>
+    <figcaption><b>Every stop names its way back.</b> A run is <code>halted</code> by <code>iterum recovery</code> when one step has been proposed <code>--max-attempts</code> times (default 3), so a person decides before it runs again.</figcaption>
   </figure>
-  <div class="term"><button type="button">Copy</button><pre>uv run python -m fleet.recovery                       <span class="c"># list dead runs; halt over-retried ones</span>
-uv run python -m fleet.recovery --idle-seconds 120 --max-attempts 5
-uv run python -m fleet.view trace &lt;run_id&gt;            <span class="c"># the run stage by stage, failing stage named</span></pre></div>
+  <div class="term"><button type="button">Copy</button><pre>iterum status                                 <span class="c"># exit 1 when a run is stale or failed</span>
+iterum recovery                               <span class="c"># list dead runs; halt over-retried ones</span>
+iterum recovery --idle-seconds 120 --max-attempts 5
+iterum recovery halt &lt;run_id&gt; "superseded"     <span class="c"># give up on one; it leaves iterum status</span>
+iterum view trace &lt;run_id&gt;                    <span class="c"># the run stage by stage, failing stage named</span></pre></div>
   <div class="col stack">
     <p>Resume also refuses when it would be unsafe: a step's process is still alive, the plan's intents differ from the recorded ones, or a non-failed step's command changed. Each refusal prints the exact command to run once you have checked.</p>
   </div>
@@ -538,12 +540,12 @@ uv run python -m fleet.view trace &lt;run_id&gt;            <span class="c"># th
   <div class="col stack">
     <p>Set a ceiling for the whole fleet. Spend is counted from what Claude Code itself reports, so the telemetry receiver must be running.</p>
   </div>
-  <div class="term"><button type="button">Copy</button><pre>uv run python -m fleet.governor set 3        <span class="c"># a $3.00 ceiling; spend counts from the first time you set one</span>
-uv run python -m fleet.governor              <span class="c"># show it</span>
+  <div class="term"><button type="button">Copy</button><pre>iterum budget set 3        <span class="c"># a $3.00 ceiling; spend counts from the first time you set one</span>
+iterum budget              <span class="c"># show it</span>
 <span class="o">ceiling 3.00  spent 2.3859  headroom 0.6141 USD  (since 2026-11-11 10:44)</span></pre></div>
   <figure>
     <div class="fig">
-      <svg viewBox="0 0 860 170" role="img" aria-label="Before each step, fleet.run compares headroom with what the step needs; it runs the step or stops the run as budget_exhausted.">
+      <svg viewBox="0 0 860 170" role="img" aria-label="Before each step, iterum run compares headroom with what the step needs; it runs the step or stops the run as budget_exhausted.">
         <defs><marker id="g1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" class="hi"/></marker></defs>
         <rect x="20" y="50" width="160" height="56" rx="8" class="box"/>
         <text x="100" y="74" text-anchor="middle" class="h">next step</text>
@@ -567,9 +569,10 @@ uv run python -m fleet.governor              <span class="c"># show it</span>
     <h3>Turning on telemetry</h3>
     <p>A plan with prompt steps under a ceiling refuses to start unless telemetry is on and the receiver answers with the run's own database. Start the receiver, then load the settings in the shell that runs the plan:</p>
   </div>
-  <div class="term"><button type="button">Copy</button><pre>ITERUM_DB=$PWD/agent.db uv run python -u -m fleet.telemetry      <span class="c"># listens on 127.0.0.1:4318</span>
-curl -s localhost:4318/v1/logs                                  <span class="c"># answers {"db": "/abs/path/agent.db"}</span>
-source .env.example                                             <span class="c"># CLAUDE_CODE_ENABLE_TELEMETRY=1 and the endpoint</span></pre></div>
+  <div class="term"><button type="button">Copy</button><pre>iterum receiver                              <span class="c"># listens on 127.0.0.1:4318</span>
+curl -s localhost:4318/v1/logs               <span class="c"># answers {"db": "/abs/path/agent.db"}</span>
+source &lt;iterum&gt;/.env.example                 <span class="c"># CLAUDE_CODE_ENABLE_TELEMETRY=1 and the endpoint</span>
+iterum status                                <span class="c"># RECEIVER: up, writing to this database</span></pre></div>
   <div class="note warn"><b>The ceiling is soft.</b> A run can pass it by up to one step's spend, and runs that check at the same moment each can. Spend the receiver never received (because it was down) is not counted.</div>
 </section>
 
@@ -596,7 +599,7 @@ source .env.example                                             <span class="c">
         <text x="425" y="132" text-anchor="middle" class="s">claims · ledger · spend</text>
 
         <rect x="610" y="20" width="230" height="70" rx="8" class="box-l"/>
-        <text x="725" y="46" text-anchor="middle" class="h">fleet.telemetry</text>
+        <text x="725" y="46" text-anchor="middle" class="h">iterum receiver</text>
         <text x="725" y="66" text-anchor="middle" class="s">one receiver for both</text>
         <rect x="610" y="150" width="230" height="70" rx="8" class="box-a"/>
         <text x="725" y="176" text-anchor="middle" class="h">main</text>
@@ -609,29 +612,29 @@ source .env.example                                             <span class="c">
         <line x1="606" y1="62" x2="524" y2="104" class="e" marker-end="url(#p1)"/>
         <text x="566" y="70" text-anchor="middle" class="s">spend</text>
         <line x1="522" y1="136" x2="606" y2="178" class="ea" marker-end="url(#p2)"/>
-        <text x="566" y="176" text-anchor="middle" class="s acc">fleet.merge</text>
+        <text x="566" y="176" text-anchor="middle" class="s acc">iterum land</text>
       </svg>
     </div>
     <figcaption><b>One database, separate trees.</b> If Run B's plan claims a file Run A holds, B is refused before any step runs, with A's run id in the message.</figcaption>
   </figure>
   <div class="term"><button type="button">Copy</button><pre>git worktree add -b feat/latest ../app-latest main
 cd ../app-latest &amp;&amp; bun install --frozen-lockfile        <span class="c"># each tree needs its own dependencies</span>
-<span class="c"># then start each run from its own tree, same ITERUM_DB, at the same time</span>
+<span class="c"># then start each run from its own tree, at the same time</span>
 git worktree remove ../app-latest                           <span class="c"># when done; refuses if it has changes</span></pre></div>
-  <div class="note"><b>Starting runs together on a brand-new database?</b> Run <code>uv run python -c "from fleet import db; db.init()"</code> once first. Current code waits out the startup race, and initializing first avoids it altogether.</div>
+  <div class="note"><b>Starting runs together on a brand-new database?</b> Run any <code>iterum</code> command, such as <code>iterum budget</code>, once first. Current code waits out the startup race, and initializing first avoids it altogether.</div>
 </section>
 
 <!-- 10 -->
 <section class="chapter" id="queue">
   <header><div class="eyebrow">Chapter 10</div><h2>The work queue</h2></header>
   <div class="col stack">
-    <p>For many small independent jobs, use the queue instead of plans. Tasks are added from Python; workers claim them under a 30-second lease with a fence, run them, and report one outcome. The default worker runs the shell command in the task's <code>cmd</code>.</p>
+    <p>For many small independent jobs, use the queue instead of plans. Tasks are added from Python (the snippets below run from the Iterum repo); workers claim them under a 30-second lease with a fence, run them, and report one outcome. The default worker runs the shell command in the task's <code>cmd</code>.</p>
   </div>
   <div class="term"><button type="button">Copy</button><pre>uv run python -c "from fleet import db, queue; db.init();
 a = queue.add('shell', {'cmd': 'echo hello'})
 b = queue.add('shell', {'cmd': 'echo world'}, depends_on=a)
 print(a, b)"
-uv run python -u -m fleet.worker worker-1 --budget-s 5
+iterum worker worker-1 --budget-s 5
 <span class="o">worker-1  task 1 (shell)  done
 worker-1  task 2 (shell)  done</span>
 uv run python -c "from fleet import queue; print(queue.results([1, 2]))"
@@ -652,43 +655,44 @@ uv run python -c "from fleet import queue; print(queue.results([1, 2]))"
         <path d="M325 92 V130 H85 V94" class="ew" marker-end="url(#q2)"/><text x="205" y="124" text-anchor="middle" class="s">fail: retry after backoff</text>
         <path d="M400 88 C460 120 470 175 496 175" class="ew" marker-end="url(#q2)"/><text x="420" y="160" text-anchor="end" class="s">max_attempts reached</text>
         <line x1="652" y1="175" x2="716" y2="175" class="ew" marker-end="url(#q2)"/>
-        <path d="M575 202 V214 H85 V94" class="e" marker-end="url(#q1)"/><text x="330" y="210" text-anchor="middle" class="s">fleet.dlq redrive &lt;task_id&gt; restores it and its dependents</text>
+        <path d="M575 202 V214 H85 V94" class="e" marker-end="url(#q1)"/><text x="330" y="210" text-anchor="middle" class="s">iterum dlq redrive &lt;task_id&gt; restores it and its dependents</text>
       </svg>
     </div>
     <figcaption><b>One outcome per claim.</b> A worker that stalls past its lease is fenced out: its late report changes nothing, and the task is reclaimed. Workers reap expired leases themselves; there is no separate reaper.</figcaption>
   </figure>
-  <div class="term"><button type="button">Copy</button><pre>uv run python -m fleet.dlq                          <span class="c"># dead-lettered tasks</span>
-uv run python -m fleet.dlq redrive &lt;task_id&gt;        <span class="c"># put one back, with what waits on it</span>
-uv run python -m fleet.conflicts                    <span class="c"># tasks waiting for a person</span>
-uv run python -m fleet.conflicts resolve &lt;task_id&gt; "keep the newer schema"
-FLEET_WORK_MODULE=mypackage.mywork uv run python -u -m fleet.worker worker-1   <span class="c"># your own do_work(task)</span></pre></div>
-  <div class="col stack"><p><b>Freezing the queue.</b> When output looks wrong, stop new work before you investigate. A frozen queue hands out no tasks; workers finish the ones they hold. The freeze is per machine, and it does not stop <code>fleet.run</code>.</p></div>
-  <div class="term"><button type="button">Copy</button><pre>uv run python -m fleet.approve freeze you "output looks wrong since 03:00"
-uv run python -m fleet.approve                      <span class="c"># FROZEN or not, and pending approvals</span>
-uv run python -m fleet.approve thaw you             <span class="c"># last, after the fix is queued</span></pre></div>
-  <div class="note"><b>Approvals.</b> <code>fleet.approve</code> also lists and settles approval requests: <code>fleet.approve approve|deny &lt;fingerprint&gt; &lt;who&gt;</code>. Requests come from <code>approve.require()</code>, which nothing in Iterum calls yet, so the list stays empty until your own code calls it.</div>
+  <div class="term"><button type="button">Copy</button><pre>iterum dlq                                  <span class="c"># dead-lettered tasks</span>
+iterum dlq redrive &lt;task_id&gt;                <span class="c"># put one back, with what waits on it</span>
+iterum conflicts                            <span class="c"># tasks waiting for a person</span>
+iterum conflicts resolve &lt;task_id&gt; "keep the newer schema"
+FLEET_WORK_MODULE=mypackage.mywork iterum worker worker-1   <span class="c"># your own do_work(task), from its project folder</span></pre></div>
+  <div class="col stack"><p><b>Freezing the queue.</b> When output looks wrong, stop new work before you investigate. A frozen queue hands out no tasks; workers finish the ones they hold. The freeze is per machine, and it does not stop <code>iterum run</code>.</p></div>
+  <div class="term"><button type="button">Copy</button><pre>iterum freeze "output looks wrong since 03:00"   <span class="c"># recorded as by ITERUM_DEVICE</span>
+iterum status                                    <span class="c"># FROZEN or not, and pending approvals</span>
+iterum thaw                                      <span class="c"># last, after the fix is queued</span></pre></div>
+  <div class="note"><b>Approvals.</b> <code>iterum status</code> lists approval requests and <code>iterum approve|deny &lt;fingerprint&gt;</code> settles one. Requests come from <code>approve.require()</code>, which nothing in Iterum calls yet, so the list stays empty until your own code calls it.</div>
 </section>
 
 <!-- 11 -->
 <section class="chapter" id="watch">
   <header><div class="eyebrow">Chapter 11</div><h2>Seeing what happened</h2></header>
-  <div class="col stack"><p>Every view is read-only except <code>fleet.canary</code>, which logs a <code>canary.fired</code> event when it fires. The live-session half needs the <code>claude</code> CLI; without it you still get everything from the ledger.</p></div>
+  <div class="col stack"><p>Every view is read-only except <code>iterum canary</code>, which logs a <code>canary.fired</code> event when it fires. The live-session half needs the <code>claude</code> CLI; without it you still get everything from the ledger.</p></div>
   <div class="tbl">
     <table>
       <thead><tr><th>Command</th><th>Shows</th></tr></thead>
       <tbody>
-        <tr><td><code>uv run python -m fleet.view</code></td><td>Live Claude Code sessions, then runs per agent from the ledger</td></tr>
-        <tr><td><code>uv run python -m fleet.view trace &lt;run_id&gt;</code></td><td>One run, stage by stage, with the failing stage named</td></tr>
-        <tr><td><code>uv run python -m fleet.view stages [days]</code></td><td>Failures per stage, default the last 7 days</td></tr>
-        <tr><td><code>uv run python -m fleet.view context [session]</code></td><td>Context size per session, or per request in one session</td></tr>
-        <tr><td><code>uv run python -m fleet.governor</code></td><td>Ceiling, spend and headroom</td></tr>
-        <tr><td><code>uv run python -m fleet.recovery</code></td><td>Failed runs and running runs whose heartbeat went stale</td></tr>
-        <tr><td><code>uv run python -m fleet.canary</code></td><td>Recent runs that look unlike the day before</td></tr>
-        <tr><td><code>sqlite3 agent.db "select kind, payload from events where run_id='&lt;id&gt;'"</code></td><td>The raw ledger for one run, including <code>claude.finished</code> (cost, turns, denials)</td></tr>
+        <tr><td><code>iterum status</code></td><td>One screen: freeze, spend, receiver, runs, queue, what needs a person, canary; exit 1 when something needs a person</td></tr>
+        <tr><td><code>iterum view</code></td><td>Live Claude Code sessions, then runs per agent from the ledger</td></tr>
+        <tr><td><code>iterum view trace &lt;run_id&gt;</code></td><td>One run, stage by stage, with the failing stage named</td></tr>
+        <tr><td><code>iterum view stages [days]</code></td><td>Failures per stage, default the last 7 days</td></tr>
+        <tr><td><code>iterum view context [session]</code></td><td>Context size per session, or per request in one session</td></tr>
+        <tr><td><code>iterum budget</code></td><td>Ceiling, spend and headroom</td></tr>
+        <tr><td><code>iterum recovery</code></td><td>Failed runs and running runs whose heartbeat went stale</td></tr>
+        <tr><td><code>iterum canary</code></td><td>Recent runs that look unlike the day before</td></tr>
+        <tr><td><code>sqlite3 ~/.local/share/iterum/agent.db "select kind, payload from events where run_id='&lt;id&gt;'"</code></td><td>The raw ledger for one run, including <code>claude.finished</code> (cost, turns, denials)</td></tr>
       </tbody>
     </table>
   </div>
-  <div class="note"><b>What the canary compares.</b> Median events, seconds and cost per run for finished <code>fleet.run</code> runs in the last hour, against the 24 hours before; it fires past a 50% change (<code>--tolerance</code>). It needs 5 earlier runs, and cost needs <code>fleet.telemetry</code>. It flags change, not wrong output: a fleet that got cheaper and faster overnight is worth a look.</div>
+  <div class="note"><b>What the canary compares.</b> Median events, seconds and cost per run for finished <code>iterum run</code> runs in the last hour, against the 24 hours before; it fires past a 50% change (<code>--tolerance</code>). It needs 5 earlier runs, and cost needs <code>iterum receiver</code>. It flags change, not wrong output: a fleet that got cheaper and faster overnight is worth a look.</div>
 </section>
 
 <!-- 12 -->
@@ -698,9 +702,9 @@ uv run python -m fleet.approve thaw you             <span class="c"># last, afte
     <p>Only the event ledger moves between machines. Each device writes its own <code>events-&lt;device&gt;.jsonl</code> in a sync folder that sits in a private git repo with a remote, and imports every device's file, skipping events it already has. Runs, steps, claims and the queue stay on the machine that owns them.</p>
   </div>
   <div class="term"><button type="button">Copy</button><pre>export ITERUM_SYNC_DIR=~/private-data/iterum      <span class="c"># the default; must be inside a git repo with a remote</span>
-uv run python -m fleet.sync sync      <span class="c"># export, commit, pull, push, import, rebuild knowledge</span>
-uv run python -m fleet.sync export    <span class="c"># only write this device's events</span>
-uv run python -m fleet.sync import    <span class="c"># only merge every device's events</span></pre></div>
+iterum sync           <span class="c"># export, commit, pull, push, import, rebuild knowledge</span>
+iterum sync export    <span class="c"># only write this device's events</span>
+iterum sync import    <span class="c"># only merge every device's events</span></pre></div>
   <div class="note"><b>Keep files from retired devices.</b> They are the only shared copy of those events. Importing the same file twice changes nothing.</div>
 </section>
 
@@ -712,21 +716,21 @@ uv run python -m fleet.sync import    <span class="c"># only merge every device'
     <table>
       <thead><tr><th>Command</th><th>Checks</th><th>Time</th><th>Cost</th></tr></thead>
       <tbody>
-        <tr><td><code>fleet.merge_drill</code></td><td>Merge gate refusals, the lock, a crash mid-merge</td><td>seconds</td><td><span class="pill free">free</span></td></tr>
-        <tr><td><code>fleet.claims_drill</code></td><td>Claim refusal, resume, renewal, takeover of a paused agent</td><td>about 50 s</td><td><span class="pill free">free</span></td></tr>
-        <tr><td><code>fleet.kill_drill</code></td><td>SIGKILL a worker mid-task and check recovery</td><td>about 50 s</td><td><span class="pill free">free</span></td></tr>
-        <tr><td><code>fleet.run</code> (no plan)</td><td>The six-step write-ahead drill</td><td>about 25 s</td><td><span class="pill free">free</span></td></tr>
-        <tr><td><code>fleet.eval</code></td><td>Replays every stored case; exit 1 if a regression case fails</td><td>seconds</td><td><span class="pill free">free</span></td></tr>
-        <tr><td><code>fleet.scorecard &lt;before&gt; [&lt;after&gt;]</code></td><td>Eval cases at two git revisions; FIXED or BROKE per case</td><td>seconds</td><td><span class="pill free">free</span></td></tr>
-        <tr><td><code>fleet.sweep a.json b.json --repeats 5</code></td><td>Plans run N times in rotated order; pass rate beside cost</td><td>minutes</td><td><span class="pill paid">billed</span></td></tr>
+        <tr><td><code>iterum drill merge</code></td><td>Merge gate refusals, the lock, a crash mid-merge</td><td>seconds</td><td><span class="pill free">free</span></td></tr>
+        <tr><td><code>iterum drill claims</code></td><td>Claim refusal, resume, renewal, takeover of a paused agent</td><td>about 50 s</td><td><span class="pill free">free</span></td></tr>
+        <tr><td><code>iterum drill kill</code></td><td>SIGKILL a worker mid-task and check recovery</td><td>about 50 s</td><td><span class="pill free">free</span></td></tr>
+        <tr><td><code>iterum drill run</code> (from the Iterum repo)</td><td>The six-step write-ahead drill</td><td>about 25 s</td><td><span class="pill free">free</span></td></tr>
+        <tr><td><code>iterum eval</code></td><td>Replays every stored case; exit 1 if a regression case fails</td><td>seconds</td><td><span class="pill free">free</span></td></tr>
+        <tr><td><code>iterum scorecard &lt;before&gt; [&lt;after&gt;]</code></td><td>Eval cases at two git revisions; FIXED or BROKE per case</td><td>seconds</td><td><span class="pill free">free</span></td></tr>
+        <tr><td><code>iterum sweep a.json b.json --repeats 5</code></td><td>Plans run N times in rotated order; pass rate beside cost</td><td>minutes</td><td><span class="pill paid">billed</span></td></tr>
       </tbody>
     </table>
   </div>
   <div class="term"><button type="button">Copy</button><pre>export ITERUM_DB=/tmp/scratch.db ITERUM_DEVICE=test
-uv run python -u -m fleet.merge_drill
-uv run python -u -m fleet.claims_drill &amp; uv run python -u -m fleet.kill_drill &amp; wait
-uv run python -m fleet.eval add resume-case &lt;run_id&gt;    <span class="c"># keep a real run as a regression case</span>
-uv run python -m fleet.scorecard main                   <span class="c"># did my working tree break any case?</span></pre></div>
+iterum drill merge
+iterum drill claims &amp; iterum drill kill &amp; wait
+iterum eval add resume-case &lt;run_id&gt;    <span class="c"># keep a real run as a regression case</span>
+iterum scorecard main                   <span class="c"># did my working tree break any case?</span></pre></div>
   <div class="note"><b>When you add a check to a drill,</b> break the code once to watch it fail, then undo the break by reversing your edit, not with <code>git checkout</code>, which also throws away uncommitted work.</div>
 </section>
 
@@ -738,13 +742,13 @@ uv run python -m fleet.scorecard main                   <span class="c"># did my
       <thead><tr><th>Variable</th><th>Default</th><th>Effect</th></tr></thead>
       <tbody>
         <tr><td><code>ITERUM_DEVICE</code></td><td>none, required</td><td>Names this machine on every event. Anything that writes an event fails without it.</td></tr>
-        <tr><td><code>ITERUM_DB</code></td><td><code>agent.db</code> in the current directory</td><td>The database. Use an absolute path when runs, the receiver and the merge gate start from different directories.</td></tr>
+        <tr><td><code>ITERUM_DB</code></td><td><code>~/.local/share/iterum/agent.db</code> (<code>$XDG_DATA_HOME/iterum/agent.db</code> when that is set)</td><td>The database, created on first use. If you set it, use an absolute path, so runs, the receiver and the merge gate started from different folders share it.</td></tr>
         <tr><td><code>ITERUM_CLAIM_TTL</code></td><td>300</td><td>Seconds a run's claim lasts between renewals.</td></tr>
         <tr><td><code>ITERUM_IDLE_SECONDS</code></td><td>60</td><td>Heartbeat age after which a running run counts as dead, for recovery and resume.</td></tr>
-        <tr><td><code>ITERUM_MAX_ATTEMPTS</code></td><td>3</td><td>Default <code>--max-attempts</code> for <code>fleet.recovery</code>.</td></tr>
+        <tr><td><code>ITERUM_MAX_ATTEMPTS</code></td><td>3</td><td>Default <code>--max-attempts</code> for <code>iterum recovery</code>.</td></tr>
         <tr><td><code>ITERUM_SYNC_DIR</code></td><td><code>~/private-data/iterum</code></td><td>The sync folder, inside a git repo with a remote.</td></tr>
-        <tr><td><code>FLEET_WORK_MODULE</code></td><td>the shell runner</td><td>A module exporting <code>do_work(task)</code> for <code>fleet.worker</code>.</td></tr>
-        <tr><td><code>.env.example</code></td><td>not loaded</td><td><code>source</code> it to send Claude Code telemetry to <code>fleet.telemetry</code>; required for prompt steps under a ceiling.</td></tr>
+        <tr><td><code>FLEET_WORK_MODULE</code></td><td>the shell runner</td><td>A module exporting <code>do_work(task)</code> for <code>iterum worker</code>, found from the folder you start it in.</td></tr>
+        <tr><td><code>.env.example</code></td><td>not loaded</td><td><code>source</code> it to send Claude Code telemetry to <code>iterum receiver</code>; required for prompt steps under a ceiling.</td></tr>
       </tbody>
     </table>
   </div>
@@ -758,15 +762,16 @@ uv run python -m fleet.scorecard main                   <span class="c"># did my
       <thead><tr><th>You see</th><th>Why</th><th>Fix</th></tr></thead>
       <tbody>
         <tr><td class="err">ITERUM_DEVICE is not set. Name this device first</td><td>No device name in this shell.</td><td><code>export ITERUM_DEVICE=laptop</code></td></tr>
-        <tr><td class="err">No module named 'fleet'</td><td>Ran a module as a file, or from another repo without the path.</td><td>Use <code>-m</code>; from another repo add <code>PYTHONPATH=&lt;iterum&gt;</code> and <code>--project &lt;iterum&gt;</code>.</td></tr>
+        <tr><td class="err">command not found: iterum</td><td>Not installed, or uv's tool folder is not on your <code>PATH</code>.</td><td><code>uv tool install --editable &lt;iterum&gt;</code>, then <code>uv tool update-shell</code> and a new terminal.</td></tr>
+        <tr><td class="err">No module named 'fleet'</td><td>Ran a module as a file, or <code>python -m</code> outside the Iterum repo.</td><td>Use <code>iterum &lt;command&gt;</code>, or <code>uv run python -m fleet.&lt;module&gt;</code> from the Iterum repo.</td></tr>
         <tr><td class="err">a plan that declares files must not run on main</td><td>You are on the target branch.</td><td><code>git switch -c feat/&lt;name&gt;</code></td></tr>
         <tr><td class="err">this plan has prompt steps, which are billed to you</td><td>No cap given.</td><td>Add <code>--allow-claude 0.05</code> (the cap per prompt step).</td></tr>
         <tr><td class="err">prompt step 1 declares no files</td><td>A prompt step must list what it may edit.</td><td>Add <code>["file:..."]</code> as the step's fourth field.</td></tr>
         <tr><td class="err">a ceiling is set, but claude would not report its spend</td><td>Telemetry settings not loaded in this shell.</td><td><code>source .env.example</code></td></tr>
-        <tr><td class="err">the telemetry receiver ... did not answer</td><td>Receiver not running.</td><td>Start <code>fleet.telemetry</code> with the same <code>ITERUM_DB</code>.</td></tr>
-        <tr><td class="err">the telemetry receiver writes to X, but this run reads Y</td><td>Two different databases.</td><td>Make <code>ITERUM_DB</code> the same absolute path for both.</td></tr>
+        <tr><td class="err">the telemetry receiver ... did not answer</td><td>Receiver not running.</td><td>Start <code>iterum receiver</code>, with the same <code>ITERUM_DB</code> if you set one.</td></tr>
+        <tr><td class="err">the telemetry receiver writes to X, but this run reads Y</td><td>Two different databases.</td><td>Unset <code>ITERUM_DB</code> in both shells, or make it the same absolute path.</td></tr>
         <tr><td class="err">file:app/page.tsx held by worker-1 (run 813631d110df)</td><td>Another run holds the file.</td><td>Wait for it to land or expire, or work on another file.</td></tr>
-        <tr><td class="err">stopped before step 2: fleet headroom is -0.0100 USD</td><td>Over the ceiling.</td><td><code>fleet.governor set &lt;usd&gt;</code>, then resume with the same plan.</td></tr>
+        <tr><td class="err">stopped before step 2: fleet headroom is -0.0100 USD</td><td>Over the ceiling.</td><td><code>iterum budget set &lt;usd&gt;</code>, then resume with the same plan.</td></tr>
         <tr><td class="err">may still be alive: its heartbeat is 12s old</td><td>The run might still be running.</td><td>Wait, or <code>--force</code> if you know it is gone.</td></tr>
         <tr><td class="err">does not match this plan at step 3</td><td>Different plan file than the one the run started with.</td><td>Resume with the original plan.</td></tr>
         <tr><td class="err">is a prompt step that did not commit</td><td>It may have edited files; rerunning is billed again.</td><td>Check <code>git status</code> and <code>git diff</code>, then resume with <code>--allow-claude &lt;usd&gt; --force</code>.</td></tr>
