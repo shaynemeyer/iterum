@@ -3,6 +3,7 @@
     iterum report [--date YYYY-MM-DD] [--out page.html] [--open] [--pdf]   # writes reports/report-<date>.html beside the database
     iterum report --json [--date YYYY-MM-DD]                       # the same data as JSON
     iterum report --days N [--out page.html] [--open] [--pdf] [--json]   # the last N days
+    iterum report --run RUN_ID [--out page.html] [--open] [--pdf] [--json]   # one run
 
 A run belongs to the day it started. Spend counts every `spend.reported` event in
 the day, interactive sessions included. Times are epoch seconds; the day is local.
@@ -18,7 +19,7 @@ import time
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
-from fleet import approve, db, governor, queue, recovery, report_days, report_days_html, report_html, telemetry
+from fleet import approve, db, governor, queue, recovery, report_days, report_days_html, report_html, report_run, report_run_html, telemetry
 
 
 def day_window(day):
@@ -200,12 +201,22 @@ def main():
     parser.add_argument("--json", action="store_true", help="print the data as JSON instead of writing the page")
     parser.add_argument("--date", type=date.fromisoformat, default=date.today(), help="YYYY-MM-DD, default today")
     parser.add_argument("--days", type=int, metavar="N", help="the last N days, today included, instead of one day")
+    parser.add_argument("--run", metavar="RUN_ID", help="one run: its steps over time, its events and its merges")
     parser.add_argument("--out", type=Path, help="where to write the page (default: reports/ beside the database)")
     parser.add_argument("--open", action="store_true", help="open the page (or the PDF) afterwards (macOS `open`)")
     parser.add_argument("--pdf", action="store_true", help="also print the page to a PDF beside it, with headless Chrome")
     args = parser.parse_args()
     if not Path(db.DB).exists():
         sys.exit(f"no database at {Path(db.DB).resolve()}")
+    if args.run:
+        data = report_run.run_report(args.run)
+        if data is None:
+            sys.exit(f"no run {args.run!r} in {Path(db.DB).resolve()}")
+        if args.json:
+            print(json.dumps(data, indent=2))
+            return
+        write(report_run_html.render(data), args.out or reports_dir() / f"run-{args.run}.html", args)
+        return
     if args.days:
         data, quiet = report_days.days_report(args.days), report_days_html.quiet
         label, name, render = f"{data['first']} to {data['last']}", f"report-{data['first']}-to-{data['last']}.html", report_days_html.render

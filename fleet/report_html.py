@@ -64,6 +64,15 @@ def duration(start, end):
     return f"{s // 3600}h {s % 3600 // 60:02d}m" if s >= 3600 else f"{s // 60}m {s % 60:02d}s" if s >= 60 else f"{s}s"
 
 
+def worked_until(run):
+    """When the run's last step ended (or started), else its ended_at.
+
+    ended_at is set when the run is halted, which can be a day after its last step ran.
+    """
+    ends = [s["ended_at"] or s["started_at"] for s in run["steps"]]
+    return max(ends) if ends else run["ended_at"]
+
+
 def model_colours(spend_by_hour):
     """{model: css var}, slots assigned in sorted model order so a colour follows its model."""
     models = sorted({m for h in spend_by_hour.values() for m in h})
@@ -121,7 +130,7 @@ def runs_table(runs):
         return '<p class="muted">No runs started.</p>'
     rows = "".join(
         f'<tr><td>{clock(r["started_at"])}</td><td><code>{escape(r["run_id"])}</code></td><td>{escape(r["plan"])}</td>'
-        f'<td>{escape(r["status"])}</td><td class=n>{duration(r["started_at"], r["ended_at"])}</td>'
+        f'<td>{escape(r["status"])}</td><td class=n>{duration(r["started_at"], worked_until(r))}</td>'
         f'<td class=n>{usd(r["cost_usd"])}</td><td class=steps>{step_strip(r)}</td></tr>' for r in runs)
     return (f'<div class="scroll"><table><tr><th>Started</th><th>Run</th><th>Plan</th><th>Status</th><th class=n>Took</th>'
             f'<th class=n>Cost</th><th>Steps</th></tr>{rows}</table></div>')
