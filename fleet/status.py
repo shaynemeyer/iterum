@@ -1,4 +1,4 @@
-"""One screen of fleet state: freeze, spend, receiver, runs, queue and what needs a person. Reads only; exits 1 when something needs a person.
+"""One screen of fleet state: freeze, spend, receiver, runs, queue, what needs a person, canary. Reads only; exits 1 when something needs a person.
 
     uv run python -m fleet.status        (or: iterum status)
 """
@@ -10,7 +10,7 @@ import time
 import urllib.request
 from pathlib import Path
 
-from fleet import approve, db, governor, queue, recovery
+from fleet import approve, canary, db, governor, queue, recovery
 
 
 def header():
@@ -101,6 +101,16 @@ def person_lines():
     return lines, bool(approvals or conflicts)
 
 
+def canary_line():
+    """canary.check() with its defaults, not logged. Informational: a fired canary cannot be cleared."""
+    alerts = canary.check()
+    if alerts is None:
+        return "CANARY    insufficient data (needs 5 runs in the last 24h and 1 in the last hour)"
+    if not alerts:
+        return "CANARY    quiet"
+    return "CANARY    changed: " + ";  ".join(f"{m} {b} -> {n} {d}" for m, b, n, d in alerts)
+
+
 def main():
     """Print the status screen; exit 1 when a run, task, approval or conflict needs a person."""
     if not Path(db.DB).exists():
@@ -110,7 +120,7 @@ def main():
         runs, runs_need = run_lines(con)
         tasks, tasks_need = queue_lines(con)
         person, person_need = person_lines()
-        print("\n".join([header(), "", fleet_line(con), spend_line(), receiver_line(), "", *runs, "", *tasks, "", *person]))
+        print("\n".join([header(), "", fleet_line(con), spend_line(), receiver_line(), "", *runs, "", *tasks, "", *person, "", canary_line()]))
     finally:
         con.close()
     sys.exit(1 if runs_need or tasks_need or person_need else 0)
