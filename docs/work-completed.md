@@ -2,6 +2,14 @@
 
 Items moved here from `todo.md` once done. Newest first.
 
+## Rewrite the project site's intro for overnight work
+
+Completed 2026-11-13. Not from `todo.md`: the old intro ("a small Python harness ... built on one SQLite file") assumed readers already knew what a harness is.
+
+**Change.** On `gh-pages`, `index.html`'s lead paragraph, meta description and "Who it's for" line now say what Iterum is for: letting Claude Code agents work on your projects overnight, for solo developers. Python and SQLite stay out of the intro; they still appear lower on the page (Get started requirements, the sync card, the terminal demo, the stats row). Commits `8bec8fc` and `812b322`; the Pages deployment succeeded and the live page shows the new text.
+
+**Wording checked against the code.** The intro does not promise the work gets done: a dead run waits for `iterum resume`, a failed step fails the run, and nothing lands on its own (`overnight-design.md`). It claims only file claims, the spend ceiling, the append-only log, and `iterum report` showing runs, failures and cost (`fleet/report.py`, `fleet/report_days.py`).
+
 ## One `iterum` command
 
 Completed 2026-11-13 (`9d0077f` to this commit). Moved from `todo.md` (item 5):
