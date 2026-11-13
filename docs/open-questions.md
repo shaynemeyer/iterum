@@ -10,6 +10,20 @@ Decisions not made yet. When one is answered, record it in `decision-log.md`, ad
 
 **Settled by.** Deciding where to start; the note proposes the fix loop first, tested free with a fake `claude`.
 
+## Should Iterum ship as one `iterum` command instead of `python -m fleet.*`?
+
+**Context.** Every command is `uv run python -u -m fleet.<module> ...`, and from the app repo a run also needs `export ITERUM_DB=<absolute path>`, `export PYTHONPATH=<iterum>`, `source <iterum>/.env.example` and `uv run --project <iterum>` (`nextjs-first-run.md`). Each piece exists for a reason (`fleet` is a namespace package, so `-m`; `-u` so output is not lost; `ITERUM_DB` defaults to `agent.db` in the current folder, so a relative path in the app repo makes a second database), but none of it is the work. Reading state is also spread over seven commands (`fleet.view`, `fleet.recovery`, `fleet.governor`, `fleet.dlq`, `fleet.conflicts`, `fleet.approve`, `fleet.canary`), and nothing lists stranded tasks. A TUI was considered (2026-11-13) and set aside for now: it would keep every one of those invocations and add a dependency (`pyproject.toml` has `dependencies = []`).
+
+**Options.** (a) A packaged CLI: `[project.scripts]` defines `iterum` ([uv: entry points](https://docs.astral.sh/uv/concepts/projects/config/#entry-points)), installed once with `uv tool install --editable <iterum>` ([uv: tools](https://docs.astral.sh/uv/concepts/tools/)); subcommands (`iterum status`, `run`, `resume`, `land`, `receiver`, `freeze`, `approve`, `queue`, `dlq`, `doctor`, `eval`, `sweep`, ...) call each module's existing `main()`; the database defaults to one fixed place instead of the current folder. (b) The same plus an `iterum status` dashboard, plain or with Rich (Iterum's first dependency). (c) A Textual TUI later, on top of (a). (d) Keep `python -m` and document it better.
+
+**To verify first.** How the build backend packages a namespace package with no `__init__.py`; that `gate_settings()` still finds `fleet/gate.py` from an installed tool; that the entry point keeps output unbuffered as `-u` does; where the fixed database lives and how `ITERUM_DB` still overrides it.
+
+**Plan.** `cli-plan.md` (2026-11-13): packaging and a thin dispatcher with no behaviour change, then `iterum status`, shortcuts, a fixed default database, and docs, each checked before the next.
+
+**Blocks.** Nothing. Every command works today.
+
+**Settled by.** Choosing (a) to (d), where the default database lives, and whether a first dependency (Rich) is acceptable for the dashboard.
+
 ## Should `claude.finished` keep the whole result envelope?
 
 **Context.** `claude_step()` logs only `exit_code`, `session_id`, `total_cost_usd`, `num_turns`, `is_error` and `permission_denials`. The first paid run (2026-11-11) therefore kept no full copy of a success envelope for `claude-step-design.md`. Its `num_turns` was 5 against 3 API requests in telemetry, for reasons not known. The second Next.js run (`095cf7955377`) reported `num_turns: 11` under `--max-turns 10`, without failing, while its transcript shows about 7 rounds of tool calls; 7 `spend.reported` events arrived.
@@ -51,6 +65,16 @@ Decisions not made yet. When one is answered, record it in `decision-log.md`, ad
 **Blocks.** Nothing yet. Matters once an app plan includes an irreversible step.
 
 **Settled by.** A plan that needs it, and choosing whether a waiting run reuses `halted` or gets its own status. Test plan for (a): a scratch-database drill that pauses, restarts, approves and resumes, and checks that a changed param asks again.
+
+## Should `fleet.run` refuse a prompt plan with no output check?
+
+**Context.** A wrong answer that passes every check ends `done`, and no layer closes that; an output check written per plan and proven to fail on `main` is what shrinks it (`overnight-design.md`). It has worked once: the free dry run's unawaited `params` got past the build and was caught only by the output check (`nextjs-first-run.md`). But nothing enforces one. `check_prompt_steps()` refuses a prompt step without `--allow-claude` or without files, and runs a plan whose only check is the build, or none. And `fleet.run` cannot tell which step is the check: a step's command is an opaque shell string, the same problem as `approve.require()` (question above).
+
+**Options.** (a) Mark a check step in the plan (a field or a step kind), and refuse a plan with a prompt step and no marked check after it. (b) Require a `--check CMD` on `fleet.run` for prompt plans, run after the last prompt step. (c) Leave it to `/fleet-plan`, which already requires a check that fails on `main` (`overnight-design.md`), and enforce nothing in `fleet.run`.
+
+**Blocks.** Nothing yet. Matters for unattended runs, where nobody reads the diff before morning.
+
+**Settled by.** Whether hand-written plans should be held to the same rule as `/fleet-plan`'s, and whether a marked check step is worth another plan field.
 
 ## Should some actions get exactly-once, not just at-most-once?
 
