@@ -41,6 +41,8 @@ code { font-size: .85em; }
 .flag { list-style: none; padding: 0; margin: 0; } .flag li { padding: 4px 0; }
 svg text { fill: var(--muted); font-size: 11px; }
 details summary { cursor: pointer; color: var(--ink-2); font-size: .85rem; margin-top: 8px; }
+td.steps { white-space: nowrap; }
+@media print { tr, .card { break-inside: avoid; } }
 """
 
 
@@ -120,7 +122,7 @@ def runs_table(runs):
     rows = "".join(
         f'<tr><td>{clock(r["started_at"])}</td><td><code>{escape(r["run_id"])}</code></td><td>{escape(r["plan"])}</td>'
         f'<td>{escape(r["status"])}</td><td class=n>{duration(r["started_at"], r["ended_at"])}</td>'
-        f'<td class=n>{usd(r["cost_usd"])}</td><td>{step_strip(r)}</td></tr>' for r in runs)
+        f'<td class=n>{usd(r["cost_usd"])}</td><td class=steps>{step_strip(r)}</td></tr>' for r in runs)
     return (f'<div class="scroll"><table><tr><th>Started</th><th>Run</th><th>Plan</th><th>Status</th><th class=n>Took</th>'
             f'<th class=n>Cost</th><th>Steps</th></tr>{rows}</table></div>')
 

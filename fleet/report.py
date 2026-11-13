@@ -1,6 +1,6 @@
 """A day's work from agent.db: an HTML page, or the data as JSON. Reads only.
 
-    iterum report [--date YYYY-MM-DD] [--out page.html] [--open]   # writes reports/report-<date>.html beside the database
+    iterum report [--date YYYY-MM-DD] [--out page.html] [--open] [--pdf]   # writes reports/report-<date>.html beside the database
     iterum report --json [--date YYYY-MM-DD]                       # the same data as JSON
 
 A run belongs to the day it started. Spend counts every `spend.reported` event in
@@ -10,6 +10,7 @@ the day, interactive sessions included. Times are epoch seconds; the day is loca
 import argparse
 import json
 import os
+import shutil
 import subprocess
 import sys
 import time
@@ -125,6 +126,27 @@ def report(day):
         con.close()
 
 
+CHROME = ("google-chrome", "chromium", "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome")
+
+
+def find_chrome():
+    """The first Chrome on PATH or at the macOS app path, or None."""
+    return next((c for c in CHROME if shutil.which(c) or Path(c).exists()), None)
+
+
+def print_pdf(page):
+    """Print the HTML page to a PDF beside it with headless Chrome; return the PDF's path."""
+    chrome = find_chrome()
+    if not chrome:
+        sys.exit("no Chrome found for --pdf; tried: " + ", ".join(CHROME))
+    pdf = page.with_suffix(".pdf")
+    done = subprocess.run([chrome, "--headless", "--disable-gpu", "--no-pdf-header-footer",
+                           f"--print-to-pdf={pdf}", page.resolve().as_uri()], capture_output=True, text=True)
+    if done.returncode != 0 or not pdf.exists():
+        sys.exit(f"Chrome could not print {page} (exit {done.returncode}):\n{done.stderr.strip()}")
+    return pdf
+
+
 def default_out(day):
     """reports/report-<date>.html in the database's folder."""
     return Path(db.DB).resolve().parent / "reports" / f"report-{day.isoformat()}.html"
@@ -136,7 +158,8 @@ def main():
     parser.add_argument("--json", action="store_true", help="print the data as JSON instead of writing the page")
     parser.add_argument("--date", type=date.fromisoformat, default=date.today(), help="YYYY-MM-DD, default today")
     parser.add_argument("--out", type=Path, help="where to write the page (default: reports/ beside the database)")
-    parser.add_argument("--open", action="store_true", help="open the page afterwards (macOS `open`)")
+    parser.add_argument("--open", action="store_true", help="open the page (or the PDF) afterwards (macOS `open`)")
+    parser.add_argument("--pdf", action="store_true", help="also print the page to a PDF beside it, with headless Chrome")
     args = parser.parse_args()
     if not Path(db.DB).exists():
         sys.exit(f"no database at {Path(db.DB).resolve()}")
@@ -148,6 +171,9 @@ def main():
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(report_html.render(data))
     print(out)
+    if args.pdf:
+        out = print_pdf(out)
+        print(out)
     if args.open:
         subprocess.run(["open", str(out)], check=False)
 
