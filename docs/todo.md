@@ -10,14 +10,7 @@ Status: open, written 2026-11-10 after the merge gate was finished. The fence an
 2. **Optional: let `reconcile()` remove the temporary worktree of an abandoned merge.** After a SIGKILL mid-check, the `iterum-check-*` worktree and the check's process are left behind and cleaned up by hand (`merge-check-design.md` section 6). Only if it happens in real use.
 3. **Optional, billed: repeat short normal-exit runs.** T7 in `telemetry/claude-code-telemetry.md` showed a normal `claude -p` exit sending its last spend 0.28 s before `claude_step()` returned, in one run. A few more short Haiku runs would show whether that holds. Only with the user's go-ahead.
 4. **Optional: replay gaps.** Replay `fleet/step.py` runs (covers retry classification), add attempt counts to the end state, replay releases and deadline halts. Only if a real failure needs one.
-5. **Ready, run when wanted: a tags page for the Next.js app, end to end with `iterum`.** Planned 2026-11-13. The first paid run through the `iterum` command, the default database and `iterum land` reading fences from the database. The feature: `/notes/tags`, one new file (`app/notes/tags/page.tsx`) listing every tag with the notes that carry it, each linking to its note. Plan, dry plan and check script are in `docs/.local-only/` (`tags-page.json`, `tags-page-dry.json`, `check-tags-page.sh`): step 1 a Haiku prompt step, then the build, the check, a commit, every step claiming the one file. The check builds and serves the app and needs a 200 from `/notes/tags`, the title `Tags | iterum demo`, an `<h2>` for each of `claims`, `plans`, `queue` and `recovery`, links to all three notes, and `fences` listed twice (it carries two tags). Steps, from the app repo:
-   1. `git switch -c feat/tags-page main`.
-   2. Free: on a scratch `ITERUM_DB`, `iterum run <local>/tags-page-dry.json`; it must fail at step 3, which proves the check fails without the page. Then delete the branch and the scratch database.
-   3. Confirm the plan and the cap with the user (a $0.05 cap; recent Haiku feature steps cost $0.001 to $0.002).
-   4. `iterum receiver` in another terminal; `source <iterum>/.env.example`; on a fresh `feat/tags-page`, `iterum run <local>/tags-page.json --allow-claude 0.05`.
-   5. `iterum land feat/tags-page --run-id <run_id> --check "bun install --frozen-lockfile && bun run build"` from a checkout other than `main`, as before.
-   6. `iterum report --open`, and record the run in `nextjs-first-run.md`: cost, turns, whether the check or `--check` caught anything, and anything the new commands got wrong.
-   A bolder follow-up, if this lands cleanly: a page per tag at `/notes/tags/[tag]`, a dynamic route under Cache Components, which tripped a model on 2026-11-12 (the eleventh run).
+5. **Next paid fix-loop test: a page per tag** at `/notes/tags/[tag]`, a dynamic route under Cache Components, which tripped a model on 2026-11-12 (the eleventh run), so a first-try mistake and a real `fix.retry` are likelier. Same pattern as the tags page (`work-completed.md`, 2026-11-13); plan and check not written yet.
 
 How this work has been done, and should continue: one small step at a time; reproduce a problem before fixing it; check each change against the three drills (`fleet.merge_drill`, a few seconds; `fleet.claims_drill` and `fleet.kill_drill`, about 50 seconds each, runnable in parallel) and the built-in `fleet.run` plan on a scratch `ITERUM_DB`; when a drill gains a check, break the code once to see it fail, and undo the break by reversing the edit, not with `git checkout` (that also discards uncommitted work).
 
@@ -25,7 +18,7 @@ How this work has been done, and should continue: one small step at a time; repr
 
 Status: open, 2026-11-13. The loop is built (`work-completed.md`).
 
-1. **Paid test**, with the user's OK: one Haiku feature with `--fix-retries`, to see whether a retry fixes a real mistake.
+1. **Paid test**, with the user's OK: one Haiku feature with `--fix-retries`, to see whether a retry fixes a real mistake. The tags page (2026-11-13) passed first try, so no retry ran; item 5 of the list above is the next try.
 
 ## The `pgid` write window
 

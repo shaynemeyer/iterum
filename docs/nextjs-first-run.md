@@ -314,4 +314,4 @@ Run `281e105daebd` on `feat/tags-page`, plan `docs/.local-only/tags-page.json` (
 
 - The dry run (step 1 `echo dry`, scratch database) failed at step 3 as required, but with "/notes/tags has the wrong title", not "did not answer 200": without the page, `/notes/tags` still answers 200, probably through `app/notes/[slug]`. Not looked into; the check fails either way.
 - The paid run: all 4 steps committed on the first try, so the fix loop never ran (no `fix.retry` or `step.failed`). $0.00143, 4 turns, no denials; 3 `spend.reported` events totalling $0.00143, equal to `claude.finished`'s cost; at most 6,334 tokens per request. The diff is the one new file the prompt named.
-- Not landed yet; the land command printed by the run is `iterum land feat/tags-page --run-id 281e105daebd --fence file:app/notes/tags/page.tsx=1`.
+- Landed with `iterum land feat/tags-page --run-id 281e105daebd --check "bun install --frozen-lockfile && bun run build"`, fences read from the database (`file:app/notes/tags/page.tsx=1`): `merge.started`, `merge.landed`, `claim.released`; no check worktree left. `main` is at `bbd3ac5`. Governor headroom $0.6126.

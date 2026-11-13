@@ -2,6 +2,21 @@
 
 Items moved here from `todo.md` once done. Newest first.
 
+## A tags page for the Next.js app, end to end with `iterum`
+
+Completed 2026-11-13. Moved from `todo.md` (item 5):
+
+> **Ready, run when wanted: a tags page for the Next.js app, end to end with `iterum`.** Planned 2026-11-13. The first paid run through the `iterum` command, the default database and `iterum land` reading fences from the database. The feature: `/notes/tags`, one new file (`app/notes/tags/page.tsx`) listing every tag with the notes that carry it, each linking to its note. Plan, dry plan and check script are in `docs/.local-only/` (`tags-page.json`, `tags-page-dry.json`, `check-tags-page.sh`): step 1 a Haiku prompt step, then the build, the check, a commit, every step claiming the one file. The check builds and serves the app and needs a 200 from `/notes/tags`, the title `Tags | iterum demo`, an `<h2>` for each of `claims`, `plans`, `queue` and `recovery`, links to all three notes, and `fences` listed twice (it carries two tags). Steps, from the app repo:
+>    1. `git switch -c feat/tags-page main`.
+>    2. Free: on a scratch `ITERUM_DB`, `iterum run <local>/tags-page-dry.json`; it must fail at step 3, which proves the check fails without the page. Then delete the branch and the scratch database.
+>    3. Confirm the plan and the cap with the user (a $0.05 cap; recent Haiku feature steps cost $0.001 to $0.002).
+>    4. `iterum receiver` in another terminal; `source <iterum>/.env.example`; on a fresh `feat/tags-page`, `iterum run <local>/tags-page.json --allow-claude 0.05`.
+>    5. `iterum land feat/tags-page --run-id <run_id> --check "bun install --frozen-lockfile && bun run build"` from a checkout other than `main`, as before.
+>    6. `iterum report --open`, and record the run in `nextjs-first-run.md`: cost, turns, whether the check or `--check` caught anything, and anything the new commands got wrong.
+>    A bolder follow-up, if this lands cleanly: a page per tag at `/notes/tags/[tag]`, a dynamic route under Cache Components, which tripped a model on 2026-11-12 (the eleventh run).
+
+**Done.** Run `281e105daebd` with `--fix-retries 2`: all steps passed on the first try, $0.00143; landed as `bbd3ac5` with fences read from the database. Details in `nextjs-first-run.md`. The fix loop did not run, so its paid evidence is still missing (`todo.md`).
+
 ## `iterum recovery` leaves out the fix loop's reruns
 
 Completed 2026-11-13. Moved from `todo.md` (fix loop follow-ups):
