@@ -64,7 +64,55 @@ tbody tr:hover td, table tr:hover td { background: color-mix(in srgb, var(--acce
 .banner .icon { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--tone); color: #fff; font-size: .9rem; flex: none; }
 .spark { display: block; margin-top: 8px; } .spark polyline { fill: none; stroke: var(--accent); stroke-width: 2; }
 .spark circle { fill: var(--accent); } .spark .base { stroke: var(--grid); }
+th.sortable { cursor: pointer; user-select: none; } th.sortable:hover { color: var(--ink); }
+th[aria-sort="ascending"]::after { content: " \\25B2"; font-size: .7em; } th[aria-sort="descending"]::after { content: " \\25BC"; font-size: .7em; }
+.tip { position: fixed; display: none; pointer-events: none; z-index: 10; max-width: 320px; padding: 6px 9px; border-radius: 6px;
+  background: var(--band); color: var(--band-ink); font-size: .8rem; box-shadow: 0 4px 16px rgba(0,0,0,.25); }
+@media print { .band nav, .tip { display: none; } .band .kind { margin-left: auto; border: 0; } }
 @media print { .band { background: none; color: var(--ink); border-bottom: 1px solid var(--ring); } tr, .card { break-inside: avoid; } }
+"""
+
+SCRIPT = """
+(() => {
+  const value = text => {
+    const s = text.trim().replace(/^\\+/, "");
+    const d = s.match(/^(?:(\\d+)h )?(?:(\\d+)m )?(\\d+)s$|^(\\d+)h (\\d+)m$/);
+    if (d) return d[4] ? d[4] * 3600 + d[5] * 60 : (+d[1] || 0) * 3600 + (+d[2] || 0) * 60 + +d[3];
+    const n = s.replace(/[$,%s]/g, "");
+    return s !== "" && !isNaN(n) && n !== "" ? parseFloat(n) : s.toLowerCase();
+  };
+  document.querySelectorAll("table").forEach(table => {
+    const head = table.rows[0];
+    if (!head || !head.querySelector("th")) return;
+    [...head.cells].forEach((th, col) => {
+      th.tabIndex = 0; th.classList.add("sortable");
+      const sort = () => {
+        const dir = th.getAttribute("aria-sort") === "ascending" ? -1 : 1;
+        [...head.cells].forEach(c => c.removeAttribute("aria-sort"));
+        th.setAttribute("aria-sort", dir === 1 ? "ascending" : "descending");
+        const rows = [...table.rows].slice(1);
+        rows.sort((a, b) => {
+          const x = value(a.cells[col]?.textContent || ""), y = value(b.cells[col]?.textContent || "");
+          return (typeof x === typeof y ? (x > y) - (x < y) : typeof x === "number" ? -1 : 1) * dir;
+        });
+        rows.forEach(r => r.parentNode.appendChild(r));
+      };
+      th.addEventListener("click", sort);
+      th.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); sort(); } });
+    });
+  });
+  const tip = document.createElement("div"); tip.className = "tip"; document.body.appendChild(tip);
+  document.querySelectorAll("svg title").forEach(title => {
+    const mark = title.parentNode;
+    if (mark.tagName === "svg") return;
+    mark.dataset.tip = title.textContent; title.remove();
+    mark.addEventListener("mousemove", e => {
+      tip.textContent = mark.dataset.tip; tip.style.display = "block";
+      tip.style.left = Math.min(e.clientX + 12, innerWidth - tip.offsetWidth - 8) + "px"; tip.style.top = e.clientY + 14 + "px";
+    });
+    mark.addEventListener("mouseleave", () => { tip.style.display = "none"; });
+  });
+})();
 """
 
 LOGO = Path(__file__).resolve().parent.parent / "assets" / "favicon.svg"
@@ -90,7 +138,7 @@ def page(title, kind, heading, meta, body, extra_css="", nav=()):
     return (f'<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">'
             f'<title>{escape(title)}</title><style>{CSS}{extra_css}</style></head><body>'
             f'<div class="band"><div class="in">{logo()}<span>iterum</span><nav>{nav_links(nav)}</nav><span class="kind">{escape(kind)}</span></div></div>'
-            f'<main><h1>{heading}</h1><p class="meta">{meta}</p>{body}</main></body></html>')
+            f'<main><h1>{heading}</h1><p class="meta">{meta}</p>{body}</main><script>{SCRIPT}</script></body></html>')
 
 
 def clock(ts):

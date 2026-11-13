@@ -2,6 +2,18 @@
 
 Decisions and why they were made. Newest first. Entries are never deleted; a decision that is reversed is marked "Superseded by" the entry that replaces it. Open decisions live in `open-questions.md`.
 
+## 2026-11-13: Report pages carry one inline script
+
+**Decision.** Report pages include one fixed inline script for sortable tables and instant chart tooltips. It is a constant in `fleet/report_html.py` with no ledger data in it; it reads only the page's already-escaped DOM, fetches nothing and stores nothing. Pages stay self-contained and offline, and work unchanged with scripts off. Supersedes "no scripts" in the entry "A day's report is a static page beside the database" below.
+
+**Context.** The user asked for interactivity among four ways to make the reports richer (2026-11-13), after Iterum's look, links between pages and a richer layout.
+
+**Alternatives.** No script (the earlier rule: no sorting, native tooltips only); a script from a CDN (a network request per view, and code not in this repo); a theme toggle as well (built, then dropped: the page already follows the system setting, and the toggle was the only part that stored anything).
+
+**Evidence.** `reporting-plan.md`, "Making the reports look like Iterum", step 4.
+
+**Affects.** `fleet/report_html.py`.
+
 ## 2026-11-13: No report on a day with no activity; older runs count on the day they change
 
 **Decision.** When a day has no activity (no runs started, no events on older runs, no spend, nothing landed or refused, and for today nothing needing a person), `iterum report` writes no page or PDF: it says so on stderr, with the dates the ledger covers ("no activity recorded on 2026-11-10; the ledger has events from 2026-11-06 to 2026-11-13; no report written"), and exits 0; `--json` still prints the empty data with the same message. A run started on an earlier day that logs events on this one (a halt, a resume) is listed under "Earlier runs with activity". Supersedes the one-line "Nothing happened" page in the entry below.
