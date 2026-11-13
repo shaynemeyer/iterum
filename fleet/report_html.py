@@ -30,12 +30,16 @@ body { margin: 0; background: var(--page); color: var(--ink); font: 15px/1.55 -a
 .band { background: var(--band); color: var(--band-ink); }
 .band .in { max-width: 960px; margin: 0 auto; padding: 14px 16px; display: flex; align-items: center; gap: 10px; font-family: var(--mono); font-weight: 700; }
 .band svg { width: 28px; height: 28px; border-radius: 6px; flex: none; }
-.band .kind { margin-left: auto; font-weight: 400; font-size: .8rem; letter-spacing: .12em; text-transform: uppercase; opacity: .75; }
+.band nav { margin-left: auto; display: flex; gap: 14px; font-weight: 400; font-size: .85rem; }
+.band nav a { color: var(--band-ink); opacity: .85; text-decoration: none; } .band nav a:hover { opacity: 1; text-decoration: underline; }
+@media (max-width: 600px) { .band .kind { display: none; } }
+.band .kind { margin-left: 8px; padding-left: 18px; border-left: 1px solid rgba(232,243,241,.25); font-weight: 400; font-size: .8rem; letter-spacing: .12em; text-transform: uppercase; opacity: .75; }
 main { max-width: 960px; margin: 0 auto; padding: 24px 16px 48px; }
 h1, h2 { font-family: var(--display); letter-spacing: -.02em; line-height: 1.15; }
 h1 { font-size: clamp(1.7rem, 4vw, 2.3rem); font-weight: 800; margin: 0 0 6px; }
 h2 { font-size: 1.15rem; font-weight: 700; margin: 34px 0 10px; }
 code { font-family: var(--mono); font-size: .85em; }
+main a { color: var(--accent); text-decoration: none; } main a:hover { text-decoration: underline; }
 .meta, .muted { color: var(--ink-2); font-size: .85rem; overflow-wrap: anywhere; }
 .card { background: var(--surface); border: 1px solid var(--ring); border-radius: 10px; padding: 12px 16px; }
 .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
@@ -62,11 +66,21 @@ def logo():
     return LOGO.read_text() if LOGO.exists() else ""
 
 
-def page(title, kind, heading, meta, body, extra_css=""):
-    """A whole report page: the masthead band, then the heading, meta line and body."""
+def run_link(run_id):
+    """A run id linking to its run page, run-<id>.html in the same folder."""
+    return f'<a href="run-{escape(run_id)}.html"><code>{escape(run_id)}</code></a>'
+
+
+def nav_links(links):
+    """The masthead's links: [(label, href)], skipping any without an href."""
+    return "".join(f'<a href="{escape(href)}">{escape(label)}</a>' for label, href in links if href)
+
+
+def page(title, kind, heading, meta, body, extra_css="", nav=()):
+    """A whole report page: the masthead band with its links, then the heading, meta line and body."""
     return (f'<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">'
             f'<title>{escape(title)}</title><style>{CSS}{extra_css}</style></head><body>'
-            f'<div class="band"><div class="in">{logo()}<span>iterum</span><span class="kind">{escape(kind)}</span></div></div>'
+            f'<div class="band"><div class="in">{logo()}<span>iterum</span><nav>{nav_links(nav)}</nav><span class="kind">{escape(kind)}</span></div></div>'
             f'<main><h1>{heading}</h1><p class="meta">{meta}</p>{body}</main></body></html>')
 
 
@@ -153,7 +167,7 @@ def runs_table(runs):
     if not runs:
         return '<p class="muted">No runs started.</p>'
     rows = "".join(
-        f'<tr><td>{clock(r["started_at"])}</td><td><code>{escape(r["run_id"])}</code></td><td>{escape(r["plan"])}</td>'
+        f'<tr><td>{clock(r["started_at"])}</td><td>{run_link(r["run_id"])}</td><td>{escape(r["plan"])}</td>'
         f'<td>{escape(r["status"])}</td><td class=n>{duration(r["started_at"], worked_until(r))}</td>'
         f'<td class=n>{usd(r["cost_usd"])}</td><td class=steps>{step_strip(r)}</td></tr>' for r in runs)
     return (f'<div class="scroll"><table><tr><th>Started</th><th>Run</th><th>Plan</th><th>Status</th><th class=n>Took</th>'
@@ -163,7 +177,7 @@ def runs_table(runs):
 def earlier_table(earlier):
     """Runs started on an earlier day that something happened to on this one."""
     rows = "".join(
-        f'<tr><td>{datetime.fromtimestamp(r["started_at"]).strftime("%Y-%m-%d")}</td><td><code>{escape(r["run_id"])}</code></td>'
+        f'<tr><td>{datetime.fromtimestamp(r["started_at"]).strftime("%Y-%m-%d")}</td><td>{run_link(r["run_id"])}</td>'
         f'<td>{escape(r["plan"])}</td><td>{", ".join(f"{escape(k)}" + (f" &times;{n}" if n > 1 else "") for k, n in r["events"].items())}</td>'
         f'<td>{escape(r["status"])}</td></tr>' for r in earlier)
     return (f'<div class="scroll"><table><tr><th>Started</th><th>Run</th><th>Plan</th><th>That day</th><th>Status now</th></tr>'
@@ -181,7 +195,7 @@ def landed_table(landed):
 
 def person_list(needs):
     """What needs a person, one line each, or 'Nothing'."""
-    items = [f'<li>Run <code>{escape(r["run_id"])}</code> is {escape(r["status"])}</li>' for r in needs["dead_runs"]]
+    items = [f'<li>Run {run_link(r["run_id"])} is {escape(r["status"])}</li>' for r in needs["dead_runs"]]
     items += [f'<li>Merge of {escape(m["branch"])} refused: {escape(m["reason"] or "")}</li>' for m in needs["refused_merges"]]
     items += [f'<li>Approval {escape(a["fingerprint"][:16])}: {escape(a["action"])} ({escape(a["scope"])} step {a["seq"]})</li>' for a in needs["approvals"]]
     items += [f'<li>Conflict, task {t}</li>' for t in needs["conflicts"]]
@@ -203,8 +217,8 @@ def quiet(data):
     return not (data["runs"] or data["earlier_runs"] or data["landed"] or n["spend_usd"] or n["merges_refused"] or any(data["needs_person"].values()))
 
 
-def render(data):
-    """The whole page for one day's report."""
+def render(data, nav=()):
+    """The whole page for one day's report; nav is the masthead's [(label, href)]."""
     meta = (f'{escape(data["device"] or "-")} &middot; {escape(data["db"])} &middot; '
             f'generated {datetime.fromtimestamp(data["generated_at"]).strftime("%Y-%m-%d %H:%M")}')
     body = (f'<h2>Needs a person</h2>{person_list(data["needs_person"])}'
@@ -213,4 +227,4 @@ def render(data):
             + (f'<h2>Earlier runs with activity</h2>{earlier_table(data["earlier_runs"])}' if data["earlier_runs"] else "") +
             f'<h2>Spend by hour</h2><div class="card">{spend_chart(data["spend_by_hour"])}</div>'
             f'<h2>Landed</h2>{landed_table(data["landed"])}')
-    return page(f'Iterum report {data["date"]}', "Daily report", escape(data["date"]), meta, body)
+    return page(f'Iterum report {data["date"]}', "Daily report", escape(data["date"]), meta, body, nav=nav)

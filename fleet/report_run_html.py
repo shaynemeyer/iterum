@@ -78,8 +78,8 @@ def ended_note(run):
     return note
 
 
-def render(run):
-    """The whole page for one run."""
+def render(run, nav=()):
+    """The whole page for one run; nav is the masthead's [(label, href)]."""
     failed = (f'first failure at stage <b>{escape(run["failing_stage"])}</b>'
               + (f', step {run["failing_seq"]}' if run["failing_seq"] is not None else "")) if run["failing_stage"] else "no failure recorded"
     tiles = [(escape(run["status"]), failed), (duration(run["started_at"], worked_until(run)), ended_note(run)),
@@ -89,4 +89,4 @@ def render(run):
     body = (f'<h2>Steps</h2><div class="card">{timeline(run)}</div>'
             f'<h2>Events</h2>{events_table(run)}<h2>Merges</h2>{merges_table(run)}')
     return page(f'Iterum run {run["run_id"]}', "Run report", escape(run["run_id"]),
-                f'{escape(run["plan"])} &middot; {escape(run["agent"])} &middot; {escape(run["db"])}', tiles_html + body, EXTRA_CSS)
+                f'{escape(run["plan"])} &middot; {escape(run["agent"])} &middot; {escape(run["db"])}', tiles_html + body, EXTRA_CSS, nav=nav)

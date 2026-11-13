@@ -112,8 +112,8 @@ def plans_chart(plans):
         parts.append(f'<text x="{left - 8}" y="{cy + 4}" text-anchor="end">{escape(name[:30])}</text>')
         for r in plans[name]:
             done = r["status"] == "done"
-            parts.append(f'<circle cx="{x(r["cost_usd"]):.1f}" cy="{cy}" r="5" fill="{"var(--s1)" if done else "var(--surface)"}" '
-                         f'stroke="var(--s1)" stroke-width="2"><title>{escape(r["run_id"])} {escape(r["status"])}: {usd(r["cost_usd"])}</title></circle>')
+            parts.append(f'<a href="run-{escape(r["run_id"])}.html"><circle cx="{x(r["cost_usd"]):.1f}" cy="{cy}" r="5" fill="{"var(--s1)" if done else "var(--surface)"}" '
+                         f'stroke="var(--s1)" stroke-width="2"><title>{escape(r["run_id"])} {escape(r["status"])}: {usd(r["cost_usd"])}</title></circle></a>')
     return ('<div class="legend"><span>&#9679; finished (done)</span><span>&#9675; not finished</span></div>'
             f'<div class="scroll"><svg viewBox="0 0 {w} {h}" width="100%" role="img" aria-label="Cost of each run, by plan">{"".join(parts)}</svg></div>')
 
@@ -141,8 +141,8 @@ def quiet(data):
     return not (data["runs"] or data["spend"]["days"] or data["stages"] or data["plans"])
 
 
-def render(data):
-    """The whole page for a multi-day report."""
+def render(data, nav=()):
+    """The whole page for a multi-day report; nav is the masthead's [(label, href)]."""
     dates = dates_of(data)
     spend = {d["date"]: d["by_model"] for d in data["spend"]["days"]}
     runs = {d["date"]: d["by_status"] for d in data["runs"]}
@@ -154,4 +154,4 @@ def render(data):
             f'<h2>Cost per plan</h2><div class="card">{plans_chart(data["plans"])}</div>'
             f'<h2>Context per session</h2>{context_table(data["context"])}')
     return page(f'Iterum report {data["first"]} to {data["last"]}', f'{data["days"]}-day report',
-                f'{escape(data["first"])} to {escape(data["last"])}', f'{data["days"]} days &middot; {escape(data["db"])}', body, EXTRA_CSS)
+                f'{escape(data["first"])} to {escape(data["last"])}', f'{data["days"]} days &middot; {escape(data["db"])}', body, EXTRA_CSS, nav=nav)

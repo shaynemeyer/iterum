@@ -19,7 +19,7 @@ import time
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
-from fleet import approve, db, governor, queue, recovery, report_days, report_days_html, report_html, report_run, report_run_html, telemetry
+from fleet import approve, db, governor, queue, recovery, report_days, report_days_html, report_html, report_index, report_run, report_run_html, telemetry
 
 
 def day_window(day):
@@ -190,6 +190,30 @@ def write(page, out, args):
         subprocess.run(["open", str(out)], check=False)
 
 
+def linked_runs(data, days):
+    """Every run id the page links to: its runs, earlier runs and dead runs, or the plans' runs."""
+    if days:
+        return sorted({r["run_id"] for runs in data["plans"].values() for r in runs})
+    ids = [r["run_id"] for r in data["runs"] + data["earlier_runs"]] + [r["run_id"] for r in data["needs_person"]["dead_runs"]]
+    return sorted(set(ids))
+
+
+def run_nav(run, folder):
+    """Masthead links for a run page: all reports, and the day report of the day it started."""
+    day = datetime.fromtimestamp(run["started_at"]).date().isoformat()
+    return [("All reports", "index.html"), (f"Day {day}", f"report-{day}.html" if (folder / f"report-{day}.html").exists() else None)]
+
+
+def write_linked(run_ids, folder):
+    """Write a run page for each run id into the folder, then rebuild index.html; say so on stderr."""
+    for run_id in run_ids:
+        run = report_run.run_report(run_id)
+        (folder / f"run-{run_id}.html").write_text(report_run_html.render(run, run_nav(run, folder)))
+    (folder / "index.html").write_text(report_index.render(folder))
+    wrote = f"also wrote {len(run_ids)} run pages and" if run_ids else "updated"
+    print(f"{wrote} {folder / 'index.html'}", file=sys.stderr)
+
+
 def span_note(span):
     """'; the ledger has events from A to B', or that it is empty."""
     return f"; the ledger has events from {span[0]} to {span[1]}" if span else "; the ledger is empty"
@@ -215,7 +239,10 @@ def main():
         if args.json:
             print(json.dumps(data, indent=2))
             return
-        write(report_run_html.render(data), args.out or reports_dir() / f"run-{args.run}.html", args)
+        out = args.out or reports_dir() / f"run-{args.run}.html"
+        out.parent.mkdir(parents=True, exist_ok=True)
+        write(report_run_html.render(data, run_nav(data, out.parent)), out, args)
+        write_linked([], out.parent)
         return
     if args.days:
         data, quiet = report_days.days_report(args.days), report_days_html.quiet
@@ -235,7 +262,14 @@ def main():
     if args.json:
         print(json.dumps(data, indent=2))
         return
-    write(render(data), args.out or reports_dir() / name, args)
+    out = args.out or reports_dir() / name
+    out.parent.mkdir(parents=True, exist_ok=True)
+    nav = [("All reports", "index.html")]
+    if not args.days:
+        before, after = report_index.neighbours(out.parent, data["date"])
+        nav += [("Previous day", before), ("Next day", after)]
+    write(render(data, nav), out, args)
+    write_linked(linked_runs(data, args.days), out.parent)
 
 
 if __name__ == "__main__":
