@@ -7,7 +7,7 @@ on queueing is how a healthy fleet convinces itself it is broken.
 import json
 import time
 
-from fleet import db
+from fleet import approve, db
 from fleet.claim import Refused, guard
 from fleet.proc import group_alive
 
@@ -142,12 +142,16 @@ def add(kind, payload=None, depends_on=None, max_attempts=3, deadline=None):
 
 
 def claim(worker, ttl=LEASE_TTL):
-    """Take one ready task whose dependency is satisfied. Atomic by BEGIN IMMEDIATE.
+    """Take one ready task whose dependency is satisfied, or None while approve.freeze() holds.
+
+    Atomic by BEGIN IMMEDIATE.
 
     The returned dict carries `fence`, which the worker presents on every later call.
     """
     now = time.time()
     with db.write() as con:
+        if approve.frozen(con):
+            return None
         row = con.execute(
             "SELECT t.* FROM tasks t"
             " LEFT JOIN tasks d ON d.task_id = t.depends_on"
