@@ -8,42 +8,42 @@ A small Python harness for a fleet of Claude Code agents, built on one SQLite fi
 
 ## Commands
 
-Python 3.14 is required (`uuid.uuid7()`, and the unparenthesized `except A, B:` in `fleet/doctor.py`). Always run through `uv`, from the repo root.
+Python 3.14 is required (`uuid.uuid7()`, and the unparenthesized `except A, B:` in `fleet/doctor.py`). Install the `iterum` command once with `uv tool install --editable .` (editable, so it runs this checkout's code); it works from any folder except where noted.
 
 ```bash
-uv run fleet/doctor.py                          # audit this machine, writes ./harness-audit.json
-uv run scripts/seed-ledger.py                   # record ./harness-audit.json as layer.checked events
-uv run python -m fleet.project                  # rebuild knowledge; exits 1 on DRIFT (first run always DRIFT)
-uv run python -u -m fleet.run                   # the six-step kill-and-resume drill
-uv run python -u -m fleet.run --plan p.json     # a plan: [[seq, intent, command, [resource, ...]], ...]; resources optional
-uv run python -u -m fleet.run --plan p.json --allow-claude <usd>   # a plan with {"prompt": ...} steps: billed, each capped at <usd>
-uv run python -u -m fleet.run --resume <run_id> [--plan p.json] [--allow-claude <usd>] [--force]
-uv run python -m fleet.recovery [--idle-seconds 60] [--max-attempts 3]   # list dead runs, halt over-retried ones
-uv run python -m fleet.recovery halt <run_id> "<reason>"   # give up on one failed or stale run (logs run.halted)
-uv run python -m fleet.sync sync|export|import
-uv run python -u -m fleet.worker <name> [--budget-s 30]   # claim, run and report tasks until the budget ends
-uv run python -m fleet.dlq [redrive <task_id>]            # list dead-lettered tasks, or put one back on the queue
-uv run python -m fleet.conflicts [resolve <task_id> "<decision>"]   # list conflicts waiting for a person, or settle one
-uv run python -u -m fleet.kill_drill                      # SIGKILL a worker mid-task and check recovery (about 50s)
-uv run python -m fleet.view [trace <run_id> | stages [days] | context [session]]   # live sessions and runs, one run's trace, failures per stage, or context size per request
-uv run python -u -m fleet.telemetry [--port 4318]                # receive Claude Code telemetry; settings in .env.example
-uv run python -m fleet.governor [set <usd>]               # show the fleet's spend ceiling and headroom, or set the ceiling
-uv run python -m fleet.merge <branch> --run-id R [--fence file:path=N ...] [--repo .] [--target main] [--check CMD]   # land a branch if every changed file has a live claim (and CMD passes on the merged tree); without --fence, the run's claims from the database
-uv run python -u -m fleet.merge_drill                     # drive the merge gate through refusals, the lock and a crash (a few seconds)
-uv run python -u -m fleet.claims_drill                    # fleet.run's declared claims: refusal, resume, renewal, paused-agent takeover (about 50s)
-uv run python -m fleet.approve [approve|deny <fingerprint> [<who>] | freeze [<who>] "<reason>" | thaw [<who>]]   # pending approvals and the freeze, or settle/change them; who defaults to ITERUM_DEVICE
-uv run python -m fleet.canary [--baseline-hours 24] [--window-hours 1] [--tolerance 0.5]   # flag recent runs whose median events, seconds or cost moved past tolerance
-uv run python -m fleet.eval [--json | add <name> <run_id> [--expect JSON]]   # replay every eval case (exit 1 if a regression case fails), print {case: passed}, or add one from a run
-uv run python -m fleet.scorecard <before> [<after>]          # eval cases at two git revisions (default after: the working tree); exit 1 if one broke
-uv run python -u -m fleet.sweep a.json b.json [...] [--repeats 5] [--base main] [--allow-claude <usd>]   # from the app repo: each plan N times in rotated order, pass rate beside cost
+iterum status                                   # freeze, spend, receiver, runs, queue, what needs a person, canary; exit 1 when something needs a person
+iterum doctor                                   # audit this machine, writes ./harness-audit.json
+uv run scripts/seed-ledger.py                   # from the repo root: record ./harness-audit.json as layer.checked events
+iterum project                                  # rebuild knowledge; exits 1 on DRIFT (first run always DRIFT)
+iterum drill run                                # from the repo root: the six-step kill-and-resume drill
+iterum run p.json                               # a plan: [[seq, intent, command, [resource, ...]], ...]; resources optional
+iterum run p.json --allow-claude <usd>          # a plan with {"prompt": ...} steps: billed, each capped at <usd>
+iterum resume <run_id> [--plan p.json] [--allow-claude <usd>] [--force]
+iterum recovery [--idle-seconds 60] [--max-attempts 3]   # list dead runs, halt over-retried ones
+iterum recovery halt <run_id> "<reason>"        # give up on one failed or stale run (logs run.halted)
+iterum sync [export|import]                     # no argument: export, commit, pull, push, import, rebuild
+iterum worker <name> [--budget-s 30]            # claim, run and report tasks until the budget ends
+iterum dlq [redrive <task_id>]                  # list dead-lettered tasks, or put one back on the queue
+iterum conflicts [resolve <task_id> "<decision>"]   # list conflicts waiting for a person, or settle one
+iterum view [trace <run_id> | stages [days] | context [session]]   # live sessions and runs, one run's trace, failures per stage, or context size per request
+iterum receiver [--port 4318]                   # receive Claude Code telemetry; settings in .env.example
+iterum budget [set <usd>]                       # show the fleet's spend ceiling and headroom, or set the ceiling
+iterum land <branch> --run-id R [--fence file:path=N ...] [--repo .] [--target main] [--check CMD]   # land a branch if every changed file has a live claim (and CMD passes on the merged tree); without --fence, the run's claims from the database
+iterum approve|deny <fingerprint> [<who>]       # settle a pending approval (iterum status lists them); who defaults to ITERUM_DEVICE
+iterum freeze [<who>] "<reason>"                # stop queue claims; iterum thaw [<who>] lifts it
+iterum canary [--baseline-hours 24] [--window-hours 1] [--tolerance 0.5]   # flag recent runs whose median events, seconds or cost moved past tolerance
+iterum eval [--json | add <name> <run_id> [--expect JSON]]   # replay every eval case (exit 1 if a regression case fails), print {case: passed}, or add one from a run
+iterum scorecard <before> [<after>]             # eval cases at two git revisions (default after: the working tree); exit 1 if one broke
+iterum sweep a.json b.json [...] [--repeats 5] [--base main] [--allow-claude <usd>]   # from the app repo: each plan N times in rotated order, pass rate beside cost
+iterum drill merge|claims|kill                  # the merge gate (a few seconds), fleet.run's claims and a SIGKILLed worker (about 50s each)
 ```
 
-`fleet` has no `__init__.py` (a namespace package), so its modules must run with `-m`: `python fleet/run.py` fails with `ModuleNotFoundError`. `doctor.py` imports nothing from `fleet` and runs as a script; `seed-ledger.py` adds the repo root to `sys.path` itself.
+`fleet/cli.py` maps each word to a module and runs it as `python -m` would, line-buffered in place of `-u`, so `uv run python -u -m fleet.<module> ...` from the repo root still works for every command. `fleet` has no `__init__.py` (a namespace package, built by `uv_build`), so its modules must run with `-m`: `python fleet/run.py` fails with `ModuleNotFoundError`. `doctor.py` imports nothing from `fleet` and runs as a script; `seed-ledger.py` adds the repo root to `sys.path` itself.
 
 There is no test suite and no linter configured. Verify changes by running the commands against a throwaway database:
 
 ```bash
-ITERUM_DB=/tmp/scratch.db ITERUM_DEVICE=test uv run python -u -m fleet.run
+ITERUM_DB=/tmp/scratch.db ITERUM_DEVICE=test iterum drill run
 ```
 
 ## Settings

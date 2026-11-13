@@ -181,7 +181,7 @@ Checks: from the app repo with no `ITERUM_DB`, `iterum status`, `iterum receiver
 
 README (keep it short: install, then three commands), CLAUDE.md's command list, `nextjs-first-run.md`'s setup block, and the `gh-pages` guide, which has about 40 `python -m fleet` commands. Move this plan's outcome to `decision-log.md` and remove the open question.
 
-Progress 2026-11-13: the open question was settled and logged with increment 1 (decision log, "Iterum ships as one `iterum` command"). README done: install with `uv tool install --editable .`, setup and three everyday commands as `iterum`, the new default database; its setup block ran as written in a fresh clone (doctor, seed-ledger, project DRIFT then MATCH, status), the install line already checked in increment 1. Left: CLAUDE.md's command list, `nextjs-first-run.md`'s setup block, module docstrings, the `gh-pages` guide.
+Progress 2026-11-13: the open question was settled and logged with increment 1 (decision log, "Iterum ships as one `iterum` command"). README done: install with `uv tool install --editable .`, setup and three everyday commands as `iterum`, the new default database; its setup block ran as written in a fresh clone (doctor, seed-ledger, project DRIFT then MATCH, status), the install line already checked in increment 1. CLAUDE.md's command list done: every line in `iterum` form, each resolved through `cli.resolve()` to the module its old line named (all 20 covered). Left: `nextjs-first-run.md`'s setup block, module docstrings, the `gh-pages` guide.
 
 ## Not in this plan
 
