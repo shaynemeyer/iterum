@@ -42,6 +42,16 @@ Decisions not made yet. When one is answered, record it in `decision-log.md`, ad
 
 **Settled by.** Deciding which actions count as irreversible, and whether the human decision belongs on the settle path, before the action, or both.
 
+## How should a `fleet.run` step call `approve.require()`?
+
+**Context.** `fleet/approve.py` (2026-11-13, `0627be3`) records and settles approvals, but nothing calls `require()`. A plan step is `[seq, intent, command, resources]`, and its command is an opaque shell string or prompt, so `fleet.run` cannot tell that a step is, say, a `git.push`; guessing from the shell text would be the verb-level matching that `IRREVERSIBLE`'s exact names avoid. A run also has no way to wait: `runs.status` allows `running`, `done`, `failed`, `halted` and `budget_exhausted`, and SQLite cannot change that CHECK in place. Iterum performs no irreversible action itself; the app's plans would.
+
+**Options.** (a) An optional `action` field on a step (`{"action": "git.push", "params": {...}}`). Before proposing it, `fleet.run` calls `require(run_id, seq, action, params)` (a resume keeps the `run_id`, so it is a stable scope). On `NeedsApproval` it marks the run `halted` and prints the fingerprint and the approve command, and the human approves, then resumes with `--force`. No schema change, and `fleet.replay` already refuses halted runs. (b) The same, with a new `awaiting_approval` run status, which needs a `runs` table rebuild. (c) Wait until a real plan has an irreversible step, and design from that.
+
+**Blocks.** Nothing yet. Matters once an app plan includes an irreversible step.
+
+**Settled by.** A plan that needs it, and choosing whether a waiting run reuses `halted` or gets its own status. Test plan for (a): a scratch-database drill that pauses, restarts, approves and resumes, and checks that a changed param asks again.
+
 ## Should some actions get exactly-once, not just at-most-once?
 
 **Context.** `commit_once()` guarantees at most once. A failure after the side effect leaves the receipt `in_flight`, and the step stays blocked until a human checks. Getting exactly once across that failure needs the target system to take part, and `commit_once()` cannot involve it: it calls `action()` with no arguments, so the key never leaves `agent.db`.
