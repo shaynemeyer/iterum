@@ -2,6 +2,14 @@
 
 Items moved here from `todo.md` once done. Newest first.
 
+## Landing after a run's claims expire
+
+Completed 2026-11-13. Not from `todo.md`: found when the tag-pages landing was refused (`nextjs-first-run.md`).
+
+**Change.** `claim.expired_own()`; `land()` accepts the run's own expired, unchanged claim and lists it in `merge.landed`'s `expired`; `fleet.merge_drill` updated (decision log, 2026-11-13).
+
+**Evidence.** In the decision log entry. The tag pages landed as `cc81006` in the app.
+
 ## A tags page for the Next.js app, end to end with `iterum`
 
 Completed 2026-11-13. Moved from `todo.md` (item 5):

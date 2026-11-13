@@ -2,6 +2,18 @@
 
 Decisions and why they were made. Newest first. Entries are never deleted; a decision that is reversed is marked "Superseded by" the entry that replaces it. Open decisions live in `open-questions.md`.
 
+## 2026-11-13: The merge gate accepts a run's own expired claim nobody has taken since
+
+**Decision.** `land()` accepts a changed file whose claim has expired when the `claims` row still holds the landing run's id and the presented fence (`claim.expired_own()`); every other file still needs `require_claim()`. `merge.landed` lists such files under `expired`. No new fence is taken: the claim is released in the same transaction that lands, so nothing could present one. Supersedes in part the 2026-11-10 entry "The merge gate requires a live claim".
+
+**Context.** The tag-pages landing (`22cee9881c5c`) was refused because its 300 s claim expired 5 minutes after a 9-second run; nothing renews a claim once a run ends. An overnight run landed in the morning would always be refused. `acquire()` replaces the row and `release()` deletes it, so an unchanged row means nobody claimed the file since.
+
+**Alternatives.** Re-acquire under a new fence, then release it (proposed first; two extra events and no use for the fence); extend a finished run's claims to a long landing window (blocks other runs on those files until landed); a separate `iterum reclaim` command (one more morning step).
+
+**Evidence.** Reproduced on a scratch database with `ITERUM_CLAIM_TTL=5`: refused. After the change: lands with `expired=["file:a.txt"]`; refused when another run took the file (fence 2), and when another run took and released it. `fleet.merge_drill` now expects the expired, no-successor case to land, refuses it under another run's id and after a take-and-release, and fails on the old code. The tag pages then landed as `cc81006`.
+
+**Affects.** `fleet/claim.py`, `fleet/merge.py`, `fleet/merge_drill.py`. A run's paused process could still edit its branch after expiry; landing takes the branch as it is, as before.
+
 ## 2026-11-13: `--max-attempts` leaves out the fix loop's reruns
 
 **Decision.** `fleet.recovery`'s attempt count for a step is its `step.proposed` events less the `fix.retry` events covering it, so `--max-attempts` limits restarts and `--fix-retries` limits the fix loop.
@@ -406,6 +418,8 @@ After the change, a `fleet.run` plan in the scratch repo (run `f682a2441f4c`, Ha
 **Affects.** `fleet/merge.py`. `reconcile()` assumes one merge process per device and must run before it lands anything. A failed `update-ref` still raises `CalledProcessError` to the caller.
 
 ## 2026-11-10: The merge gate requires a live claim, not just the current fence
+
+*Superseded in part by "The merge gate accepts a run's own expired claim nobody has taken since" (2026-11-13): an expired claim with no successor now lands for its own run.*
 
 **Decision.** For the open question "Should `claim.guard()` also require a live claim?": yes, but through a new `claim.require_claim()`, not by changing `guard()`. It calls `guard()` and then requires a `claims` row with the same resource and fence whose `expires_at` has not passed, and raises `Refused` otherwise. The merge gate calls `require_claim()`.
 

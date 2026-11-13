@@ -149,6 +149,19 @@ def require_claim(con, resource, fence):
         raise Refused(f"{resource}: the claim under fence {fence} was released or has expired")
 
 
+def expired_own(con, resource, run_id, fence):
+    """True if run_id's claim under fence has expired and its row is unchanged. Call inside the db.write() block.
+
+    acquire() replaces the row and release() deletes it, so an unchanged row means nobody
+    has claimed the resource since. The merge gate accepts it: a run is landed long after it
+    stops renewing, overnight runs in the morning (docs/nextjs-first-run.md, 2026-11-13).
+    """
+    return con.execute(
+        "SELECT 1 FROM claims WHERE resource=? AND run_id=? AND fence=? AND expires_at<=?",
+        (resource, run_id, fence, time.time()),
+    ).fetchone() is not None
+
+
 def renew(resource, run_id, fence, ttl=DEFAULT_TTL):
     """Extend the live lease held under fence. Raises Refused if it expired or is no longer the current claim.
 

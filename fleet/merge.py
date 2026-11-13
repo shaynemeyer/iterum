@@ -85,7 +85,8 @@ def run_check(repo, commit, command):
 
 
 def land(repo, branch, run_id, fences, target="main", check=None):
-    """Merge branch into target if fences (resource -> fence) holds a live claim on every changed file.
+    """Merge branch into target if fences (resource -> fence) holds a live claim on every changed file,
+    or run_id's own expired claim that nobody has claimed since (claim.expired_own()).
 
     With check, a shell command, it must first exit 0 in a worktree of the merged commit.
     Landing releases every claim in fences, in the same block. A refusal keeps them, so the caller can retry.
@@ -106,18 +107,22 @@ def land(repo, branch, run_id, fences, target="main", check=None):
                        commit=new, reason="check failed", check=check, exit_code=code, output=output[-OUTPUT_TAIL:])
             raise CheckFailed(f"check failed with exit {code}: {check}\n{output[-OUTPUT_TAIL:]}")
     refused = None
+    expired = []  # the run's own claims that expired with nobody claiming them since
     try:
         with db.write() as con:
             try:
                 for resource in needed:
                     if resource not in fences:
                         raise claim.Refused(f"{resource}: changed by {branch} but not claimed")
-                    claim.require_claim(con, resource, fences[resource])
+                    if claim.expired_own(con, resource, run_id, fences[resource]):
+                        expired.append(resource)
+                    else:
+                        claim.require_claim(con, resource, fences[resource])
             except (claim.Refused, claim.Fenced) as e:
                 refused = e
                 db.log(con, run_id, "merge.refused", stage="coordination", merge_id=merge_id, branch=branch, target=target, commit=new, reason=str(e))
             else:
-                db.log(con, run_id, "merge.landed", stage="coordination", merge_id=merge_id, branch=branch, target=target, commit=new, resources=needed)
+                db.log(con, run_id, "merge.landed", stage="coordination", merge_id=merge_id, branch=branch, target=target, commit=new, resources=needed, expired=expired)
                 for resource, fence in fences.items():
                     claim.release_in(con, resource, run_id, fence)
                 # Inside the block: no newer fence can be issued between the check and the move.
