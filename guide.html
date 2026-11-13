@@ -229,7 +229,7 @@ footer { color: var(--muted); font-size: 0.86rem; border-top: 1px solid var(--li
         <tbody>
           <tr><td><b>App repo</b>, on a feature branch</td><td><code>iterum run</code><br><code>iterum land</code><br><code>iterum sweep</code></td><td>Steps run in the current folder; the branch check and the landing use this repo.</td></tr>
           <tr><td><b>Iterum repo</b></td><td><code>iterum drill run</code><br><code>uv run scripts/seed-ledger.py</code></td><td>The built-in drill lists <code>fleet/</code> and writes <code>out/</code> in the current folder; the seed script is not part of the installed command.</td></tr>
-          <tr><td><b>Anywhere</b></td><td>everything else: <code>iterum status</code>, <code>receiver</code>, <code>budget</code>, <code>recovery</code>, <code>view</code>, <code>worker</code>, <code>dlq</code>, <code>conflicts</code>, <code>approve</code>, <code>freeze</code>, <code>canary</code>, <code>sync</code>, <code>project</code>, <code>doctor</code>, <code>eval</code>, <code>scorecard</code>, the other drills</td><td>They work on the harness and its database, not on your app.</td></tr>
+          <tr><td><b>Anywhere</b></td><td>everything else: <code>iterum status</code>, <code>receiver</code>, <code>budget</code>, <code>recovery</code>, <code>view</code>, <code>worker</code>, <code>dlq</code>, <code>conflicts</code>, <code>approve</code>, <code>freeze</code>, <code>canary</code>, <code>sync</code>, <code>project</code>, <code>report</code>, <code>doctor</code>, <code>eval</code>, <code>scorecard</code>, the other drills</td><td>They work on the harness and its database, not on your app.</td></tr>
         </tbody>
       </table>
     </div>
@@ -692,6 +692,19 @@ iterum thaw                                      <span class="c"># last, after t
       </tbody>
     </table>
   </div>
+  <div class="col stack">
+    <h3>Reports</h3>
+    <p><code>iterum report</code> writes a self-contained HTML page into <code>reports/</code> beside the database (<code>~/.local/share/iterum/reports/</code>) and prints its path. A page opens offline: no network requests, one small inline script for sorting tables and chart tooltips, and it reads the same with scripts off. It starts with a banner saying whether anything needs a person.</p>
+  </div>
+  <div class="term"><button type="button">Copy</button><pre>iterum report --open                    <span class="c"># today, with 7-day trends</span>
+iterum report --date 2026-11-12 --pdf   <span class="c"># another day, and a PDF of it</span>
+iterum report --days 7                  <span class="c"># the last 7 days</span>
+iterum report --run &lt;run_id&gt;            <span class="c"># one run, step by step</span>
+iterum report --json                    <span class="c"># the same data, for scripts</span>
+iterum report --serve                   <span class="c"># live, on 127.0.0.1:8780</span></pre></div>
+  <div class="col stack">
+    <p>A day or several-day report also writes a page for each run it lists and rebuilds <code>index.html</code>, so run ids are links and every page links back to the index. A day with no activity writes nothing and says which dates have data. <code>--serve</code> answers only on <code>127.0.0.1</code>, refuses requests for any other host name, and stops with Ctrl-C.</p>
+  </div>
   <div class="note"><b>What the canary compares.</b> Median events, seconds and cost per run for finished <code>iterum run</code> runs in the last hour, against the 24 hours before; it fires past a 50% change (<code>--tolerance</code>). It needs 5 earlier runs, and cost needs <code>iterum receiver</code>. It flags change, not wrong output: a fleet that got cheaper and faster overnight is worth a look.</div>
 </section>
 
@@ -782,7 +795,7 @@ iterum scorecard main                   <span class="c"># did my working tree br
 </section>
 
 <footer>
-  Written from the Iterum repository as of 2026-11-12: <code>CLAUDE.md</code>, the module docstrings, the error messages in <code>fleet/run.py</code>, and the run records in <code>docs/</code>. Commands run from the Iterum repo root unless they change your app; those run from the app repo, as the table under <a href="#where">Where to run what</a> lists.
+  Written from the Iterum repository as of 2026-11-13: <code>CLAUDE.md</code>, the module docstrings, the error messages in <code>fleet/run.py</code>, and the run records in <code>docs/</code>. Commands run from the Iterum repo root unless they change your app; those run from the app repo, as the table under <a href="#where">Where to run what</a> lists.
 </footer>
 
 </main>
