@@ -11,6 +11,7 @@ import sys
 # command: (module, arguments put before the user's)
 COMMANDS = {
     "status": ("fleet.status", []),
+    "report": ("fleet.report", []),
     "run": ("fleet.run", ["--plan"]),
     "resume": ("fleet.run", ["--resume"]),
     "land": ("fleet.merge", []),

@@ -87,6 +87,8 @@ flowchart TD
 
 ### 1. Data functions and `--json`
 
+Done 2026-11-13: `fleet/report.py`, `iterum report --json [--date D]`. A run belongs to the day it started (decision 3, as proposed). Two departures, from evidence: it opens the database with `db.connect()` and only reads, as `iterum status` does, because a `mode=ro` connection left an empty `-wal` and a 32 KB `-shm` beside `agent.db` every time (it cannot remove them on close; a normal connection does); and "whether `--check` ran" is left out, because `merge.landed` does not record it. Checks: for 2026-11-12 on the real database, runs started (38), runs by status, steps committed (153), merges landed (9) and refused (1), and spend ($2.26853513) all equal hand-written SQL, and spend by hour sums to the same; plan names are file names only; `agent.db`'s time and size unchanged and no files left beside it; an empty database gives empty sections; a missing one is refused and not created.
+
 `fleet/report.py` with one function per section of today's report, each taking a connection and a time window (start, end) and returning plain data; `python -m fleet.report --json [--date D]` prints them all. Reuse `view.is_failure()`, `recovery.dead_runs()` and `governor.status()` rather than copying their queries. Confirm first that `recovery.dead_runs()` writes nothing (the same check `cli-plan.md` increment 2 needs).
 
 Checks: for a past day with known activity in the real `agent.db`, the counts match a hand-written SQL query; spend matches the sum of that day's `spend.reported`; on an empty scratch database every section is empty and nothing raises; the database file's modification time does not change.
