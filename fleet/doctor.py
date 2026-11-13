@@ -14,7 +14,15 @@ import os
 import subprocess
 from pathlib import Path
 
-DB = Path(os.environ.get("ITERUM_DB", "agent.db"))
+
+def default_db():
+    """The same default as fleet/db.py's default_path(); doctor imports nothing from fleet."""
+    data = os.environ.get("XDG_DATA_HOME", "")
+    base = Path(data) if Path(data).is_absolute() else Path.home() / ".local" / "share"
+    return base / "iterum" / "agent.db"
+
+
+DB = Path(os.environ.get("ITERUM_DB") or default_db())
 PROJECT = Path.cwd()
 
 

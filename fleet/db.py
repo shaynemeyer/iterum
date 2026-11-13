@@ -8,7 +8,18 @@ import uuid
 from contextlib import contextmanager
 from pathlib import Path
 
-DB = Path(os.environ.get("ITERUM_DB", "agent.db"))
+
+def default_path():
+    """$XDG_DATA_HOME/iterum/agent.db, or ~/.local/share/iterum/agent.db when it is unset, empty or relative.
+
+    The XDG base directory spec: https://specifications.freedesktop.org/basedir-spec/latest/
+    """
+    data = os.environ.get("XDG_DATA_HOME", "")
+    base = Path(data) if Path(data).is_absolute() else Path.home() / ".local" / "share"
+    return base / "iterum" / "agent.db"
+
+
+DB = Path(os.environ.get("ITERUM_DB") or default_path())
 SCHEMA = Path(__file__).with_name("schema.sql")
 TIMEOUT = 5.0  # seconds a connection waits for a lock
 
@@ -77,7 +88,8 @@ def _add_missing_column(con, table, column, sql_type="REAL"):
 
 
 def init():
-    """Create the schema, and add columns that CREATE TABLE IF NOT EXISTS skips on old databases."""
+    """Create the folder and schema, and add columns that CREATE TABLE IF NOT EXISTS skips on old databases."""
+    DB.parent.mkdir(parents=True, exist_ok=True)
     con = connect()
     try:
         con.executescript(SCHEMA.read_text())

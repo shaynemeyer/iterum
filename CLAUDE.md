@@ -50,7 +50,7 @@ ITERUM_DB=/tmp/scratch.db ITERUM_DEVICE=test uv run python -u -m fleet.run
 
 - `ITERUM_DEVICE`: required for anything that writes an event; `db.log()` raises without it.
 - `ITERUM_CLAIM_TTL`: seconds a `fleet.run` claim lasts between renewals, default 300.
-- `ITERUM_DB`: database path, default `agent.db` relative to the current directory.
+- `ITERUM_DB`: database path, default `$XDG_DATA_HOME/iterum/agent.db`, or `~/.local/share/iterum/agent.db` when `XDG_DATA_HOME` is unset (`db.default_path()`; `fleet/doctor.py` keeps a copy). `db.init()` creates the folder.
 - `ITERUM_IDLE_SECONDS`: heartbeat age after which a `running` run counts as dead, default 60; the default for `fleet.recovery --idle-seconds` and for `--resume`.
 - `ITERUM_MAX_ATTEMPTS`: the default for `fleet.recovery --max-attempts`, default 3.
 - `ITERUM_SYNC_DIR`: sync folder, default `~/private-data/iterum`; must sit inside a git repo with a remote for `sync`.
