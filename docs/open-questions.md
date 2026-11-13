@@ -2,6 +2,14 @@
 
 Decisions not made yet. When one is answered, record it in `decision-log.md`, add any resulting work to `todo.md`, and remove it here.
 
+## How should Iterum work on a feature unattended, overnight?
+
+**Context.** The goal: say "implement this feature in this project", approve a plan and a budget, and let Iterum work all night. What holds up unattended today, what is missing (a fix loop, sentence-to-plan, something that keeps runs moving, a morning report), a proposed order, and the open decisions are in `overnight-design.md` (2026-11-12).
+
+**Blocks.** Nothing yet.
+
+**Settled by.** Deciding where to start; the note proposes the fix loop first, tested free with a fake `claude`.
+
 ## Should `claude.finished` keep the whole result envelope?
 
 **Context.** `claude_step()` logs only `exit_code`, `session_id`, `total_cost_usd`, `num_turns`, `is_error` and `permission_denials`. The first paid run (2026-11-11) therefore kept no full copy of a success envelope for `claude-step-design.md`. Its `num_turns` was 5 against 3 API requests in telemetry, for reasons not known. The second Next.js run (`095cf7955377`) reported `num_turns: 11` under `--max-turns 10`, without failing, while its transcript shows about 7 rounds of tool calls; 7 `spend.reported` events arrived.
