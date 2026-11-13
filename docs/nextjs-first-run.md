@@ -307,3 +307,11 @@ Run `f1d824f2c53c` on `feat/list-tags`, plan `docs/.local-only/list-tags.json`: 
 - The paid run: all 4 steps committed on the first try. $0.00111, 4 turns, no denials. The diff adds `{' '}` and the `<span>` after the link, nothing else.
 - 3 `spend.reported` events totalling $0.001106, equal to `claude.finished`'s cost.
 - Landed with `--check "bun install --frozen-lockfile && bun run build"`: `merge.started`, `merge.landed`, `claim.released`; no claim or check worktree left. `main` is at `b912fd6`. Governor headroom $0.6141.
+
+## Results: the tags page, the first run with `--fix-retries`, 2026-11-13
+
+Run `281e105daebd` on `feat/tags-page`, plan `docs/.local-only/tags-page.json` (`todo.md` item 5), run with `iterum run ... --allow-claude 0.05 --fix-retries 2`: (1) a Haiku prompt step creating `app/notes/tags/page.tsx`, (2) build, (3) `check-tags-page.sh`, (4) commit, every step claiming that one file. The first paid run through the `iterum` command and the default database.
+
+- The dry run (step 1 `echo dry`, scratch database) failed at step 3 as required, but with "/notes/tags has the wrong title", not "did not answer 200": without the page, `/notes/tags` still answers 200, probably through `app/notes/[slug]`. Not looked into; the check fails either way.
+- The paid run: all 4 steps committed on the first try, so the fix loop never ran (no `fix.retry` or `step.failed`). $0.00143, 4 turns, no denials; 3 `spend.reported` events totalling $0.00143, equal to `claude.finished`'s cost; at most 6,334 tokens per request. The diff is the one new file the prompt named.
+- Not landed yet; the land command printed by the run is `iterum land feat/tags-page --run-id 281e105daebd --fence file:app/notes/tags/page.tsx=1`.
