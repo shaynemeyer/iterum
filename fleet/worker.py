@@ -172,7 +172,7 @@ def stop_at_ceiling(worker):
     sys.exit(
         f"{worker}  stopped: fleet headroom is {left:.4f} USD, so no task was claimed.\n"
         "raise the ceiling, then start the worker again:\n"
-        "  uv run python -m fleet.governor set <usd>"
+        "  iterum budget set <usd>"
     )
 
 

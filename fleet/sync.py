@@ -74,7 +74,7 @@ def import_events():
 def import_only():
     """The `import` command: merge events, then point at the rebuild step."""
     if import_events():
-        print("rebuild knowledge next: uv run python -m fleet.project")
+        print("rebuild knowledge next: iterum project")
 
 
 def git(*args):

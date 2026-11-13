@@ -111,7 +111,7 @@ def check_resumable(run_id, plan, force=False):
     if run["status"] == "halted" and not force:
         sys.exit(
             f"run {run_id} was halted for review; resume it only after a human has looked:\n"
-            f"  uv run python -u -m fleet.run --resume {run_id} --force"
+            f"  iterum resume {run_id} --force"
         )
     if run["status"] == "running" and run["heartbeat_at"] and not force:
         age = time.time() - run["heartbeat_at"]
@@ -119,7 +119,7 @@ def check_resumable(run_id, plan, force=False):
             sys.exit(
                 f"run {run_id} may still be alive: its heartbeat is {age:.0f}s old.\n"
                 f"wait until it is older than {recovery.IDLE_SECONDS}s, or, if you know the process is gone:\n"
-                f"  uv run python -u -m fleet.run --resume {run_id} --force"
+                f"  iterum resume {run_id} --force"
             )
     for r in recorded:
         if r["status"] != "committed" and r["pgid"] and not force and group_alive(r["pgid"]):
@@ -127,7 +127,7 @@ def check_resumable(run_id, plan, force=False):
                 f"run {run_id} step {r['seq']} may still be running: process group {r['pgid']} exists.\n"
                 f"  ps -o pid,command -g {r['pgid']}\n"
                 f"wait for it to exit, or, if you know it is safe to run the step again:\n"
-                f"  uv run python -u -m fleet.run --resume {run_id} --force"
+                f"  iterum resume {run_id} --force"
             )
     planned = {seq: intent for seq, intent, *_ in plan}
     for r in recorded:
@@ -137,7 +137,7 @@ def check_resumable(run_id, plan, force=False):
                 f"  recorded: {r['intent']!r}\n"
                 f"  plan:     {planned.get(r['seq'])!r}\n"
                 "resume it with the same plan you started it with:\n"
-                f"  uv run python -u -m fleet.run --resume {run_id} --plan yourplan.json"
+                f"  iterum resume {run_id} --plan yourplan.json"
             )
     commands = {seq: cmd for seq, _, cmd, _ in plan}
     for r in recorded:  # a failed step may be fixed; a cut-off or committed one may not change
@@ -147,7 +147,7 @@ def check_resumable(run_id, plan, force=False):
                 f"run {run_id} step {seq} ({r['status']}) has the same intent but a different command than it was started with.\n"
                 f"  plan: {commands[seq]!r}\n"
                 "only a failed step's command may change. Resume it with the same plan you started it with:\n"
-                f"  uv run python -u -m fleet.run --resume {run_id} --plan yourplan.json"
+                f"  iterum resume {run_id} --plan yourplan.json"
             )
     for r in recorded:
         if r["status"] != "committed" and is_prompt(commands[r["seq"]]) and not force:
@@ -156,7 +156,7 @@ def check_resumable(run_id, plan, force=False):
                 "and running it again is a second billed session. Check the run's branch first:\n"
                 "  git status && git diff\n"
                 "then resume, which runs the step again:\n"
-                f"  uv run python -u -m fleet.run --resume {run_id} --plan yourplan.json --allow-claude <usd> --force"
+                f"  iterum resume {run_id} --plan yourplan.json --allow-claude <usd> --force"
             )
 
 
@@ -296,7 +296,7 @@ def execute(run_id, plan, branch=None, target="main", cap_usd=None):
     if fences:
         flags = " ".join(f"--fence {shlex.quote(f'{r}={f}')}" for r, f in fences.items())
         to = "" if target == "main" else f" --target {shlex.quote(target)}"
-        print(f"land with: uv run python -m fleet.merge {shlex.quote(branch)} --run-id {run_id}{to} {flags}")
+        print(f"land with: iterum land {shlex.quote(branch)} --run-id {run_id}{to} {flags}")
 
 
 def stop_at_ceiling(run_id, seq, cap_usd=None):
@@ -317,8 +317,8 @@ def stop_at_ceiling(run_id, seq, cap_usd=None):
     sys.exit(
         f"run {run_id} stopped before step {seq}: fleet headroom is {left:.4f} USD and the step needs {need}.\n"
         f"raise the ceiling{lower}, then resume with the same plan:\n"
-        "  uv run python -m fleet.governor set <usd>\n"
-        f"  uv run python -u -m fleet.run --resume {run_id} [--plan yourplan.json]"
+        "  iterum budget set <usd>\n"
+        f"  iterum resume {run_id} [--plan yourplan.json]"
     )
 
 
@@ -510,7 +510,7 @@ def notice_dead_runs():
             print(f"  {run_id}  running  idle {idle:.0f}s")
     if failed:
         print(f"{failed} failed run(s).")
-    print("see: uv run python -m fleet.recovery")
+    print("see: iterum recovery")
 
 
 def check_prompt_steps(plan, cap_usd):
@@ -547,7 +547,7 @@ def check_receiver(plan):
             receiver_db = json.load(r)["db"]
     except OSError as e:
         sys.exit(f"a ceiling is set, but the telemetry receiver at {endpoint} did not answer ({e}). Start it first:\n"
-                 "  uv run python -u -m fleet.telemetry")
+                 "  iterum receiver")
     if receiver_db != str(db.DB.resolve()):
         sys.exit(f"the telemetry receiver writes to {receiver_db}, but this run reads {db.DB.resolve()}.\n"
                  "  Start fleet.telemetry with the same ITERUM_DB.")

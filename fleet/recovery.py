@@ -100,7 +100,7 @@ def main():
         verdict = "RESUME" if ok else "HALT  "
         print(f"{verdict}  {run_id}  {agent:10s}  {status:7s}  idle {idle_for:5.0f}s  {task[:30]}  ({why})")
         if ok:
-            print(f"        uv run python -u -m fleet.run --resume {run_id} [--plan <its plan>]")
+            print(f"        iterum resume {run_id} [--plan <its plan>]")
         else:
             halt(run_id, why)
 
