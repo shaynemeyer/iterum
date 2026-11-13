@@ -60,6 +60,7 @@ Each step is useful alone, so the work can stop after any of them.
 
 ## 6. Open decisions
 
+- *Settled 2026-11-13 (decision log): `/fleet-plan` is user-level, plans go in a gitignored `plans/`.*
 - **Where `/fleet-plan` lives.** (A) In this repo, started from a session in the Iterum folder with the app path as an argument. (B) As a user-level skill (`~/.claude/skills/fleet-plan/`), started from inside the app repo, with one setting such as `ITERUM_HOME` pointing at this repo. Leaning B: it matches working from inside the app, as the user's spec-driven `/feature` skill does.
 - **Where generated plans are kept.** Proposal: a gitignored `plans/` folder in this repo, so the app's working tree stays clean and app details stay out of the public repo; resume uses the same file.
 - **Retries:** how many, whether each retry gets the full cap, and whether the error text is trimmed (the merge gate keeps the last 2,000 characters of a failed check).

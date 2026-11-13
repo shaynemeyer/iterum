@@ -2,6 +2,18 @@
 
 Decisions and why they were made. Newest first. Entries are never deleted; a decision that is reversed is marked "Superseded by" the entry that replaces it. Open decisions live in `open-questions.md`.
 
+## 2026-11-13: `/fleet-plan` is a user-level skill; its plans go in a gitignored `plans/`
+
+**Decision.** `/fleet-plan` lives at `~/.claude/skills/fleet-plan/SKILL.md`, started from inside the app repo, with Iterum at `${ITERUM_HOME:-~/github/iterum}`. It writes each plan, dry plan, check script and plan document to `plans/<slug>/` in this repo, which is gitignored. Settles the first two open decisions in `overnight-design.md` section 6. The first version plans one chunk; a bigger feature gets a list of chunks and a question.
+
+**Context.** The user chose both options, 2026-11-13. Personal skills load in every project on the machine (https://code.claude.com/docs/en/skills, "Choose where skills load"); `disable-model-invocation: true` keeps it to `/fleet-plan` only, and `$ARGUMENTS` carries the sentence (same page).
+
+**Alternatives.** The skill in this repo, run from the Iterum folder with the app path as an argument; plans in `docs/.local-only/` (mixes generated plans with private notes) or in the app repo (its tree would carry them).
+
+**Evidence.** None yet: the first test is a vague request in an interactive session, which must produce questions and no files.
+
+**Affects.** `.gitignore`; nothing in `fleet/`.
+
 ## 2026-11-13: The merge gate accepts a run's own expired claim nobody has taken since
 
 **Decision.** `land()` accepts a changed file whose claim has expired when the `claims` row still holds the landing run's id and the presented fence (`claim.expired_own()`); every other file still needs `require_claim()`. `merge.landed` lists such files under `expired`. No new fence is taken: the claim is released in the same transaction that lands, so nothing could present one. Supersedes in part the 2026-11-10 entry "The merge gate requires a live claim".
