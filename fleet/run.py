@@ -483,6 +483,14 @@ PLAN = [
     (5, "write the summary", "sleep 20 && echo summary > out/summary.txt", ()),
     (6, "verify", "ls out | wc -l", ()),
 ]
+REPO_ROOT = Path(__file__).resolve().parent.parent
+
+
+def check_drill_folder():
+    """Refuse the built-in plan outside the iterum repo root: its steps list `fleet` and write `out/` there."""
+    if Path.cwd().resolve() != REPO_ROOT:
+        sys.exit(f"the built-in drill runs only from the iterum repo root ({REPO_ROOT}); "
+                 "it lists fleet/ and writes out/ in the current folder")
 
 
 def notice_dead_runs():
@@ -570,6 +578,8 @@ if __name__ == "__main__":
     parser.add_argument("--allow-claude", metavar="USD", type=float, help="run prompt steps, each capped at this many USD (billed)")
     args = parser.parse_args()
     stop_on_sigterm()
+    if not args.plan:
+        check_drill_folder()
     plan = load_plan(args.plan) if args.plan else PLAN
     check_prompt_steps(plan, args.allow_claude)
     branch = run_branch(args.target) if any(resources for *_, resources in plan) else None
