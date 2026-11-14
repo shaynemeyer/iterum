@@ -35,3 +35,17 @@ Raised 2026-11-14, when the first attended night stopped at headroom -$0.79: the
 **Either way.** Interactive sessions count against any ledger-based limit while their shell has `.env.example` sourced; options 1 and 2 count them, 3 does not.
 
 **Settled by.** A night that started with a stale window because the reset was forgotten (favours 2), or interactive sessions eating into a night's budget (favours 3).
+
+## Iterum suggests a budget for the night
+
+Raised 2026-11-14 by the user: "it would be a nice feature if iterum could recommend a budget for the night". Nothing in `fleet/` estimates cost before a run; `/iterum:fleet-plan` writes a bound and a typical figure into each `plan.md` by hand.
+
+**Sketch.** `iterum budget suggest` reads the queued tasks and prints, per task, prompt steps x tries (1 + `--fix-retries`) x `--allow-claude` cap ("at most") and the median past cost of prompt steps on the same model from `spend.reported` ("typical"); then a suggested ceiling (the sum of the bounds, so no task within its own caps is stopped) and an expected total, and the command to apply it (`iterum budget set <usd> && iterum budget reset`). It sets nothing itself.
+
+**Needs first.** A task stores only a shell string, so the plan, cap and retries would have to be parsed back out of it, which breaks on any other command shape. Instead, `iterum add --plan <p.json> --allow-claude <usd> --fix-retries N` builds the `iterum run` command and stores the three as payload fields; `suggest` reads them and the plan file (its number of prompt steps, its models). A task added as a plain shell string shows "cost unknown".
+
+**Limits.** The cap is Claude Code's `--max-budget-usd`, "a client-side estimate that spend can pass" (`fleet/run.py`), so "at most" is a close bound, not a guarantee. The typical figure rests on small Haiku features (highest prompt step so far $0.00211); a bigger feature or another model has little history, and `suggest` should say so. One run so far has used retries, so the expected total leaves them out.
+
+**To check when built.** On a scratch database: two tasks added with `--plan`, the bound equals steps x tries x cap summed; the typical figure equals the median of the `spend.reported` totals per prompt step for that model; a plain shell-string task shows "cost unknown"; nothing in `budgets` changes.
+
+**Settled by.** Tonight's first real night: whether its actual cost lands near the typical figure.
