@@ -112,7 +112,7 @@ def trend(con, day, days=7):
 
 
 def needs_person(con, start, end, now):
-    """Merges refused in the window and, when `now` (today's report), what iterum status flags at this moment.
+    """Merges refused in the window and not landed since and, when `now` (today's report), what iterum status flags at this moment.
 
     Dead runs, pending approvals, conflicts and dead-lettered tasks are current state, not the day's, so a past day leaves them out.
     """
@@ -120,13 +120,22 @@ def needs_person(con, start, end, now):
         "dead_runs": [{"run_id": r[0], "status": r[3], "idle_s": r[4]} for r in recovery.dead_runs()] if now else [],
         "refused_merges": [
             {"run_id": run_id, "branch": p["branch"], "reason": p.get("reason")}
-            for run_id, _, p in payloads(con, "merge.refused", start, end)
+            for run_id, ts, p in payloads(con, "merge.refused", start, end)
+            if not landed_after(con, p["branch"], ts)
         ],
         "approvals": [{"fingerprint": a["fingerprint"], "action": a["action"], "scope": a["run_id"], "seq": a["seq"]}
                       for a in approve.pending()] if now else [],
         "conflicts": [t["task_id"] for t in queue.human_tasks()] if now else [],
         "dead_letters": [dead_letter(t) for t in queue.dead_letters()] if now else [],
     }
+
+
+def landed_after(con, branch, ts):
+    """True if `branch` landed after `ts`, on any day: a refused merge fixed and landed needs no one."""
+    return con.execute(
+        "SELECT 1 FROM events WHERE kind='merge.landed' AND ts>? AND json_extract(payload,'$.branch')=?",
+        (ts, branch),
+    ).fetchone() is not None
 
 
 def dead_letter(task):

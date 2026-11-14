@@ -2,6 +2,16 @@
 
 Items moved here from `todo.md` once done. Newest first.
 
+## A refused merge that landed later no longer needs a person
+
+Completed 2026-11-14. Found with the report's first step (`todo.md`, Overnight queue, from the first real night, item 1), not listed before.
+
+**Problem.** After the night's dead letters were dropped, the 2026-11-14 report still said "1 thing needs a person": the merge of `feat/tag-counts` refused at 06:55:42 ("check failed"), although the same run landed it at 06:55:57 and the same page listed it under Landed. `needs_person()` listed every `merge.refused` in the day.
+
+**Change.** `fleet/report.py`, `landed_after()`: a refused merge is left out of needs-a-person when a `merge.landed` for the same branch comes after it, on any day. The day's tile still counts the refusal.
+
+**Evidence.** Real database: all three refused merges in the ledger (`feat/latest-note` 2026-11-12, `feat/tag-pages` 2026-11-13, `feat/tag-counts` 2026-11-14) landed later, and the reports for those days now list none. Scratch database: a refusal never landed is listed, one landed after is not, and one whose branch landed only before the refusal is listed.
+
 ## A dead-lettered task can be dropped
 
 Completed 2026-11-14. Moved from `todo.md` (Overnight queue, from the first real night, item 2):
