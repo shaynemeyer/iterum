@@ -17,9 +17,8 @@ How this work has been done, and should continue: one small step at a time; repr
 
 Status: open, 2026-11-14, from `overnight-design.md` section 5d. In order:
 
-1. **A failed task leaves an empty branch that blocks re-adding it.** Delete the task's branch when it failed with no commits beyond the base; keep one with a leftovers commit.
-2. **A worker without telemetry settings dead-letters every task under a ceiling.** Stop before claiming instead, as the dirty-tree stop does.
-3. **The morning report does not show the night:** runs named `plan.json` (use the plan folder), no dead-lettered tasks under needs-a-person, no ready-to-land list with land commands, no task-to-run link, spend not split from interactive sessions.
+1. **A worker without telemetry settings dead-letters every task under a ceiling.** Stop before claiming instead, as the dirty-tree stop does.
+2. **The morning report does not show the night:** runs named `plan.json` (use the plan folder), no dead-lettered tasks under needs-a-person, no ready-to-land list with land commands, no task-to-run link, spend not split from interactive sessions.
 
 ## Overnight queue, from the rerun
 

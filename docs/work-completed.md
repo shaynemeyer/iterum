@@ -2,6 +2,16 @@
 
 Items moved here from `todo.md` once done. Newest first.
 
+## A failed task's empty branch is deleted
+
+Completed 2026-11-14. Moved from `todo.md` (Overnight queue, from the first real night):
+
+> **A failed task leaves an empty branch that blocks re-adding it.** Delete the task's branch when it failed with no commits beyond the base; keep one with a leftovers commit.
+
+**Change.** `fleet/worker.py`, `_drop_if_empty()`: on the failure path of `_on_branch()`, after committing any leftovers and switching to the base detached, the worker deletes the task's branch when `git rev-list --count <base>..<branch>` is 0. An empty branch holds nothing to inspect, and `git switch -c` refused re-adding the task on the same name.
+
+**Evidence.** Scratch repo and database. Before: task `false` on `night/t1` failed and left `night/t1` at the base commit; re-adding a task on `night/t1` failed with "fatal: a branch named 'night/t1' already exists". After: the failed task left no `night/t1`; re-adding it on `night/t1` ran and finished; a task that wrote `b.txt` then failed kept `night/t3` with "iterum: what task 3 left behind" and a clean tree. `iterum drill kill` passes.
+
 ## The worker leaves the app detached, so landing works
 
 Completed 2026-11-14. Moved from `todo.md` (Overnight queue, from the first real night):

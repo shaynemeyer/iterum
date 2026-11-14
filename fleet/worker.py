@@ -105,9 +105,20 @@ def _on_branch(task, payload):
             _git(repo, "add", "--all")
             _git(repo, "commit", "--quiet", "-m", f"iterum: what task {task['task_id']} left behind")
         _git(repo, "switch", "--detach", payload["base"])
+        _drop_if_empty(repo, payload["branch"], payload["base"])
         raise
     if not _git(repo, "status", "--porcelain"):
         _git(repo, "switch", "--detach", payload["base"])
+
+
+def _drop_if_empty(repo, branch, base):
+    """Delete a failed task's branch when it has no commits beyond the base.
+
+    An empty branch holds nothing to inspect, and it would refuse re-adding the task
+    on the same branch (`git switch -c` fails on an existing name).
+    """
+    if _git(repo, "rev-list", "--count", f"{base}..{branch}") == "0":
+        _git(repo, "branch", "-D", branch)
 
 
 def _default_do_work(task):
