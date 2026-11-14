@@ -301,6 +301,11 @@ def claim_files(run_id, plan):
     return fences
 
 
+def repo_root():
+    """The top folder of the repo this run works in: where `iterum land` must run."""
+    return subprocess.run(["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True, check=True).stdout.strip()
+
+
 def run_branch(target):
     """The current branch. Exits on a detached HEAD, outside a repo, or on target.
 
@@ -641,7 +646,8 @@ if __name__ == "__main__":
         # wrong --plan file, so compare on every resume and refuse on mismatch.
         check_resumable(run_id, plan, args.force)
     else:
-        run_id = db.start_run("worker-1", args.plan or "six step demo", os.environ.get("ITERUM_TASK"))
+        landing = {"branch": branch, "repo": repo_root(), "target": args.target} if branch else None
+        run_id = db.start_run("worker-1", args.plan or "six step demo", os.environ.get("ITERUM_TASK"), landing)
         print(f"run {run_id} started")
     try:
         execute(run_id, plan, branch, args.target, args.allow_claude, args.fix_retries)
