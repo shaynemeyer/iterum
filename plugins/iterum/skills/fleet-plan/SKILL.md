@@ -63,4 +63,4 @@ source <iterum>/.env.example
 iterum run <iterum>/plans/<slug>/plan.json --allow-claude <cap> --fix-retries 2
 ```
 
-Landing stays a separate decision for a person: `iterum land feat/<slug> --run-id <run_id> --check "<build>"`.
+Landing stays a separate decision for a person: `iterum land feat/<slug> --run-id <run_id> --check "<install> && <build>"`. The check runs in a fresh temporary copy of the repo with no dependencies installed, so it must install them first; for a bun app, `--check "bun install --frozen-lockfile && bun run build"`. With the build alone, the landing is refused (`next: command not found`).
