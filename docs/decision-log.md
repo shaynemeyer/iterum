@@ -2,6 +2,30 @@
 
 Decisions and why they were made. Newest first. Entries are never deleted; a decision that is reversed is marked "Superseded by" the entry that replaces it. Open decisions live in `open-questions.md`.
 
+## 2026-11-14: Reports are a static page and a local server, written by the worker when it stops
+
+**Decision.** Reports stay as built: option A, a static page per day (`iterum report`), and option B, the same pages served live on `127.0.0.1` (`iterum report --serve`). The worker writes today's page when it stops; `fleet.run` does not write one per run. C (Rich in the terminal), D (a Textual TUI) and E (a published page) are not pursued until a need shows. Settles the open question "What should Iterum's reports look like, and where?", which is removed.
+
+**Context.** The user approved this cleanup, 2026-11-14. B was built 2026-11-13 (`reporting-plan.md`, increment 4), and the worker writing the report was built 2026-11-14 (`work-completed.md`), so the question's open parts were answered by what was built.
+
+**Alternatives.** C and D: a first dependency for views the page and `iterum status` already give. E: needs local paths and session ids scrubbed first, and the repo is public. A report per run written by `fleet.run`: `iterum report --run` already writes one on demand, and the day page links every run.
+
+**Evidence.** `fleet/report_serve.py`; the worker's report checks in `work-completed.md`, 2026-11-14.
+
+**Affects.** `open-questions.md`.
+
+## 2026-11-14: Landing stays a person's morning step
+
+**Decision.** Nothing lands a branch unattended. A night's done runs are listed under Ready to land in the morning report, each with the `iterum land ... --check ...` command a person runs. Settles "Unattended landing" in `overnight-design.md` section 6, as proposed there.
+
+**Context.** The user approved this cleanup, 2026-11-14. The Ready to land list was built on this proposal earlier the same day (`work-completed.md`), and the first night's landings were run by hand (`overnight-design.md` section 5d).
+
+**Alternatives.** The worker lands a done run's branch with its logged `land_check`: a model mistake that passes the build and the output check would reach `main` before anyone reads the diff, the gap the open question on output checks names.
+
+**Evidence.** `fleet/report.py`, `ready_to_land()`; a listed command, run as printed, landed its branch on a scratch repo (`work-completed.md`, 2026-11-14).
+
+**Affects.** `overnight-design.md` section 6, `open-questions.md`.
+
 ## 2026-11-14: `iterum budget reset` counts spend from zero again
 
 **Decision.** `iterum budget reset` moves the fleet ceiling's `window_start` to now and keeps the limit, so spend counts from zero; it logs `budget.reset` (run `fleet`, stage `governance`) with the spend it stopped counting and the old window start, in the same write. With no ceiling set it exits 1. Amends the 2026-11-10 entry, under which spend counted only from the first time a ceiling was set.

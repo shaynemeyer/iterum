@@ -2,6 +2,8 @@
 
 Draft, 2026-11-13. Nothing here is built yet. It adds an open question (`open-questions.md`, "What should Iterum's reports look like, and where?"). First target: an HTML file of the current day's work.
 
+*Settled 2026-11-14 (decision log, "Reports are a static page and a local server, written by the worker when it stops"): A and B are built, C to E are not pursued, and the question is removed.*
+
 ## Why
 
 Everything Iterum knows is in `agent.db`, but the only way to see it is text, spread over seven commands (`fleet.view`, `recovery`, `governor`, `dlq`, `conflicts`, `approve`, `canary`). Text answers "what is the state now". It is poor at "how is this changing": spend per day against the ceiling, whether context grows within a session, whether one plan costs less than another across repeats. Those are the questions an unattended night raises in the morning (`overnight-design.md`).

@@ -8,19 +8,9 @@ Decisions not made yet. When one is answered, record it in `decision-log.md`, ad
 
 **Blocks.** Nothing yet.
 
-**Partly settled** 2026-11-13: the fix loop came first and is built (`--fix-retries`, decision log). The rest of section 6 of `overnight-design.md` is still open.
+**Partly settled.** Built: the fix loop (`--fix-retries`), `/fleet-plan`, the night's queue and the morning report, which the worker writes when it stops. Decided (decision log): where `/fleet-plan` and its plans live, retries, one task per file per night, and no unattended landing. Still open, from section 6 of `overnight-design.md`: the budget for a night (the fleet ceiling as is, or one per night) and the 100K context budget (how to estimate a chunk's size before running it, and what to do when a run exceeds it).
 
-**Settled by.** The paid fix-loop test, then the decisions on `/fleet-plan`, the night's queue and the morning report.
-
-## What should Iterum's reports look like, and where?
-
-**Context.** Everything is in `agent.db`, but it is only visible as text over seven commands, which answer "what is the state now" and not "how did today go" or "how is this changing". Partly settled 2026-11-13 (decision log, "A day's report is a static page beside the database"): `iterum report` writes option A for one day. What is left is below. Sections, sources and increments are in `reporting-plan.md`.
-
-**Options.** (A) A static HTML file from `agent.db`, standard library and inline SVG, nothing leaving the machine; (B) the same page served live on `127.0.0.1`; (C) Rich in the terminal (first dependency); (D) a Textual TUI; (E) a published page, which needs local paths and session ids scrubbed first.
-
-**Blocks.** Nothing; `reporting-plan.md` increments 3 and 4 build on A.
-
-**Settled by.** Whether B, C, D or E follow at all, and whether `fleet.run` writes the report itself when a run ends or it stays a command (built as a command).
+**Settled by.** Those two decisions; a real night may show whether either matters.
 
 ## Should `claude.finished` keep the whole result envelope?
 
