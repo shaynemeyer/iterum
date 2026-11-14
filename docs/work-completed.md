@@ -2,6 +2,14 @@
 
 Items moved here from `todo.md` once done. Newest first.
 
+## The fix loop's paid test
+
+Completed 2026-11-14. Moved from `todo.md` (Fix loop follow-ups, its only item):
+
+> **Paid test**, with the user's OK: one Haiku feature with `--fix-retries`, to see whether a retry fixes a real mistake. The tags page (2026-11-13) passed first try, so no retry ran; Since then the tag pages, tag links and tag counts (2026-11-14) also passed first try under `--fix-retries 2`: four Haiku runs, no retry. Next: an induced mistake (decision log, 2026-11-14): a check that requires something the prompt does not say.
+
+**Result.** Run `663ba8f2873c` (`nextjs-first-run.md`, "Results: a footer on note pages"): with an induced mistake, Haiku failed the check twice, each `fix.retry` fed back the check's message, each retry fixed exactly what it named, and the third try passed. $0.00277 for three prompt steps. Shows a real model acting on the fed-back error; a model fixing a mistake of its own, unprompted by a planted requirement, is still unseen (decision log, 2026-11-14).
+
 ## A page per tag, the second paid `--fix-retries` run
 
 Completed 2026-11-13 (moved 2026-11-14, when it was found still listed). Moved from `todo.md` (item 5):

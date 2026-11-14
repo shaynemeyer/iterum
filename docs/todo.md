@@ -19,12 +19,6 @@ Status: open, 2026-11-14, from `overnight-design.md` section 5c.
 
 1. **A finished task keeps a stale reason.** `queue.finish()` leaves `tasks.reason` from an earlier hand-back or failure. Cosmetic.
 
-## Fix loop follow-ups
-
-Status: open, 2026-11-13. The loop is built (`work-completed.md`).
-
-1. **Paid test**, with the user's OK: one Haiku feature with `--fix-retries`, to see whether a retry fixes a real mistake. The tags page (2026-11-13) passed first try, so no retry ran; Since then the tag pages, tag links and tag counts (2026-11-14) also passed first try under `--fix-retries 2`: four Haiku runs, no retry. Next: an induced mistake (decision log, 2026-11-14): a check that requires something the prompt does not say.
-
 ## `/fleet-plan` follow-ups
 
 Status: open, 2026-11-13, from the first test (decision log, "`/fleet-plan` is a user-level skill").
