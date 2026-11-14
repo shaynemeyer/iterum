@@ -58,6 +58,20 @@ Each step is useful alone, so the work can stop after any of them.
 2. **`/fleet-plan`**: sentence, then clarifying questions until none are open, then plan document, then "Implement this feature?". A test: a deliberately vague request must produce questions, not a plan.
 3. **A night's queue and a morning report.**
 
+## 5a. Experiment: a night's queue with what exists, 2026-11-13
+
+Free, no code: two dry plans (prompt step `echo dry`; checks for a back link on note pages and note counts on `/notes/tags` that fail on `main`), each queued with `queue.add("plan", {"cmd": "cd <app> && git switch -c feat/<slug> main && iterum run <dry plan>"})` on a scratch database, then one `iterum worker night-1 --budget-s 400`.
+
+What held: the worker claimed and ran both plans in turn, each on its own branch from `main`; both runs failed at their check (step 3) as planned; `iterum status` (exit 1) and `iterum dlq` listed both runs and both tasks; `iterum report --json` listed the runs under `needs_person`.
+
+What broke or is missing:
+
+1. **No command adds a task.** Only `queue.add()` from Python.
+2. **The queue retried each failed plan, and the retries buried the cause.** Plan tasks got the default `max_attempts` 3. Attempts 2 and 3 failed at once on `fatal: a branch named 'feat/<slug>' already exists`, and that became the dead letter's reason. The real cause (the check's message) is only in the first attempt's event and in the run. A plan already retries inside itself (`--fix-retries`); rerunning it whole from the queue cannot help.
+3. **A task's reason is the first 200 characters of stderr** (`_default_do_work()`), here starting with git's `Switched to a new branch`. A longer error would lose the plan's message at the end.
+4. **Nothing links a task to its run.** `status` lists task 1 and run `3c79b05dfdcf` apart; the morning view cannot say which feature failed where.
+5. **The app is left on the last task's branch.** With dry plans the tree stayed clean. A real prompt step that fails leaves edits uncommitted, and the next task's `git switch -c` would most likely carry them onto the next branch (git keeps uncommitted changes on switch when they do not conflict). Not reproduced.
+
 ## 6. Open decisions
 
 - *Settled 2026-11-13 (decision log): `/fleet-plan` is user-level, plans go in a gitignored `plans/`.*
