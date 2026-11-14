@@ -24,7 +24,7 @@ Status: open, 2026-11-13. The loop is built (`work-completed.md`).
 
 Status: open, 2026-11-13, from the first test (decision log, "`/fleet-plan` is a user-level skill").
 
-1. **The check is never shown to pass on a correct change.** `/fleet-plan` proves a check fails on `main`, but not that it passes on a correct version, as the hand-written checks were (`nextjs-first-run.md`, the tag pages). A wrong check fails a correct change, and the fix loop then pays for retries that cannot succeed. Until something covers it, the paid run is the first time a generated check meets a correct version.
+1. **The check is never shown to pass on a correct change.** `/fleet-plan` proves a check fails on `main`, but not that it passes on a correct version, as the hand-written checks were (`nextjs-first-run.md`, the tag pages). A wrong check fails a correct change, and the fix loop then pays for retries that cannot succeed. Until something covers it, the paid run is the first time a generated check meets a correct version. First case, 2026-11-13: the `tag-links` check passed on the run's correct change (`nextjs-first-run.md`). One case, so the gap stays open.
 
 ## The `pgid` write window
 
