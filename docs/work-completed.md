@@ -2,6 +2,16 @@
 
 Items moved here from `todo.md` once done. Newest first.
 
+## A dead-lettered task can be dropped
+
+Completed 2026-11-14. Moved from `todo.md` (Overnight queue, from the first real night, item 2):
+
+> **A dead-lettered task cannot be dismissed, only redriven.** Found 2026-11-14 with item 1: tasks 1 to 4 of the first night were superseded by tasks 5 and 6, which landed, yet they stay dead-lettered and keep `iterum status` and the report's banner red. Same shape as failed runs before `iterum recovery halt` (`cli-plan.md`, 2026-11-13). Proposal: `iterum dlq drop <task_id> "<reason>"`, logging an event, leaving the row out of `dead_letters()`.
+
+**Change.** `fleet/queue.py`, `drop()`; `fleet/dlq.py`, `iterum dlq drop <task_id> "<reason>"`. A dropped task becomes `halted` with reason `dropped: <reason>`, and `task.dropped` (stage `scheduling`, the reason in its payload) is logged in the same `db.write()` block. Not a status of its own: `tasks.status` has a `CHECK` (`schema.sql`), which SQLite cannot alter without rebuilding the table, and `db.py` migrates only by adding columns. `redrive()` restores only tasks halted behind a dead letter, so it never revives a dropped one; halted tasks are not listed under needs-a-person. Refused (exit 1, nothing logged) unless the task is dead-lettered, as `recovery halt` refuses a run `dead_runs()` does not list. Tasks waiting on a dropped task stay halted; the command prints how many.
+
+**Evidence.** Scratch database: two dead-lettered tasks, one task halted behind the second, one done; `iterum status` exit 1. Dropping both printed "dropped task 1" and "dropped task 2" with the one waiting task; afterwards `iterum dlq` listed none, `status` showed "NEEDS A PERSON nothing" and exit 0, and the report's `dead_letters` was empty. Refused with exit 1: dropping task 1 again, dropping the done task, redriving a dropped task. Two `task.dropped` events with `{"reason": "superseded"}`. `iterum eval add` on a dropped task refused it ("not replayable: it has ['task.dropped']"); a dead-lettered case still replays.
+
 ## A worker that could not see spend stops before claiming
 
 Completed 2026-11-14. Moved from `todo.md` (Overnight queue, from the first real night):

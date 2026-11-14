@@ -298,6 +298,27 @@ def redrive(task_id):
         return [row["task_id"] for row in restored]
 
 
+def drop(task_id, reason):
+    """Give up on a dead-lettered task: halt it with reason 'dropped: <reason>' and log task.dropped.
+
+    Halted, not a status of its own: the CHECK on tasks.status cannot change without rebuilding
+    the table. redrive() restores only tasks halted behind a dead letter, so it never revives a
+    dropped one. Returns how many tasks wait on it (they stay halted), or None if the task is not
+    dead-lettered, which changes nothing and logs nothing.
+    """
+    with db.write() as con:
+        cur = con.execute(
+            "UPDATE tasks SET status='halted', reason=? WHERE task_id=? AND status='dead_letter'",
+            (f"dropped: {reason}", task_id),
+        )
+        if cur.rowcount == 0:
+            return None
+        db.log(con, _run_id(task_id), "task.dropped", stage="scheduling", reason=reason)
+        return con.execute(
+            "SELECT COUNT(*) FROM tasks WHERE status='halted' AND reason=?", (_blocked_by(task_id),)
+        ).fetchone()[0]
+
+
 def results(task_ids):
     """The results of these tasks, in order, or None until every one is done."""
     con = db.connect()

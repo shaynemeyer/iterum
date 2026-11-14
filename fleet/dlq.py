@@ -1,7 +1,8 @@
-"""List dead-lettered tasks and put them back on the queue.
+"""List dead-lettered tasks, put them back on the queue, or give up on them.
 
     iterum dlq
     iterum dlq redrive <task_id>
+    iterum dlq drop <task_id> "<reason>"
 """
 
 import argparse
@@ -30,15 +31,28 @@ def redrive(task_id):
     print(f"task {task_id} is back on the queue, with {len(restored)} waiting tasks restored")
 
 
+def drop(task_id, reason):
+    """Drop one task, so it no longer needs a person. Exits 1 if it is not dead-lettered."""
+    waiting = queue.drop(task_id, reason)
+    if waiting is None:
+        sys.exit(f"task {task_id} is not dead-lettered")
+    print(f"dropped task {task_id}" + (f"; tasks waiting on it stay halted: {waiting}" if waiting else ""))
+
+
 def main():
     parser = argparse.ArgumentParser(prog="uv run python -m fleet.dlq")
     commands = parser.add_subparsers(dest="command")
     commands.add_parser("redrive").add_argument("task_id", type=int)
+    cmd = commands.add_parser("drop", help="give up on one dead-lettered task")
+    cmd.add_argument("task_id", type=int)
+    cmd.add_argument("reason")
     args = parser.parse_args()
 
     db.init()  # a fresh agent.db has no tables yet; safe to repeat
     if args.command == "redrive":
         redrive(args.task_id)
+    elif args.command == "drop":
+        drop(args.task_id, args.reason)
     else:
         show()
 
