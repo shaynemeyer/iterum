@@ -307,7 +307,7 @@ def tiles(n, trend=()):
     statuses = ", ".join(f"{v} {escape(k)}" for k, v in sorted(n["runs_by_status"].items())) or "none"
     head = f'{usd(n["headroom_usd"])} headroom of {usd(n["ceiling_usd"])}' if n["ceiling_usd"] is not None else "no ceiling set"
     cells = [(n["runs_started"], f"runs started ({statuses})"), (n["steps_committed"], "steps committed"),
-             (n["merges_landed"], f'merges landed, {n["merges_refused"]} refused'), (usd(n["spend_usd"]), f"spent; {head}")]
+             (n["merges_landed"], f'merges landed, {n["merges_refused"]} refused'), (usd(n["spend_usd"]), f'spent: {usd(n["spend_runs_usd"])} by runs, {usd(n["spend_sessions_usd"])} by interactive sessions; {head}')]
     keys = [("runs", "runs started"), ("steps", "steps committed"), ("merges", "merges landed"), ("spend", "spend in USD")]
     sparks = [sparkline([(t["date"], round(t[key], 4)) for t in trend], f"{label}, last {len(trend)} days") for key, label in keys]
     return '<div class="tiles">' + "".join(f'<div class="card tile"><div class="v">{v}</div><div class="k">{k}</div>{s}</div>'

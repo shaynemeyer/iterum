@@ -74,21 +74,30 @@ def earlier_runs(con, start, end):
     return out
 
 
+SESSION_PREFIX = "session-"  # fleet.telemetry's run_id for spend with no iterum.run_id: an interactive session
+
+
 def numbers(con, start, end, day_runs):
-    """Counts and spend for the day, and the fleet's headroom now."""
+    """Counts and spend for the day, and the fleet's headroom now.
+
+    Spend is split by run_id as fleet.telemetry assigns it: interactive sessions, and everything
+    that carried an iterum.run_id (runs). The ceiling counts both.
+    """
     statuses = {}
     for r in day_runs:
         statuses[r["status"]] = statuses.get(r["status"], 0) + 1
     count = lambda kind: con.execute(
         "SELECT COUNT(*) FROM events WHERE kind=? AND ts>=? AND ts<?", (kind, start, end)
     ).fetchone()[0]
-    spent = sum(p.get("cost_usd") or 0 for _, _, p in payloads(con, telemetry.KIND, start, end))
+    spend = payloads(con, telemetry.KIND, start, end)
+    spent = sum(p.get("cost_usd") or 0 for _, _, p in spend)
+    sessions = sum(p.get("cost_usd") or 0 for run_id, _, p in spend if run_id.startswith(SESSION_PREFIX))
     ceiling = governor.status()
     return {
         "runs_started": len(day_runs), "runs_by_status": statuses,
         "steps_committed": count("step.committed"),
         "merges_landed": count("merge.landed"), "merges_refused": count("merge.refused"),
-        "spend_usd": spent,
+        "spend_usd": spent, "spend_runs_usd": spent - sessions, "spend_sessions_usd": sessions,
         "ceiling_usd": ceiling[0] if ceiling else None,
         "headroom_usd": ceiling[0] - ceiling[1] if ceiling else None,
     }
