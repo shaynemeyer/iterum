@@ -26,8 +26,9 @@ import sys
 import threading
 import time
 from contextlib import contextmanager
+from datetime import date
 
-from fleet import db, governor, queue
+from fleet import db, governor, queue, report
 from fleet.claim import Fenced, Refused
 from fleet.proc import stop_on_sigterm
 
@@ -267,6 +268,12 @@ def stop_on_dirty_repo(task, worker):
     )
 
 
+def write_report(worker):
+    """Write today's report, so the morning finds the night on a page. Runs however the worker stops, short of SIGKILL."""
+    page = report.write_day(date.today())
+    print(f"{worker}  report: {page}" if page else f"{worker}  report: no activity today, none written")
+
+
 def main(worker, budget_s=BUDGET_S):
     deadline = time.time() + budget_s
     next_reap = 0
@@ -291,4 +298,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     stop_on_sigterm()
     db.init()
-    main(args.worker, args.budget_s)
+    try:
+        main(args.worker, args.budget_s)
+    finally:
+        write_report(args.worker)

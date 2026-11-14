@@ -306,6 +306,19 @@ def write_linked(run_ids, folder):
     print(f"{wrote} {folder / 'index.html'}", file=sys.stderr)
 
 
+def write_day(day):
+    """Write the day's page and its run pages into reports/; return the page's path, or None for a quiet day."""
+    data = report(day)
+    if report_html.quiet(data):
+        return None
+    out = reports_dir() / f"report-{data['date']}.html"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    before, after = report_index.neighbours(out.parent, data["date"])
+    out.write_text(report_html.render(data, [("All reports", "index.html"), ("Previous day", before), ("Next day", after)]))
+    write_linked(linked_runs(data, None), out.parent)
+    return out
+
+
 def span_note(span):
     """'; the ledger has events from A to B', or that it is empty."""
     return f"; the ledger has events from {span[0]} to {span[1]}" if span else "; the ledger is empty"
