@@ -19,7 +19,7 @@ How this work has been done, and should continue: one small step at a time; repr
 Status: open, 2026-11-13, from the free experiment in `overnight-design.md` section 5a (two dry plans queued on a scratch database, drained by one worker).
 
 1. **Nothing links a task to its run.** `status` lists task 1 and run `3c79b05dfdcf` apart; the morning view cannot say which feature failed where.
-2. **The app is left on the last task's branch.** With dry plans the tree stayed clean. A real prompt step that fails leaves edits uncommitted, and the next task's `git switch -c` would most likely carry them onto the next branch (git keeps uncommitted changes on switch when they do not conflict). Not reproduced.
+2. **The app is left on the last task's branch.** With dry plans the tree stayed clean. A real prompt step that fails leaves edits uncommitted, and the next task's `git switch -c` would most likely carry them onto the next branch (git keeps uncommitted changes on switch when they do not conflict). **Reproduced 2026-11-14** (free, scratch repo and database): task 1 ran `git switch -c feat/a main`, appended to the tracked `page.txt` and failed; task 2's `git switch -c feat/b main` succeeded, printed `M page.txt`, and task 2 finished `done` with task 1's edit in its tree. Both branches start from `main`, so the switch never conflicts and always carries the edit. Not tested: whether a real plan's commit step would then commit it on task 2's branch (that depends on what the step stages). `fleet/sweep.py` already meets this: `keep_leftovers()` commits a failed run's leftovers on its own branch, and `require_clean()` refuses a dirty tree.
 
 ## Fix loop follow-ups
 
