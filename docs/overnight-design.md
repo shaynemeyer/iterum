@@ -114,6 +114,29 @@ What broke or is missing:
 1. **Two tasks on the same file in one night: the second is refused.** Plans A and B both claimed `app/notes/tags/[tag]/page.tsx`. Run A finished and kept its claim, as every run does until it is landed; run B started 2.5 minutes later, inside the claim's 300 s, and was refused before any step ran (`claim.refused`), so its one attempt dead-lettered. By design, and the test plans should not have shared a file, but `/fleet-plan` chunks of one feature could. Not tested: a task started after the claim expires would take it, and run A's landing would then be refused (`claim.expired_own()` accepts only an unchanged row). Dependent chunks have a second problem: each branch starts from `main`, so a chunk does not see the chunk it depends on until that one is landed.
 2. **A finished task keeps a stale reason.** Task 1 was handed back once ("repo has uncommitted changes") and then finished `done`, but `tasks.reason` still says "repo has uncommitted changes". `finish()` does not clear it. Cosmetic: `dlq` does not list done tasks.
 
+## 5d. The first real night, 2026-11-14
+
+Two plans written by `/iterum:fleet-plan` (`not-found-links`: a link to `/notes` on the not-found page; `robots-sitemap`: a `sitemap` line in `app/robots.ts`), one file each, Haiku, `--allow-claude 0.05 --fix-retries 2`, queued with `iterum add "iterum run <plan> ..." --repo <app> --branch night/<slug>` on the real database, drained by `iterum worker night-1`. Both checks were confirmed to fail on `main` before queueing, each naming only the missing piece.
+
+It took three tries:
+
+| Queued | Tasks | Outcome | Cause |
+| --- | --- | --- | --- |
+| 07:20 | 1, 2 | dead-lettered 07:33 | "a ceiling is set, but claude would not report its spend. Load the telemetry settings first": the worker was started (by a Claude Code session in the app) from a shell without `.env.example` |
+| 07:48 | 3, 4 | dead-lettered at once | `git switch -c night/<slug> main failed: a branch named ... already exists`: tasks 1 and 2 had made the branches before their plans were refused |
+| 08:01 | 5, 6 | done | runs `6bda34072593` ($0.00093) and `1b3411ba0aef` ($0.00054), each first try, about 6 s, one commit on its branch |
+
+Each run's `run.started` names its task (`task-black-mamba-5`, `-6`). The night's work cost $0.0015; the $0.37 counted against the ceiling since the 07:33 reset was almost all one interactive session (`session-770dd64a`).
+
+**Landing** (10:12): the first `iterum land` was refused, "main is checked out in a worktree; landing would leave its index behind", and logged no event (refused before `merge.started`). The worker switches the app back to `--base` after each task, so after a night the app is on `main`, which the merge gate will not land into (`CLAUDE.md`). Detached (`git switch --detach`), both landed with `--check` (`32f4578`, `4e2e9dc`), through `claim.expired_own()`: the claims were two hours old.
+
+What broke or is missing:
+
+1. **The app is left on the base branch, so every morning's landing is refused** until someone detaches. Proposal: the worker returns to the base detached (`git switch --detach <base>`); the next task's `switch -c <branch> <base>` and the dirty-tree check work the same.
+2. **A failed task leaves its branch, even with no commits, and a re-added task on that branch fails at once.** Section 5b's open "Redrive" question, met for real. Proposal: when a task fails and its branch has no commits beyond the base, the worker deletes it; a branch with a leftovers commit stays.
+3. **A worker with no telemetry settings under a ceiling dead-letters every task** instead of stopping, like the dirty-tree stop: a condition that fails every task should stop the worker before it claims, leaving the queue as it is.
+4. **The morning report does not show the night.** `iterum report --json` for the day had both runs and their cost, but named both `plan.json`, listed no dead-lettered tasks under needs-a-person, no done-but-unlanded branches with their land commands, no task-to-run link, and spend only as one total with interactive sessions in it.
+
 ## 6. Open decisions
 
 - *Settled 2026-11-13 (decision log): `/fleet-plan` is user-level, plans go in a gitignored `plans/`.*

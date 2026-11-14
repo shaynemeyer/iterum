@@ -13,6 +13,15 @@ Status: open, written 2026-11-10 after the merge gate was finished. The fence an
 
 How this work has been done, and should continue: one small step at a time; reproduce a problem before fixing it; check each change against the three drills (`fleet.merge_drill`, a few seconds; `fleet.claims_drill` and `fleet.kill_drill`, about 50 seconds each, runnable in parallel) and the built-in `fleet.run` plan on a scratch `ITERUM_DB`; when a drill gains a check, break the code once to see it fail, and undo the break by reversing the edit, not with `git checkout` (that also discards uncommitted work).
 
+## Overnight queue, from the first real night
+
+Status: open, 2026-11-14, from `overnight-design.md` section 5d. In order:
+
+1. **The worker leaves the app on the base branch, so every landing is refused** ("main is checked out in a worktree"). Return to the base detached instead. Free test: today's scratch-repo tasks, then an `iterum land` that must succeed without a manual detach.
+2. **A failed task leaves an empty branch that blocks re-adding it.** Delete the task's branch when it failed with no commits beyond the base; keep one with a leftovers commit.
+3. **A worker without telemetry settings dead-letters every task under a ceiling.** Stop before claiming instead, as the dirty-tree stop does.
+4. **The morning report does not show the night:** runs named `plan.json` (use the plan folder), no dead-lettered tasks under needs-a-person, no ready-to-land list with land commands, no task-to-run link, spend not split from interactive sessions.
+
 ## Overnight queue, from the rerun
 
 Status: open, 2026-11-14, from `overnight-design.md` section 5c.
