@@ -2,6 +2,16 @@
 
 Items moved here from `todo.md` once done. Newest first.
 
+## The worker owns a task's branch
+
+Completed 2026-11-14. Moved from `todo.md` (Overnight queue):
+
+> **The app is left on the last task's branch.** With dry plans the tree stayed clean. A real prompt step that fails leaves edits uncommitted, and the next task's `git switch -c` would most likely carry them onto the next branch (git keeps uncommitted changes on switch when they do not conflict). **Reproduced 2026-11-14** (free, scratch repo and database): task 1 ran `git switch -c feat/a main`, appended to the tracked `page.txt` and failed; task 2's `git switch -c feat/b main` succeeded, printed `M page.txt`, and task 2 finished `done` with task 1's edit in its tree. Both branches start from `main`, so the switch never conflicts and always carries the edit. Not tested: whether a real plan's commit step would then commit it on task 2's branch (that depends on what the step stages). `fleet/sweep.py` already meets this: `keep_leftovers()` commits a failed run's leftovers on its own branch, and `require_clean()` refuses a dirty tree.
+
+**Change.** `iterum add --repo DIR --branch NAME [--base main]` (`95e2c58`): the worker makes the branch from the base, runs the command in the repo, and switches back. A failed task's leftovers are committed on its branch ("iterum: what task N left behind"); a task that finished with changes stays on its branch. `stop_on_dirty_repo()` hands a task back and stops the worker when its repo is dirty (decision log, 2026-11-14). Design in `overnight-design.md` section 5b.
+
+**Evidence.** Scratch repo and database: task 1's edit committed on `feat/a`, task 2 clean on `feat/b`, the app clean on `main`; a stray edit stopped the worker (exit 1) with both tasks `ready` and no branch made; a done task that left a change kept the app on its branch and the next task was handed back. `iterum drill kill` passes. Not covered: the night's last task finishing with changes is noticed by nothing; a handed-back task logs `task.released`, which `fleet.replay` refuses.
+
 ## A failed task keeps the end of its stderr
 
 Completed 2026-11-14. Moved from `todo.md` (Overnight queue):

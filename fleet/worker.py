@@ -81,10 +81,13 @@ def _git(repo, *args):
 
 
 @contextmanager
-def _on_branch(payload):
-    """Run the block in the task's repo, on a new branch from its base; switch back to the base after.
+def _on_branch(task, payload):
+    """Run the block in the task's repo, on a new branch from its base, then switch back to the base.
 
     Yields the repo, or None for a task without one, which runs where the worker runs.
+    A failed task's leftovers are committed on its branch first, so they stay there for
+    inspection. A task that finished and left changes, or was interrupted, stays on its
+    branch with them, so stop_on_dirty_repo() stops the next task from starting on them.
     """
     repo = payload.get("repo")
     if repo is None:
@@ -93,7 +96,13 @@ def _on_branch(payload):
     _git(repo, "switch", "-c", payload["branch"], payload["base"])
     try:
         yield repo
-    finally:
+    except Exception:
+        if _git(repo, "status", "--porcelain"):
+            _git(repo, "add", "--all")
+            _git(repo, "commit", "--quiet", "-m", f"iterum: what task {task['task_id']} left behind")
+        _git(repo, "switch", payload["base"])
+        raise
+    if not _git(repo, "status", "--porcelain"):
         _git(repo, "switch", payload["base"])
 
 
@@ -106,10 +115,10 @@ def _default_do_work(task):
             "task payload has no 'cmd': give the task a shell command, or set "
             "FLEET_WORK_MODULE to a module exporting do_work(task)"
         )
-    with _on_branch(payload) as repo:
+    with _on_branch(task, payload) as repo:
         code, stdout, stderr = _shell(payload["cmd"], task, cwd=repo)
-    if code != 0:
-        raise RuntimeError(stderr.strip()[-ERROR_TAIL:] or f"exit {code}")
+        if code != 0:
+            raise RuntimeError(stderr.strip()[-ERROR_TAIL:] or f"exit {code}")
     return stdout.strip()[:200]
 
 
@@ -211,6 +220,25 @@ def stop_at_ceiling(worker):
     )
 
 
+def stop_on_dirty_repo(task, worker):
+    """Hand the task back and exit if the repo it names has uncommitted changes.
+
+    Failing it instead would dead-letter it, and every later task would meet the same
+    tree (decision log, 2026-11-14). Nothing is cleaned: the changes may be someone's work.
+    """
+    repo = json.loads(task["payload"] or "{}").get("repo")
+    if repo is None:
+        return
+    dirty = _git(repo, "status", "--porcelain")
+    if not dirty:
+        return
+    queue.release_back(task["task_id"], worker, task["fence"], "repo has uncommitted changes")
+    sys.exit(
+        f"{worker}  stopped: {repo} has uncommitted changes, so task {task['task_id']} was handed back:\n"
+        f"{dirty}\ncommit or remove them, then start the worker again"
+    )
+
+
 def main(worker, budget_s=BUDGET_S):
     deadline = time.time() + budget_s
     next_reap = 0
@@ -223,6 +251,7 @@ def main(worker, budget_s=BUDGET_S):
         if not task:
             time.sleep(0.2)
             continue
+        stop_on_dirty_repo(task, worker)
         _run_one(task, worker)
 
 
