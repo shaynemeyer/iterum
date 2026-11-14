@@ -10,7 +10,6 @@ Status: open, written 2026-11-10 after the merge gate was finished. The fence an
 2. **Optional: let `reconcile()` remove the temporary worktree of an abandoned merge.** After a SIGKILL mid-check, the `iterum-check-*` worktree and the check's process are left behind and cleaned up by hand (`merge-check-design.md` section 6). Only if it happens in real use.
 3. **Optional, billed: repeat short normal-exit runs.** T7 in `telemetry/claude-code-telemetry.md` showed a normal `claude -p` exit sending its last spend 0.28 s before `claude_step()` returned, in one run. A few more short Haiku runs would show whether that holds. Only with the user's go-ahead.
 4. **Optional: replay gaps.** Replay `fleet/step.py` runs (covers retry classification), add attempt counts to the end state, replay releases and deadline halts. Only if a real failure needs one.
-5. **Next paid fix-loop test: a page per tag** at `/notes/tags/[tag]`, a dynamic route under Cache Components, which tripped a model on 2026-11-12 (the eleventh run), so a first-try mistake and a real `fix.retry` are likelier. Same pattern as the tags page (`work-completed.md`, 2026-11-13). Plan, dry plan and check written 2026-11-13 in `docs/.local-only/` (`tag-pages.json`, `tag-pages-dry.json`, `check-tag-pages.sh`): one new file, `app/notes/tags/[tag]/page.tsx`; the prompt gives no hint about this Next.js version, as in the eleventh run. The check fails on `main` ("/notes/tags/claims did not answer 200"), passes on a hand-written correct page, and fails two wrong ones that build cleanly: `params` not awaited ("did not answer 200") and every note under every tag ("/notes/tags/queue links to /notes/resume"). The dry run on `feat/tag-pages` failed at step 3. Next: the paid run, `--allow-claude 0.05 --fix-retries 2`, after the user confirms the cap.
 
 How this work has been done, and should continue: one small step at a time; reproduce a problem before fixing it; check each change against the three drills (`fleet.merge_drill`, a few seconds; `fleet.claims_drill` and `fleet.kill_drill`, about 50 seconds each, runnable in parallel) and the built-in `fleet.run` plan on a scratch `ITERUM_DB`; when a drill gains a check, break the code once to see it fail, and undo the break by reversing the edit, not with `git checkout` (that also discards uncommitted work).
 
@@ -24,7 +23,7 @@ Status: open, 2026-11-14, from `overnight-design.md` section 5c.
 
 Status: open, 2026-11-13. The loop is built (`work-completed.md`).
 
-1. **Paid test**, with the user's OK: one Haiku feature with `--fix-retries`, to see whether a retry fixes a real mistake. The tags page (2026-11-13) passed first try, so no retry ran; item 5 of the list above is the next try. Since then the tag pages, tag links and tag counts (2026-11-14) also passed first try under `--fix-retries 2`: four Haiku runs, no retry.
+1. **Paid test**, with the user's OK: one Haiku feature with `--fix-retries`, to see whether a retry fixes a real mistake. The tags page (2026-11-13) passed first try, so no retry ran; Since then the tag pages, tag links and tag counts (2026-11-14) also passed first try under `--fix-retries 2`: four Haiku runs, no retry. How to get a real mistake on purpose is in `open-questions.md`.
 
 ## `/fleet-plan` follow-ups
 

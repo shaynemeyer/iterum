@@ -2,6 +2,14 @@
 
 Items moved here from `todo.md` once done. Newest first.
 
+## A page per tag, the second paid `--fix-retries` run
+
+Completed 2026-11-13 (moved 2026-11-14, when it was found still listed). Moved from `todo.md` (item 5):
+
+> **Next paid fix-loop test: a page per tag** at `/notes/tags/[tag]`, a dynamic route under Cache Components, which tripped a model on 2026-11-12 (the eleventh run), so a first-try mistake and a real `fix.retry` are likelier. Same pattern as the tags page (`work-completed.md`, 2026-11-13). Plan, dry plan and check written 2026-11-13 in `docs/.local-only/` (`tag-pages.json`, `tag-pages-dry.json`, `check-tag-pages.sh`): one new file, `app/notes/tags/[tag]/page.tsx`; the prompt gives no hint about this Next.js version, as in the eleventh run. The check fails on `main` ("/notes/tags/claims did not answer 200"), passes on a hand-written correct page, and fails two wrong ones that build cleanly: `params` not awaited ("did not answer 200") and every note under every tag ("/notes/tags/queue links to /notes/resume"). The dry run on `feat/tag-pages` failed at step 3. Next: the paid run, `--allow-claude 0.05 --fix-retries 2`, after the user confirms the cap.
+
+**Result.** Run `22cee9881c5c`: all 4 steps committed on the first try, no `fix.retry`, $0.00166; landed as `cc81006` after the expired-claim fix (`nextjs-first-run.md`, "Results: a page per tag"). The fix loop is still untested on a real mistake (`todo.md`, Fix loop follow-ups).
+
 ## A queue task is linked to its run
 
 Completed 2026-11-14. Moved from `todo.md` (Overnight queue, the last of its five items):
