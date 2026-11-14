@@ -256,6 +256,16 @@ def runs_table(runs):
             f'<th class=n>Cost</th><th>Steps</th></tr>{rows}</table></div>')
 
 
+def ready_table(ready):
+    """Each finished run not yet landed, with the command that lands it."""
+    rows = "".join(
+        f'<tr><td>{run_link(r["run_id"])}</td><td>{escape(r["plan"])}</td><td>{escape(r["branch"])}</td>'
+        f'<td>{", ".join(escape(f) for f in r["files"])}</td><td class=n>{usd(r["cost_usd"])}</td></tr>'
+        f'<tr><td colspan=5><code>{escape(r["command"])}</code></td></tr>' for r in ready)
+    return (f'<div class="scroll"><table><tr><th>Run</th><th>Plan</th><th>Branch</th><th>Files</th><th class=n>Cost</th></tr>'
+            f'{rows}</table></div>')
+
+
 def earlier_table(earlier):
     """Runs started on an earlier day that something happened to on this one."""
     rows = "".join(
@@ -307,7 +317,7 @@ def tiles(n, trend=()):
 def quiet(data):
     """True when the day has nothing to show; fleet.report then writes no page."""
     n = data["numbers"]
-    return not (data["runs"] or data["earlier_runs"] or data["landed"] or n["spend_usd"] or n["merges_refused"] or any(data["needs_person"].values()))
+    return not (data["runs"] or data["earlier_runs"] or data["landed"] or n["spend_usd"] or n["merges_refused"] or any(data["needs_person"].values()) or data.get("ready_to_land"))
 
 
 def day_banner(data):
@@ -324,6 +334,7 @@ def render(data, nav=()):
     meta = (f'{escape(data["device"] or "-")} &middot; {escape(data["db"])} &middot; '
             f'generated {datetime.fromtimestamp(data["generated_at"]).strftime("%Y-%m-%d %H:%M")}')
     body = (day_banner(data) + f'<h2>Needs a person</h2>{person_list(data["needs_person"])}'
+            + (f'<h2>Ready to land</h2>{ready_table(data["ready_to_land"])}' if data.get("ready_to_land") else "") +
             f'<h2>The day in numbers</h2>{tiles(data["numbers"], data.get("trend", ()))}'
             f'<h2>Runs</h2>{runs_table(data["runs"])}'
             + (f'<h2>Earlier runs with activity</h2>{earlier_table(data["earlier_runs"])}' if data["earlier_runs"] else "") +

@@ -13,6 +13,7 @@ the day, interactive sessions included. Times are epoch seconds; the day is loca
 import argparse
 import json
 import os
+import shlex
 import shutil
 import subprocess
 import sys
@@ -160,6 +161,44 @@ def landed(con, start, end):
             for run_id, ts, p in payloads(con, "merge.landed", start, end)]
 
 
+READY_SQL = """
+SELECT r.run_id, r.task, e.payload FROM runs r JOIN events e ON e.run_id = r.run_id AND e.kind = 'run.started'
+WHERE r.status = 'done' AND json_extract(e.payload, '$.branch') IS NOT NULL
+  AND EXISTS (SELECT 1 FROM claims c WHERE c.run_id = r.run_id)
+  AND NOT EXISTS (SELECT 1 FROM events l WHERE l.run_id = r.run_id AND l.kind = 'merge.landed')
+ORDER BY r.started_at
+"""
+CHECK_PLACEHOLDER = "<install> && <build>"
+
+
+def ready_to_land(con):
+    """Done runs not yet landed that still hold their claims, each with the command that lands it.
+
+    Holding claims is what makes a run landable (claim.expired_own()); a sweep releases its runs'
+    claims and landing releases them, so neither is listed. Only runs logged with a branch
+    (run.started, since 2026-11-14) can be listed.
+    """
+    out = []
+    for r in con.execute(READY_SQL):
+        p = json.loads(r["payload"])
+        files = [c["resource"] for c in con.execute("SELECT resource FROM claims WHERE run_id=? ORDER BY resource", (r["run_id"],))]
+        cost = con.execute(
+            "SELECT COALESCE(SUM(json_extract(payload,'$.cost_usd')),0) FROM events WHERE run_id=? AND kind=?",
+            (r["run_id"], telemetry.KIND),
+        ).fetchone()[0]
+        out.append({"run_id": r["run_id"], "plan": report_run.plan_name(r["task"]), "branch": p["branch"],
+                    "files": files, "cost_usd": cost, "command": land_command(r["run_id"], p)})
+    return out
+
+
+def land_command(run_id, started):
+    """The shell line that lands a run, from its run.started payload; a placeholder check when none was logged."""
+    target = "" if started["target"] == "main" else f" --target {shlex.quote(started['target'])}"
+    check = started.get("land_check") or CHECK_PLACEHOLDER
+    return (f"cd {shlex.quote(started['repo'])} && iterum land {shlex.quote(started['branch'])}"
+            f" --run-id {run_id}{target} --check {shlex.quote(check)}")
+
+
 def ledger_span(con):
     """(first, last) local dates with any event, or None for an empty ledger."""
     lo, hi = con.execute("SELECT MIN(ts), MAX(ts) FROM events").fetchone()
@@ -182,6 +221,7 @@ def report(day):
             "earlier_runs": earlier_runs(con, start, end),
             "spend_by_hour": spend_by_hour(con, start, end),
             "landed": landed(con, start, end),
+            "ready_to_land": ready_to_land(con) if day == date.today() else [],
             "ledger_span": ledger_span(con),
         }
     finally:

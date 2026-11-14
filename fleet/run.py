@@ -321,7 +321,7 @@ def run_branch(target):
     return branch
 
 
-def execute(run_id, plan, branch=None, target="main", cap_usd=None, fix_retries=0):
+def execute(run_id, plan, branch=None, target="main", cap_usd=None, fix_retries=0, land_check=None):
     try:
         fences = claim_files(run_id, plan)
     except claim.Refused as e:
@@ -338,7 +338,8 @@ def execute(run_id, plan, branch=None, target="main", cap_usd=None, fix_retries=
     if fences:
         flags = " ".join(f"--fence {shlex.quote(f'{r}={f}')}" for r, f in fences.items())
         to = "" if target == "main" else f" --target {shlex.quote(target)}"
-        print(f"land with: iterum land {shlex.quote(branch)} --run-id {run_id}{to} {flags}")
+        check = f" --check {shlex.quote(land_check)}" if land_check else ""
+        print(f"land with: iterum land {shlex.quote(branch)} --run-id {run_id}{to} {flags}{check}")
 
 
 def stop_at_ceiling(run_id, seq, cap_usd=None):
@@ -623,6 +624,7 @@ if __name__ == "__main__":
     parser.add_argument("--resume", metavar="RUN_ID", help="resume this run")
     parser.add_argument("--force", action="store_true", help="resume a halted run")
     parser.add_argument("--target", default="main", help="the branch fleet.merge lands on; a plan that declares files may not run on it")
+    parser.add_argument("--land-check", metavar="CMD", help="the --check for iterum land (install and build); logged, so the report prints the whole land command")
     parser.add_argument("--allow-claude", metavar="USD", type=float, help="run prompt steps, each capped at this many USD (billed)")
     parser.add_argument("--fix-retries", metavar="N", type=int, default=0,
                         help="when a step after a prompt step fails, rerun the prompt step with the error, up to N times (each billed)")
@@ -646,10 +648,10 @@ if __name__ == "__main__":
         # wrong --plan file, so compare on every resume and refuse on mismatch.
         check_resumable(run_id, plan, args.force)
     else:
-        landing = {"branch": branch, "repo": repo_root(), "target": args.target} if branch else None
+        landing = {"branch": branch, "repo": repo_root(), "target": args.target, "land_check": args.land_check} if branch else None
         run_id = db.start_run("worker-1", args.plan or "six step demo", os.environ.get("ITERUM_TASK"), landing)
         print(f"run {run_id} started")
     try:
-        execute(run_id, plan, branch, args.target, args.allow_claude, args.fix_retries)
+        execute(run_id, plan, branch, args.target, args.allow_claude, args.fix_retries, args.land_check)
     except RuntimeError as e:  # a failed step, already recorded; its message is what a person needs
         sys.exit(f"run {run_id} failed: {e}")
