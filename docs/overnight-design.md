@@ -70,7 +70,33 @@ What broke or is missing:
 2. **The queue retried each failed plan, and the retries buried the cause.** Plan tasks got the default `max_attempts` 3. Attempts 2 and 3 failed at once on `fatal: a branch named 'feat/<slug>' already exists`, and that became the dead letter's reason. The real cause (the check's message) is only in the first attempt's event and in the run. A plan already retries inside itself (`--fix-retries`); rerunning it whole from the queue cannot help.
 3. **A task's reason is the first 200 characters of stderr** (`_default_do_work()`), here starting with git's `Switched to a new branch`. A longer error would lose the plan's message at the end.
 4. **Nothing links a task to its run.** `status` lists task 1 and run `3c79b05dfdcf` apart; the morning view cannot say which feature failed where.
-5. **The app is left on the last task's branch.** With dry plans the tree stayed clean. A real prompt step that fails leaves edits uncommitted, and the next task's `git switch -c` would most likely carry them onto the next branch (git keeps uncommitted changes on switch when they do not conflict). Not reproduced.
+5. **The app is left on the last task's branch.** With dry plans the tree stayed clean. A real prompt step that fails leaves edits uncommitted, and the next task's `git switch -c` would most likely carry them onto the next branch (git keeps uncommitted changes on switch when they do not conflict). Not reproduced. *Reproduced 2026-11-14 (`todo.md`): task 2 finished `done` with task 1's edit in its tree.*
+
+Items 1 to 3 are fixed (`work-completed.md`, 2026-11-14): `iterum add` with one attempt by default, and the reason keeps the end of stderr.
+
+## 5b. Sketch: the worker owns the task's branch, 2026-11-14
+
+Status: proposal, nothing built. For item 5 above.
+
+**Why the worker, not the task's command.** Today the branch is made inside the task's shell string (`cd <app> && git switch -c feat/x main && iterum run ...`), so the worker knows neither the repo nor the branch. It cannot tell where leftovers belong, and if the command fails before its own `git switch`, the tree is on whatever branch the last task left, possibly `main`. Committing leftovers there would be wrong. `fleet/sweep.py` avoids this because it makes each branch itself.
+
+**Proposal.**
+
+1. `iterum add "<cmd>" --repo <app> --branch feat/x [--base main]`. `repo` (absolute), `branch` and `base` go in the task's payload, which is already JSON, so no schema change. Without `--repo`, a task runs as today.
+2. Before the command, in the repo: refuse a dirty tree, then `git switch -c <branch> <base>`, then run the command there (the command no longer needs its own `cd` or `switch`).
+3. After the command:
+   - failed, tree dirty: `git add --all` and commit on `<branch>` ("iterum: what task N left behind"), as `keep_leftovers()` does; the failed output stays for the morning;
+   - done, tree dirty: a plan without a commit step; leave it and stop the worker, as `require_clean()` stops a sweep;
+   - then `git switch <base>`, so the app is never left on a task's branch.
+
+**Open questions.**
+
+- **A dirty tree before a task:** fail that task (with one attempt it dead-letters; the next task meets the same tree and fails too, so one stray edit dead-letters the night), or stop the worker and leave the queue queued, as the ceiling check does (`governor.headroom()`). Leaning: stop the worker.
+- **Redrive:** a redriven task's branch already exists, so `switch -c` fails. Switch to it instead (continuing on top of the leftovers commit), or refuse and ask for a new branch name. Only matters once a redrive happens.
+- **Shared code with `fleet/sweep.py`:** its `git()`, `require_clean()` and `keep_leftovers()` exit the process; the worker needs exceptions so a failed task does not end the worker. Copy the three small helpers, or move them to a shared module that raises. Leaning: a shared module, if the two stay this alike.
+- **Several repos:** a worker with tasks for two repos is fine under this sketch (each task names its repo), but claims still collide on same-named files across repos (section 7).
+
+**Free test.** The two tasks of the 2026-11-14 reproduction, rewritten with `--repo` and `--branch`: task 1's edit is committed on `feat/a`, task 2 starts clean on `feat/b`, the app ends on `main`. Then a stray edit in the app before the worker starts: the worker stops and both tasks stay `ready`.
 
 ## 6. Open decisions
 
