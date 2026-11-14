@@ -1,0 +1,4 @@
+{
+  "name": "iterum",
+  "description": "Skills for running Iterum, a harness for a fleet of Claude Code agents. /iterum:fleet-plan turns a one-sentence feature request into a plan, check and plan document."
+}

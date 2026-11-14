@@ -2,6 +2,18 @@
 
 Decisions and why they were made. Newest first. Entries are never deleted; a decision that is reversed is marked "Superseded by" the entry that replaces it. Open decisions live in `open-questions.md`.
 
+## 2026-11-14: `/fleet-plan` ships in this repo as the `iterum` plugin
+
+**Decision.** The skill lives at `plugins/iterum/skills/fleet-plan/SKILL.md`, in a plugin named `iterum`, listed by a marketplace at `.claude-plugin/marketplace.json`; it runs as `/iterum:fleet-plan`. The personal copy in `~/.claude/skills/fleet-plan/` is deleted. Supersedes the "user-level skill" part of the 2026-11-13 entry; plans still go in the gitignored `plans/` of the Iterum checkout (`ITERUM_HOME`).
+
+**Context.** The user asked whether to keep a copy in the project and how to give it to other users, 2026-11-14. A project skill in `.claude/skills/` would not load from the app repo, where the skill runs: project skills load from the start folder and its parents up to the repository root, and personal skills win over project ones with the same name (https://code.claude.com/docs/en/skills, "Choose where skills load", "Resolve skills that share a name"). A plugin skill loads wherever the plugin is enabled, as `/plugin-name:skill-name` (same page).
+
+**Alternatives.** Keep it personal only (not versioned, not shareable); a project copy beside the personal one (never loaded where it runs, and would drift).
+
+**Evidence.** `claude plugin validate` passes on the plugin and the marketplace, with warnings only (no `version`, `author`, icon or marketplace description). From the app, `claude --plugin-dir ~/github/iterum/plugins/iterum` listed `/iterum:fleet-plan`, and with no argument it asked for a feature and wrote nothing (the user's screenshot). The one private reference in the skill (`docs/.local-only/check-*.sh`) was replaced by the check style itself. Install: `claude plugin marketplace add <path or owner/repo>`, then `claude plugin install iterum@iterum` (https://code.claude.com/docs/en/plugins/publish.md).
+
+**Affects.** `.claude-plugin/`, `plugins/iterum/`. `${CLAUDE_PLUGIN_ROOT}` is the plugin's install folder, not necessarily the Iterum checkout, so the skill keeps `ITERUM_HOME`.
+
 ## 2026-11-14: One task per file per night
 
 **Decision.** In one night's queue, at most one task claims a given file. `/fleet-plan` puts chunks that share a file, or that depend on each other, into one plan as consecutive prompt steps on one branch; only chunks with no file in common become separate tasks. Nothing in `fleet/` enforces it.

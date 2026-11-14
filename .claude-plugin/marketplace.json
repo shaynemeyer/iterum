@@ -1,0 +1,7 @@
+{
+  "name": "iterum",
+  "owner": { "name": "Shayne Meyer" },
+  "plugins": [
+    { "name": "iterum", "source": "./plugins/iterum" }
+  ]
+}
