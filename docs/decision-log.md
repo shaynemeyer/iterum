@@ -2,6 +2,20 @@
 
 Decisions and why they were made. Newest first. Entries are never deleted; a decision that is reversed is marked "Superseded by" the entry that replaces it. Open decisions live in `open-questions.md`.
 
+## 2026-11-14: The fix loop's paid test uses an induced mistake
+
+**Decision.** The paid `--fix-retries` test uses a feature whose check requires something the prompt does not say (option b), so the first try likely fails the check and the error names what is missing. Every real run keeps `--fix-retries` (option a), and the first natural retry is recorded.
+
+**Context.** The user chose (b), 2026-11-14. Four Haiku runs under `--fix-retries 2` passed on the first try (`nextjs-first-run.md`), including one picked to trip the model; waiting may never produce a retry. The free test already proved the loop's mechanics with a fake `claude`; what is unknown is whether a real model, given a failing check's message, changes the right thing and passes on the retry.
+
+**Alternatives.** (c) A harder feature: costs more, a mistake still uncertain. (d) An under-specified route kind with no version hints: the same uncertainty as the tag pages.
+
+**Evidence.** Past prompt steps cost $0.0011 to $0.0021 each (`nextjs-first-run.md`), so a run with up to two retries is about $0.002 to $0.006.
+
+**Limits.** The mistake is set up on purpose, so a pass shows the loop relays a check's message to a real model and the model acts on it, not that it fixes an error of its own; that stays open under (a).
+
+**Affects.** `todo.md` (Fix loop follow-ups).
+
 ## 2026-11-14: `/fleet-plan` ships in this repo as the `iterum` plugin
 
 **Decision.** The skill lives at `plugins/iterum/skills/fleet-plan/SKILL.md`, in a plugin named `iterum`, listed by a marketplace at `.claude-plugin/marketplace.json`; it runs as `/iterum:fleet-plan`. The personal copy in `~/.claude/skills/fleet-plan/` is deleted. Supersedes the "user-level skill" part of the 2026-11-13 entry; plans still go in the gitignored `plans/` of the Iterum checkout (`ITERUM_HOME`).

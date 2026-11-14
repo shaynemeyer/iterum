@@ -12,16 +12,6 @@ Decisions not made yet. When one is answered, record it in `decision-log.md`, ad
 
 **Settled by.** The paid fix-loop test, then the decisions on `/fleet-plan`, the night's queue and the morning report.
 
-## How do we give the fix loop a real mistake to fix?
-
-**Context.** `--fix-retries` is built and its mechanics passed a free test with a fake `claude` (`work-completed.md`, 2026-11-13). What no test has shown is whether a real model, given the failing step's error, fixes its own mistake. Four Haiku runs under `--fix-retries 2` (tags page, tag pages, tag links, tag counts; `nextjs-first-run.md`) all passed on the first try, including the tag pages, picked because a dynamic route had tripped a model before. Waiting for a natural mistake may never happen at this feature size.
-
-**Options.** (a) Keep waiting: use `--fix-retries` on every real run and record the first retry. (b) A feature whose check needs something the prompt does not say (an exact text or element the check looks for), so the first try likely fails the check and the error tells the model what is missing; real, but the mistake is induced, so it shows the loop relays a check's message, not that it fixes a model's own error. (c) A harder feature, or a smaller model where one exists, so a real first-try mistake is likelier; costs more, and a mistake is still not certain. (d) A prompt that is under-specified about this Next.js version (as in the eleventh run), with no hint, on a route kind not yet tried.
-
-**Blocks.** The paid test in `todo.md` (Fix loop follow-ups).
-
-**Settled by.** The user's choice, then one paid run, with its cap confirmed first.
-
 ## What should Iterum's reports look like, and where?
 
 **Context.** Everything is in `agent.db`, but it is only visible as text over seven commands, which answer "what is the state now" and not "how did today go" or "how is this changing". Partly settled 2026-11-13 (decision log, "A day's report is a static page beside the database"): `iterum report` writes option A for one day. What is left is below. Sections, sources and increments are in `reporting-plan.md`.
