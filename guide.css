@@ -153,3 +153,10 @@ td.err { font-family: var(--mono); font-size: 0.8rem; color: var(--warn); min-wi
 .pill.paid { background: var(--warn-soft); color: var(--warn); }
 
 footer { color: var(--muted); font-size: 0.86rem; border-top: 1px solid var(--line); padding-top: 18px; }
+
+/* Back to top: only where the chapter rail stops being sticky */
+.to-top { display: none; }
+@media (max-width: 980px) {
+  .to-top { display: block; position: fixed; right: 16px; bottom: 16px; z-index: 6; padding: 10px 14px; border-radius: 999px; background: var(--surface);
+    color: var(--accent); border: 1px solid var(--line); box-shadow: 0 6px 20px -8px rgba(0,0,0,.35); font: 700 0.85rem var(--mono); text-decoration: none; }
+}

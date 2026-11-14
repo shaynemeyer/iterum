@@ -206,7 +206,7 @@ footer img { width: 72px; height: auto; }
   .badge { right: -4px; bottom: -48px; width: 110px; }
   .septa img { max-width: 240px; }
 }
-@media (max-width: 640px) {
+@media (max-width: 819px) {  /* eight links need about 800px on one line */
   nav .links { display: none; }
   .menu { display: block; }
 }
@@ -219,6 +219,10 @@ footer img { width: 72px; height: auto; }
   .oneliner { font-size: .8rem; }
   .code pre { padding-top: 56px; }
 }
+/* Back to top: shown once the hero has scrolled away (the nav does not follow) */
+.to-top { position: fixed; right: 20px; bottom: 20px; z-index: 6; padding: 10px 14px; border-radius: 999px; background: var(--surface); color: var(--accent);
+  border: 1px solid var(--line); box-shadow: var(--shadow); font: 700 .85rem var(--mono); text-decoration: none; transition: opacity .2s; }
+.js .to-top:not(.show) { opacity: 0; pointer-events: none; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
   .typed { width: 13ch; } .line, .js .reveal { opacity: 1; transform: none; }
@@ -235,6 +239,7 @@ footer img { width: 72px; height: auto; }
       <li><a href="#why">Why</a></li>
       <li><a href="#how">How it works</a></li>
       <li><a href="#reports">Reports</a></li>
+      <li><a href="#budget">Budget</a></li>
       <li><a href="#sync">Sync</a></li>
       <li><a href="#start">Get started</a></li>
       <li><a href="guide.html">User guide</a></li>
@@ -249,6 +254,7 @@ footer img { width: 72px; height: auto; }
         <li><a href="#why">Why</a></li>
         <li><a href="#how">How it works</a></li>
         <li><a href="#reports">Reports</a></li>
+        <li><a href="#budget">Budget</a></li>
         <li><a href="#sync">Sync</a></li>
         <li><a href="#start">Get started</a></li>
         <li><a href="guide.html">User guide</a></li>
@@ -262,7 +268,7 @@ footer img { width: 72px; height: auto; }
   <div id="bubbles" aria-hidden="true"></div>
   <div class="wrap">
     <div>
-      <div class="pill"><b>Claude Code</b> Open source agent harness, early work in progress</div>
+      <div class="pill"><b>Claude Code</b> Open source agent harness, landing real features</div>
       <h1>A ledger your agents <em>can't rewrite.</em></h1>
       <p class="lead">Iterum lets Claude Code agents work on your projects while you sleep. It keeps them from editing the same files or spending past your limit, records every step in a log they can't rewrite, and in the morning shows you what got done, what failed and what it cost.</p>
       <div class="cta">
@@ -519,7 +525,7 @@ ceiling 1.00  spent <span class="t-ok">0.0028</span>  headroom 0.9972 USD</div>
   <div class="wrap">
     <div>
       <p style="margin:0 0 6px"><b style="font-family:var(--mono);color:var(--text)">iterum</b> is open source on <a href="https://github.com/shaynemeyer/iterum">GitHub</a>. Code under the <a href="https://github.com/shaynemeyer/iterum/blob/main/LICENSE">MIT License</a>; the logo and mascot are <a href="https://github.com/shaynemeyer/iterum/blob/main/assets/LICENSE.md">not</a>.</p>
-      <p style="margin:0">Early development. Today the ledger records the harness audit, resumable runs, queue tasks, file claims, merges and Claude Code spend.</p>
+      <p style="margin:0">In use on a real Next.js app: 23 branches landed through the merge gate since 2026-11-11. The ledger records the harness audit, resumable runs, queue tasks, file claims, merges and Claude Code spend.</p>
     </div>
     <img src="img/septa.png" alt="" aria-hidden="true">
   </div>
@@ -556,6 +562,11 @@ document.querySelector(".copy").addEventListener("click", e => {
     setTimeout(() => e.target.textContent = "Copy", 1500);
   });
 });
+</script>
+<a class="to-top" href="#" aria-label="Back to top">&uarr; Top</a>
+<script>
+var toTop = document.querySelector(".to-top");
+addEventListener("scroll", function () { toTop.classList.toggle("show", scrollY > innerHeight); }, { passive: true });
 </script>
 </body>
 </html>
