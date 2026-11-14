@@ -44,7 +44,7 @@ Only once nothing is open. Pick a short slug (`tag-pages`) and write to `<iterum
    3. `sh <iterum>/plans/<slug>/check.sh`.
    4. `git add <files> && git commit -m '<summary>'`.
 3. `dry.json`: the same plan with step 1's command replaced by `"echo dry"`.
-4. `plan.md`, in plain words: the feature; files; the prompt; build; what the check looks for; model; cap per step; `--fix-retries 2`; chunks; and a last line `Open questions: None`. If that line cannot say None, delete the files and go back to Rule 1.
+4. `plan.md`, in plain words: the feature; files; the prompt; build; what the check looks for; the land check (`<install> && <build>`, below); model; cap per step; `--fix-retries 2`; chunks; and a last line `Open questions: None`. If that line cannot say None, delete the files and go back to Rule 1.
 
 ## Prove it, free
 
@@ -60,7 +60,13 @@ Show `plan.md`, then ask: **"Implement this feature?"** On yes, give the command
 ```
 iterum receiver                       # in another terminal
 source <iterum>/.env.example
-iterum run <iterum>/plans/<slug>/plan.json --allow-claude <cap> --fix-retries 2
+iterum run <iterum>/plans/<slug>/plan.json --allow-claude <cap> --fix-retries 2 --land-check "<install> && <build>"
 ```
 
-Landing stays a separate decision for a person: `iterum land feat/<slug> --run-id <run_id> --check "<install> && <build>"`. The check runs in a fresh temporary copy of the repo with no dependencies installed, so it must install them first; for a bun app, `--check "bun install --frozen-lockfile && bun run build"`. With the build alone, the landing is refused (`next: command not found`).
+On no, give the line that queues it for the night instead, on a branch the dry run did not make:
+
+```
+iterum add "iterum run <iterum>/plans/<slug>/plan.json --allow-claude <cap> --fix-retries 2 --land-check '<install> && <build>'" --repo <app root> --branch night/<slug>
+```
+
+`--land-check` is the check for landing: it runs in a fresh temporary copy of the repo with no dependencies installed, so it must install them first; for a bun app, `"bun install --frozen-lockfile && bun run build"`. With the build alone, the landing is refused (`next: command not found`). The run prints the whole `iterum land ... --check` command when done, and the day's `iterum report` lists it under Ready to land. Landing stays a separate decision for a person.
