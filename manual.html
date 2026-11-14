@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Writing Plans by Hand</title>
+<meta name="description" content="Write an Iterum plan yourself: the plan format, prompt steps, a check script, and the free proofs before a paid run.">
+<meta property="og:title" content="Writing Iterum plans by hand">
+<meta property="og:description" content="The plan format, prompt steps, check scripts and free proofs, for writing Iterum plans yourself.">
+<meta property="og:image" content="https://shaynemeyer.github.io/iterum/img/septa.png">
+<link rel="icon" href="img/favicon.ico" sizes="32x32">
+<link rel="icon" href="img/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="img/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=JetBrains+Mono:wght@400;700&display=swap">
+<link rel="stylesheet" href="guide.css">
+</head>
+<body>
+
+<div class="shell">
+
+<nav class="rail" aria-label="Sections">
+  <a class="brand" href="./">Iterum<span>Writing plans by hand</span></a>
+  <a class="home" href="guide.html">&larr; Back to the user guide</a>
+  <ol>
+    <li><a href="#format">The plan format</a></li>
+    <li><a href="#prompts">Prompt steps</a></li>
+    <li><a href="#check">A check script</a></li>
+    <li><a href="#prove">Proving it for free</a></li>
+    <li><a href="#run">Running it</a></li>
+  </ol>
+</nav>
+
+<main>
+
+<header class="stack">
+  <div class="eyebrow">Writing plans by hand</div>
+  <h1>Writing Iterum plans yourself</h1>
+  <p class="lede"><code>/iterum:fleet-plan</code> writes plans for you (<a href="guide.html#planning">Planning a feature</a>). This page is for writing one yourself, or reading and fixing one it wrote: the format, prompt steps, a check script, and the free proofs to run before anything is billed. A plan with no prompt step, such as a script or a migration, never needs the skill.</p>
+</header>
+
+<!-- 01 -->
+<section class="chapter" id="format">
+  <header><div class="eyebrow">Section 01</div><h2>The plan format</h2></header>
+  <div class="col stack">
+    <p>A plan is a JSON list of steps. Each step has a number, a short intent, a command, and, optionally, the files it may touch.</p>
+  </div>
+  <figure>
+    <div class="fig">
+      <svg viewBox="0 0 860 200" role="img" aria-label="The four fields of a plan step: seq, intent, command, and resources.">
+        <rect x="20" y="70" width="820" height="44" rx="8" class="box-l"/>
+        <text x="36" y="97" class="m">[</text>
+        <text x="50" y="97" class="m acc">2</text>
+        <text x="62" y="97" class="m">, </text>
+        <text x="78" y="97" class="m acc">"build"</text>
+        <text x="136" y="97" class="m">, </text>
+        <text x="152" y="97" class="m acc">"bun run build"</text>
+        <text x="270" y="97" class="m">, </text>
+        <text x="286" y="97" class="m acc">["file:app/page.tsx"]</text>
+        <text x="448" y="97" class="m">]</text>
+
+        <line x1="54" y1="66" x2="54" y2="40" class="e"/><text x="54" y="32" text-anchor="middle" class="h">seq</text>
+        <line x1="104" y1="118" x2="104" y2="146" class="e"/><text x="104" y="162" text-anchor="middle" class="h">intent</text>
+        <line x1="210" y1="66" x2="210" y2="40" class="e"/><text x="210" y="32" text-anchor="middle" class="h">command</text>
+        <line x1="366" y1="118" x2="366" y2="146" class="e"/><text x="366" y="162" text-anchor="middle" class="h">resources</text>
+
+        <text x="104" y="180" text-anchor="middle" class="s">recorded; must match on resume</text>
+        <text x="210" y="50" text-anchor="start" dx="44" class="s">a shell string, or {"prompt": ...}</text>
+        <text x="366" y="180" text-anchor="middle" class="s">optional; claimed before step 1</text>
+        <text x="54" y="50" dx="12" class="s">order</text>
+        <text x="490" y="97" class="s">Change a command only for a step that failed;</text>
+        <text x="490" y="115" class="s">resume refuses a changed command on any other step.</text>
+      </svg>
+    </div>
+    <figcaption><b>One step, four fields.</b> Resume compares the intents and a hash of each command with what was recorded, so keep the plan file you started with.</figcaption>
+  </figure>
+  <div class="term-label">A shell-only plan, no model involved: feature.json, kept anywhere; run it from the app repo</div>
+  <div class="term"><button type="button">Copy</button><pre>[[1, "edit the page", "sed -i '' 's/Hello/Welcome/' app/page.tsx", ["file:app/page.tsx"]],
+ [2, "build",         "bun run build",                              ["file:app/page.tsx"]],
+ [3, "commit it",     "git add app/page.tsx &amp;&amp; git commit -m 'Welcome'", ["file:app/page.tsx"]]]</pre></div>
+  <div class="term-label">From the app repo, with the settings from <a href="guide.html#where">Where to run what</a></div>
+  <div class="term"><button type="button">Copy</button><pre>git switch -c feat/welcome                     <span class="c"># a plan that declares files must not run on main</span>
+iterum run feature.json</pre></div>
+  <div class="col stack">
+    <h3>Rules that keep plans safe</h3>
+    <ul class="plain">
+      <li><b>Declare files and you need a branch.</b> A plan with resources refuses to run on <code>--target</code> (default <code>main</code>), because its commits would skip the merge gate.</li>
+      <li><b>All files are claimed before step 1,</b> in sorted order, and renewed by a heartbeat at half <code>ITERUM_CLAIM_TTL</code> (default 300 s). If another run holds one, the run is refused before anything runs, and the message names that run.</li>
+      <li><b>A failing command fails the run.</b> Fix the command for that step in the plan file and resume; committed steps stay committed.</li>
+      <li><b>Run from the repo the plan works on.</b> Steps run in the directory you start from. <code>iterum</code> finds the same database from any folder; if you set <code>ITERUM_DB</code>, make it an absolute path.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- 02 -->
+<section class="chapter" id="prompts">
+  <header><div class="eyebrow">Section 02</div><h2>Prompt steps</h2></header>
+  <div class="col stack">
+    <p>Replace a step's command with a prompt object and that step runs a Claude Code session. <code>model</code> is optional; without it, your default model is used. What the session may and may not do is in the guide's <a href="guide.html#prompts">Prompt steps</a> chapter.</p>
+  </div>
+  <div class="term"><button type="button">Copy</button><pre>[[1, "404 page", {"prompt": "Create app/not-found.tsx ... Create no other file.", "model": "claude-haiku-5-5"}, ["file:app/not-found.tsx"]],
+ [2, "build",    "bun run build",                                                                      ["file:app/not-found.tsx"]],
+ [3, "commit",   "git add app/not-found.tsx &amp;&amp; git commit -m 'Add a 404 page'",                       ["file:app/not-found.tsx"]]]</pre></div>
+  <div class="term"><button type="button">Copy</button><pre>iterum run feature.json --allow-claude 0.05   <span class="c"># each prompt step capped at $0.05</span></pre></div>
+  <div class="col stack">
+    <h3>Writing prompts that work</h3>
+    <ul class="plain">
+      <li>Name the exact files to edit and say "change nothing else". Every prompt step must declare at least one file.</li>
+      <li>Say exactly what should appear, so a shell step can check it (<a href="#check">A check script</a>).</li>
+      <li>If the task touches an API you know has changed, name the doc file that states the rule. A general "read the docs" hint cost about 7 times as much per run in testing.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- 03 -->
+<section class="chapter" id="check">
+  <header><div class="eyebrow">Section 03</div><h2>A check script</h2></header>
+  <div class="col stack">
+    <p>The build only proves the code compiles. A check proves the change is there. It runs as a shell step after the build, from the app root, and its error is what the model reads on a retry (<a href="guide.html#workflow">the fix loop</a>), so:</p>
+    <ul class="plain">
+      <li><b>Report every miss,</b> one line each, on stderr, and exit 1 at the end if there was any. A check that stops at its first miss costs one retry per miss.</li>
+      <li><b>Name exactly what is expected</b> in each line: the text, the link, the status code. The fix loop passes on only the last 2,000 characters.</li>
+      <li><b>Start the built server on a port of its own,</b> stop it and its children with a <code>trap</code> on its pid, and wait until it answers. Stop only that server, never every server of its kind.</li>
+      <li><b>Look only where the change belongs.</b> A layout can already have the element you check for: a site footer outside <code>&lt;main&gt;</code> made an early version of the check below report the wrong miss on a page with no note footer, so its "has no footer" line could never appear.</li>
+    </ul>
+  </div>
+  <div class="term-label">check.sh for a footer on each note page (Next.js, run after <code>bun run build</code>)</div>
+  <div class="term"><button type="button">Copy</button><pre># Does each note page end with the notes footer? Run after the build.
+# Report every miss, one line each on stderr so they reach the step's error; exit 1 if any.
+port=3231
+node_modules/.bin/next start -p $port &gt;/dev/null 2&gt;&amp;1 &amp;
+pid=$!
+# next start runs the server as a child process; stop both.
+trap 'pkill -P $pid 2&gt;/dev/null; kill $pid 2&gt;/dev/null' EXIT
+for _ in $(seq 1 40); do curl -s -o /dev/null "localhost:$port/" &amp;&amp; break; sleep 0.25; done
+
+misses=0
+miss() { echo "$1" &gt;&amp;2; misses=$((misses + 1)); }
+code() { curl -s -o /dev/null -w '%{http_code}' "localhost:$port$1"; }
+page() { curl -s "localhost:$port$1" | sed 's/&lt;!-- --&gt;//g'; }   # drop React's text separators
+footer() { page "$1" | grep -o '&lt;main[^&gt;]*&gt;.*&lt;/main&gt;' | grep -o '&lt;footer[^&gt;]*&gt;.*&lt;/footer&gt;'; }
+
+for n in first-run resume fences; do
+  [ "$(code /notes/$n)" = 200 ] || { miss "/notes/$n did not answer 200"; continue; }
+  [ -n "$(footer /notes/$n)" ] || { miss "/notes/$n has no &lt;footer&gt;"; continue; }
+  footer /notes/$n | grep -qF 'Part of the iterum notes.' || miss "/notes/$n: the footer must contain the exact sentence \"Part of the iterum notes.\""
+  footer /notes/$n | grep -qF '&lt;a href="/notes"&gt;All notes&lt;/a&gt;' || miss "/notes/$n: the footer must contain a link to /notes whose text is exactly \"All notes\""
+done
+[ $misses -eq 0 ] || exit 1
+echo "every note page ends with the notes footer"</pre></div>
+</section>
+
+<!-- 04 -->
+<section class="chapter" id="prove">
+  <header><div class="eyebrow">Section 04</div><h2>Proving it for free</h2></header>
+  <div class="col stack">
+    <p>Three proofs, none billed. A check that passes on <code>main</code> proves nothing, a check that fails a correct change makes the fix loop pay for retries that cannot succeed, and a dry run that fails anywhere but the check means the plan is wrong.</p>
+  </div>
+  <div class="term-label">1 and 2: the check fails on main and passes a correct version, in a throwaway worktree</div>
+  <div class="term"><button type="button">Copy</button><pre>git worktree add --detach /tmp/proof main &amp;&amp; cd /tmp/proof
+bun install --frozen-lockfile &amp;&amp; bun run build
+sh &lt;plan&gt;/check.sh; echo "exit $?"          <span class="c"># must be 1, naming what is missing</span>
+<span class="c"># write the change by hand, then</span>
+bun run build &amp;&amp; sh &lt;plan&gt;/check.sh        <span class="c"># must exit 0</span>
+cd - &amp;&amp; git worktree remove --force /tmp/proof</pre></div>
+  <div class="term-label">3: the dry run fails at the check, on a scratch database</div>
+  <div class="term"><button type="button">Copy</button><pre><span class="c"># dry.json: plan.json with step 1's prompt object replaced by "echo dry"</span>
+git switch -c feat/&lt;slug&gt; main
+ITERUM_DB=/tmp/dry.db iterum run &lt;plan&gt;/dry.json
+<span class="o">  step 1  notes footer  -&gt; committed
+  step 2  build  -&gt; committed
+run 4526ec9d8476 failed: step failed with exit 1:
+/notes/first-run has no &lt;footer&gt;</span>
+rm /tmp/dry.db*</pre></div>
+</section>
+
+<!-- 05 -->
+<section class="chapter" id="run">
+  <header><div class="eyebrow">Section 05</div><h2>Running it</h2></header>
+  <div class="col stack">
+    <p>From here a hand-written plan is the same as one from the skill: run it with <code>--allow-claude</code> and <code>--fix-retries</code>, or queue it for the night, then land it with <code>--check</code>. See <a href="guide.html#workflow">Running and landing it</a> and <a href="guide.html#night">A night's queue</a>.</p>
+  </div>
+</section>
+
+<footer>
+  Written from the Iterum repository as of 2026-11-14, from the plans and checks of real runs recorded in <code>docs/nextjs-first-run.md</code>.
+</footer>
+
+</main>
+</div>
+
+<script>
+document.querySelectorAll(".term button").forEach(function (btn) {
+  btn.addEventListener("click", function () {
+    var pre = btn.parentElement.querySelector("pre");
+    var text = Array.from(pre.childNodes).map(function (n) {
+      return n.nodeType === 1 && (n.classList.contains("c") || n.classList.contains("o") || n.classList.contains("p")) ? "" : n.textContent;
+    }).join("").split("\n").map(function (l) { return l.replace(/\s+$/, ""); }).filter(function (l, i, a) { return l || (i > 0 && a[i - 1]); }).join("\n").trim();
+    function done(label) { btn.textContent = label; setTimeout(function () { btn.textContent = "Copy"; }, 1500); }
+    function selectIt() { var r = document.createRange(); r.selectNodeContents(pre); var s = getSelection(); s.removeAllRanges(); s.addRange(r); done("Selected"); }
+    try {
+      navigator.clipboard.writeText(text).then(function () { done("Copied"); }, selectIt);
+    } catch (e) { selectIt(); }
+  });
+});
+</script>
+
+</body>
+</html>

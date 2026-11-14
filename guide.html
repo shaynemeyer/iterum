@@ -14,163 +14,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=JetBrains+Mono:wght@400;700&display=swap">
-<style>
-/* Layout: a field manual. Sticky chapter rail on wide screens, one reading column, terminal blocks you can copy, diagrams that run wider. */
-:root {
-  --bg: #f4f8f7;
-  --surface: #ffffff;
-  --ink: #15212b;
-  --muted: #586874;
-  --line: #d7e3e0;
-  --accent: #0b7a6e;
-  --accent-soft: #dcefef;
-  --warn: #a8501a;
-  --warn-soft: #f6e6da;
-  --term-bg: #13202a;
-  --term-ink: #dce6ec;
-  --term-dim: #8aa0ae;
-  --term-acc: #5cc6cd;
-  --display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
-  --body: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-  --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #0d141a; --surface: #142029; --ink: #e2e9ee; --muted: #93a3af; --line: #2a3a46;
-    --accent: #5cc8b8; --accent-soft: #15353a; --warn: #e48c53; --warn-soft: #3a2518;
-    --term-bg: #0a1116; --term-ink: #dce6ec; --term-dim: #7f95a3; --term-acc: #5cc6cd;
-    color-scheme: dark;
-  }
-}
-:root[data-theme="dark"] {
-  --bg: #0d141a; --surface: #142029; --ink: #e2e9ee; --muted: #93a3af; --line: #2a3a46;
-  --accent: #5cc8b8; --accent-soft: #15353a; --warn: #e48c53; --warn-soft: #3a2518;
-  --term-bg: #0a1116; --term-ink: #dce6ec; --term-dim: #7f95a3; --term-acc: #5cc6cd;
-  color-scheme: dark;
-}
-
-* { box-sizing: border-box; }
-body { margin: 0; }
-code, pre { font-variant-ligatures: none; }
-html { scroll-behavior: smooth; }
-@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
-body {
-  background: var(--bg); color: var(--ink);
-  font: 400 16.5px/1.65 var(--body);
-  padding-left: max(16px, env(safe-area-inset-left, 0px));
-  padding-right: max(16px, env(safe-area-inset-right, 0px));
-}
-.shell { max-width: 1180px; margin: 0 auto; padding-block: 40px 96px; display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 48px; }
-@media (max-width: 980px) { .shell { grid-template-columns: minmax(0, 1fr); gap: 24px; } }
-
-/* rail */
-.rail { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 24px); align-self: start; display: grid; gap: 14px; max-height: calc(100vh - 48px); overflow-y: auto; }
-.rail .brand { font: 700 1.1rem/1.2 var(--display); }
-.rail .brand { color: var(--ink); text-decoration: none; }
-.rail .home { font-size: 0.85rem; text-decoration: none; }
-.rail .brand span { display: block; font: 500 0.72rem/1.4 var(--mono); color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; }
-.rail ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; counter-reset: ch; }
-.rail li { counter-increment: ch; }
-.rail ol a { display: grid; grid-template-columns: 2.2em 1fr; padding: 5px 8px; border-radius: 6px; color: var(--ink); text-decoration: none; font-size: 0.9rem; line-height: 1.35; }
-.rail ol a::before { content: counter(ch, decimal-leading-zero); font: 500 0.75rem/1.6 var(--mono); color: var(--muted); }
-.rail ol a:hover { background: var(--accent-soft); color: var(--accent); }
-.rail .group { font: 500 0.7rem/1 var(--mono); color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; padding: 10px 8px 4px; }
-@media (max-width: 980px) {
-  .rail { position: static; max-height: none; overflow: visible; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); padding: 16px; }
-  .rail ol { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
-}
-
-main { min-width: 0; display: grid; gap: 64px; }
-.col { max-width: 720px; }
-h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; letter-spacing: -0.01em; }
-h1 { font-size: clamp(2.3rem, 5.5vw, 3.6rem); line-height: 1.04; font-weight: 700; }
-h2 { font-size: clamp(1.55rem, 3vw, 2.05rem); line-height: 1.15; font-weight: 700; }
-h3 { font-size: 1.12rem; font-weight: 500; margin-top: 8px; }
-p { margin: 0; }
-ul.plain { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; }
-.stack { display: grid; gap: 16px; }
-a { color: var(--accent); }
-a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-code { font-family: var(--mono); font-size: 0.86em; background: var(--accent-soft); padding: 0.08em 0.35em; border-radius: 4px; }
-.eyebrow { font: 500 0.76rem/1 var(--mono); text-transform: uppercase; letter-spacing: 0.12em; color: var(--accent); }
-.lede { font-size: 1.16rem; color: var(--muted); max-width: 660px; }
-.lede strong { color: var(--ink); font-weight: 600; }
-
-/* chapter header */
-.chapter { display: grid; gap: 18px; scroll-margin-top: 24px; }
-.chapter > header { display: grid; gap: 8px; border-top: 1px solid var(--line); padding-top: 22px; }
-
-/* terminal */
-.term { position: relative; background: var(--term-bg); color: var(--term-ink); border-radius: 10px; font: 400 0.84rem/1.6 var(--mono); min-width: 0; }
-.term pre { margin: 0; padding: 16px 18px; overflow-x: auto; white-space: pre; }
-.term .c { color: var(--term-dim); }
-.term .p { color: var(--term-acc); user-select: none; }
-.term .o { color: var(--term-dim); }
-.term button {
-  position: absolute; top: 8px; right: 8px; font: 500 0.72rem/1 var(--mono); color: var(--term-ink);
-  background: transparent; border: 1px solid var(--term-dim); border-radius: 6px; padding: 6px 8px; cursor: pointer;
-}
-.term button:hover { border-color: var(--term-acc); color: var(--term-acc); }
-.term-label { font: 500 0.72rem/1 var(--mono); color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: -8px; }
-
-/* callouts */
-.note { border-left: 3px solid var(--accent); background: var(--surface); padding: 12px 16px; border-radius: 0 8px 8px 0; font-size: 0.95rem; }
-.note.warn { border-left-color: var(--warn); }
-.note b { font-weight: 600; }
-
-/* steps */
-.steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 18px; counter-reset: s; }
-.steps > li { counter-increment: s; display: grid; grid-template-columns: 2rem minmax(0, 1fr); gap: 12px; }
-.steps > li::before {
-  content: counter(s); font: 700 0.95rem/2rem var(--display); text-align: center; width: 2rem; height: 2rem;
-  border-radius: 50%; background: var(--accent-soft); color: var(--accent);
-}
-.steps > li > div { display: grid; gap: 10px; min-width: 0; }
-
-/* figures */
-figure { margin: 0; display: grid; gap: 10px; }
-.fig { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 18px; overflow-x: auto; }
-.fig svg { display: block; width: 100%; height: auto; min-width: 640px; color: var(--ink); }
-figcaption { font-size: 0.9rem; color: var(--muted); max-width: 720px; }
-figcaption b { color: var(--ink); font-weight: 600; }
-svg text { font-family: var(--body); font-size: 13px; fill: currentColor; }
-svg .m { font-family: var(--mono); font-size: 12px; }
-svg .s { font-size: 11.5px; fill: var(--muted); }
-svg .h { font-family: var(--display); font-size: 15px; font-weight: 700; }
-svg .acc { fill: var(--accent); }
-svg .wrn { fill: var(--warn); }
-svg .box { fill: var(--surface); stroke: currentColor; stroke-width: 1.5; }
-svg .box-l { fill: var(--surface); stroke: var(--line); stroke-width: 1.5; }
-svg .box-a { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1.5; }
-svg .box-w { fill: var(--warn-soft); stroke: var(--warn); stroke-width: 1.5; }
-svg .band { fill: var(--accent-soft); opacity: 0.5; }
-svg .band-w { fill: var(--warn-soft); opacity: 0.6; }
-svg .e { stroke: currentColor; stroke-width: 1.5; fill: none; }
-svg .ea { stroke: var(--accent); stroke-width: 2; fill: none; }
-svg .ew { stroke: var(--warn); stroke-width: 1.5; fill: none; stroke-dasharray: 5 4; }
-svg .hi { fill: currentColor; }
-svg .ha { fill: var(--accent); }
-svg .hw { fill: var(--warn); }
-
-/* tables */
-.tbl { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
-table { border-collapse: collapse; width: 100%; font-size: 0.9rem; }
-th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
-tr:last-child td { border-bottom: 0; }
-th { font: 500 0.72rem/1.2 var(--mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); white-space: nowrap; }
-td code { white-space: nowrap; }
-td.err { font-family: var(--mono); font-size: 0.8rem; color: var(--warn); min-width: 16em; }
-
-.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
-.card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; display: grid; gap: 6px; align-content: start; min-width: 0; }
-.card .k { font: 500 0.72rem/1 var(--mono); color: var(--accent); letter-spacing: 0.08em; text-transform: uppercase; }
-.card p { font-size: 0.92rem; color: var(--muted); }
-.pill { display: inline-block; font: 500 0.72rem/1 var(--mono); padding: 4px 8px; border-radius: 999px; white-space: nowrap; }
-.pill.free { background: var(--accent-soft); color: var(--accent); }
-.pill.paid { background: var(--warn-soft); color: var(--warn); }
-
-footer { color: var(--muted); font-size: 0.86rem; border-top: 1px solid var(--line); padding-top: 18px; }
-</style>
+<link rel="stylesheet" href="guide.css">
 </head>
 <body>
 
@@ -182,9 +26,9 @@ footer { color: var(--muted); font-size: 0.86rem; border-top: 1px solid var(--li
   <ol>
     <li><a href="#start">Before you start</a></li>
     <li><a href="#first-run">Your first run</a></li>
-    <li><a href="#plans">Writing a plan</a></li>
+    <li><a href="#planning">Planning a feature</a></li>
     <li><a href="#prompts">Prompt steps</a></li>
-    <li><a href="#workflow">Shipping a feature</a></li>
+    <li><a href="#workflow">Running and landing it</a></li>
     <li><a href="#landing">Landing a branch</a></li>
     <li><a href="#stopped">When a run stops</a></li>
     <li><a href="#spend">Controlling spend</a></li>
@@ -213,8 +57,8 @@ footer { color: var(--muted); font-size: 0.86rem; border-top: 1px solid var(--li
   <div class="stack col">
     <h3>A typical session</h3>
     <ol class="steps">
-      <li><div><p><b>Plan it with <code>/iterum:fleet-plan</code></b> from a Claude Code session in the app repo: one sentence about the feature. It asks until nothing is open, then writes the plan, a check script and a plan document, proves the check fails on <code>main</code>, and dry-runs the plan for free. <a href="#workflow">Shipping a feature</a>.</p></div></li>
-      <li><div><p><b>Read the plan document</b>: the files, the prompt, what the check looks for, the model and the cap. Nothing is billed until you say yes. To write a plan by hand instead, see <a href="#plans">Writing a plan</a> and <a href="#prompts">Prompt steps</a>.</p></div></li>
+      <li><div><p><b>Plan it with <code>/iterum:fleet-plan</code></b> from a Claude Code session in the app repo: one sentence about the feature. It asks until nothing is open, then writes the plan, a check script and a plan document, proves the check fails on <code>main</code>, and dry-runs the plan for free. <a href="#planning">Planning a feature</a>.</p></div></li>
+      <li><div><p><b>Read the plan document</b>: the files, the prompt, what the check looks for, the model and the cap. Nothing is billed until you say yes. To write plans yourself, see <a href="manual.html">Writing plans by hand</a>.</p></div></li>
       <li><div><p><b>Run it now, or queue it for the night.</b> Now: start the receiver, load the telemetry settings, and run it with <code>--allow-claude</code> and <code>--fix-retries 2</code> on a feature branch. Tonight: queue it with <code>iterum add</code> and start a worker. <a href="#night">A night's queue</a>.</p></div></li>
       <li><div><p><b>Land it</b> with the printed command plus <code>--check</code>. If it is refused, fix on the branch and land again. <a href="#landing">Landing a branch</a>.</p></div></li>
       <li><div><p><b>If anything stops,</b> read its status and resume; nothing finished runs twice. <a href="#stopped">When a run stops</a>. Delete the merged branch when you are done.</p></div></li>
@@ -315,90 +159,10 @@ iterum drill run</pre></div></div></li>
 </section>
 
 <!-- 03 -->
-<section class="chapter" id="plans">
-  <header><div class="eyebrow">Chapter 03</div><h2>Writing a plan</h2></header>
+<section class="chapter" id="planning">
+  <header><div class="eyebrow">Chapter 03</div><h2>Planning a feature</h2></header>
   <div class="col stack">
-    <p>A plan is a JSON list of steps. Each step has a number, a short intent, a command, and, optionally, the files it may touch.</p>
-  </div>
-  <figure>
-    <div class="fig">
-      <svg viewBox="0 0 860 200" role="img" aria-label="The four fields of a plan step: seq, intent, command, and resources.">
-        <rect x="20" y="70" width="820" height="44" rx="8" class="box-l"/>
-        <text x="36" y="97" class="m">[</text>
-        <text x="50" y="97" class="m acc">2</text>
-        <text x="62" y="97" class="m">, </text>
-        <text x="78" y="97" class="m acc">"build"</text>
-        <text x="136" y="97" class="m">, </text>
-        <text x="152" y="97" class="m acc">"bun run build"</text>
-        <text x="270" y="97" class="m">, </text>
-        <text x="286" y="97" class="m acc">["file:app/page.tsx"]</text>
-        <text x="448" y="97" class="m">]</text>
-
-        <line x1="54" y1="66" x2="54" y2="40" class="e"/><text x="54" y="32" text-anchor="middle" class="h">seq</text>
-        <line x1="104" y1="118" x2="104" y2="146" class="e"/><text x="104" y="162" text-anchor="middle" class="h">intent</text>
-        <line x1="210" y1="66" x2="210" y2="40" class="e"/><text x="210" y="32" text-anchor="middle" class="h">command</text>
-        <line x1="366" y1="118" x2="366" y2="146" class="e"/><text x="366" y="162" text-anchor="middle" class="h">resources</text>
-
-        <text x="104" y="180" text-anchor="middle" class="s">recorded; must match on resume</text>
-        <text x="210" y="50" text-anchor="start" dx="44" class="s">a shell string, or {"prompt": ...}</text>
-        <text x="366" y="180" text-anchor="middle" class="s">optional; claimed before step 1</text>
-        <text x="54" y="50" dx="12" class="s">order</text>
-        <text x="490" y="97" class="s">Change a command only for a step that failed;</text>
-        <text x="490" y="115" class="s">resume refuses a changed command on any other step.</text>
-      </svg>
-    </div>
-    <figcaption><b>One step, four fields.</b> Resume compares the intents and a hash of each command with what was recorded, so keep the plan file you started with.</figcaption>
-  </figure>
-  <div class="term-label">feature.json, kept anywhere; run it from the app repo</div>
-  <div class="term"><button type="button">Copy</button><pre>[[1, "edit the page", "sed -i '' 's/Hello/Welcome/' app/page.tsx", ["file:app/page.tsx"]],
- [2, "build",         "bun run build",                              ["file:app/page.tsx"]],
- [3, "commit it",     "git add app/page.tsx &amp;&amp; git commit -m 'Welcome'", ["file:app/page.tsx"]]]</pre></div>
-  <div class="term-label">From the app repo, with the settings from <a href="#where">Where to run what</a></div>
-  <div class="term"><button type="button">Copy</button><pre>git switch -c feat/welcome                     <span class="c"># a plan that declares files must not run on main</span>
-iterum run feature.json</pre></div>
-  <div class="col stack">
-    <h3>Rules that keep plans safe</h3>
-    <ul class="plain">
-      <li><b>Declare files and you need a branch.</b> A plan with resources refuses to run on <code>--target</code> (default <code>main</code>), because its commits would skip the merge gate.</li>
-      <li><b>All files are claimed before step 1,</b> in sorted order, and renewed by a heartbeat at half <code>ITERUM_CLAIM_TTL</code> (default 300 s). If another run holds one, the run is refused before anything runs, and the message names that run.</li>
-      <li><b>A failing command fails the run.</b> Fix the command for that step in the plan file and resume; committed steps stay committed.</li>
-      <li><b>Run from the repo the plan works on.</b> Steps run in the directory you start from. <code>iterum</code> finds the same database from any folder; if you set <code>ITERUM_DB</code>, make it an absolute path.</li>
-    </ul>
-  </div>
-</section>
-
-<!-- 04 -->
-<section class="chapter" id="prompts">
-  <header><div class="eyebrow">Chapter 04</div><h2>Prompt steps: letting Claude write the change</h2></header>
-  <div class="col stack">
-    <p>Replace a step's command with a prompt object and that step runs a Claude Code session. <code>model</code> is optional; without it, your default model is used.</p>
-  </div>
-  <div class="term"><button type="button">Copy</button><pre>[[1, "404 page", {"prompt": "Create app/not-found.tsx ... Create no other file.", "model": "claude-haiku-5-5"}, ["file:app/not-found.tsx"]],
- [2, "build",    "bun run build",                                                                      ["file:app/not-found.tsx"]],
- [3, "commit",   "git add app/not-found.tsx &amp;&amp; git commit -m 'Add a 404 page'",                       ["file:app/not-found.tsx"]]]</pre></div>
-  <div class="term"><button type="button">Copy</button><pre>iterum run feature.json --allow-claude 0.05   <span class="c"># each prompt step capped at $0.05</span></pre></div>
-  <div class="cards">
-    <div class="card"><span class="k">It can</span><h3>Read, Edit and Write</h3><p>Only those three tools, only inside the working directory (<code>--restricted</code>). Edits need no approval.</p></div>
-    <div class="card"><span class="k">It cannot</span><h3>Run commands</h3><p>No shell, no MCP servers, no web. Put the build and your checks in shell steps after it.</p></div>
-    <div class="card"><span class="k">It does not see</span><h3>Your project instructions</h3><p>No CLAUDE.md or AGENTS.md, and no git status. Put everything it needs in the prompt.</p></div>
-    <div class="card"><span class="k">It is stopped by</span><h3>Claims</h3><p>The gate hook refuses an edit to a file another run has claimed, and tells the model why.</p></div>
-  </div>
-  <div class="col stack">
-    <h3>Writing prompts that work</h3>
-    <ul class="plain">
-      <li>Name the exact files to edit and say "change nothing else". Every prompt step must declare at least one file.</li>
-      <li>Say exactly what should appear, so a shell step can check it (see the next chapter).</li>
-      <li>If the task touches an API you know has changed, name the doc file that states the rule. A general "read the docs" hint cost about 7 times as much per run in testing.</li>
-    </ul>
-  </div>
-  <div class="note warn"><b>A prompt step that did not commit needs <code>--force</code> to resume.</b> It may already have edited files, and running it again is a second billed session. Check <code>git status</code> and <code>git diff</code> on the branch first.</div>
-</section>
-
-<!-- 05 -->
-<section class="chapter" id="workflow">
-  <header><div class="eyebrow">Chapter 05</div><h2>Shipping a feature, start to finish</h2></header>
-  <div class="col stack">
-    <p>This is the routine that shipped every feature run so far. The first three stages are free and catch most mistakes in the plan itself before any money is spent. <code>/iterum:fleet-plan</code> does the first two for you.</p>
+    <p>A <b>plan</b> is a short list of numbered steps: usually a Claude Code prompt that makes the change, the build, a check that the change is there, and a commit. You do not have to write one: <code>/iterum:fleet-plan</code> writes it from one sentence and proves it before anything is billed.</p>
   </div>
   <div class="col stack">
     <h3>Planning with <code>/iterum:fleet-plan</code></h3>
@@ -418,6 +182,30 @@ iterum run feature.json</pre></div>
     </table>
   </div>
   <div class="note"><b>One task per file per night.</b> A feature larger than one prompt step is split into chunks of one to three files. Chunks that share a file, or depend on each other, go into one plan as steps in order; only chunks with no file in common become separate plans. A run keeps its claims until it is landed, so a second plan on the same file would be refused.</div>
+  <div class="note" id="plans"><b>Prefer to write plans yourself?</b> <a href="manual.html">Writing plans by hand</a> covers the plan format, the rules every plan follows, prompt steps, check scripts and the free proofs, step by step.</div>
+</section>
+
+<!-- 04 -->
+<section class="chapter" id="prompts">
+  <header><div class="eyebrow">Chapter 04</div><h2>Prompt steps: letting Claude write the change</h2></header>
+  <div class="col stack">
+    <p>A prompt step runs one Claude Code session, billed to you, only with <code>--allow-claude</code> and a dollar cap. <code>/iterum:fleet-plan</code> writes the prompt; this is what the session it starts may do.</p>
+  </div>
+  <div class="cards">
+    <div class="card"><span class="k">It can</span><h3>Read, Edit and Write</h3><p>Only those three tools, only inside the working directory (<code>--restricted</code>). Edits need no approval.</p></div>
+    <div class="card"><span class="k">It cannot</span><h3>Run commands</h3><p>No shell, no MCP servers, no web. Put the build and your checks in shell steps after it.</p></div>
+    <div class="card"><span class="k">It does not see</span><h3>Your project instructions</h3><p>No CLAUDE.md or AGENTS.md, and no git status. Put everything it needs in the prompt.</p></div>
+    <div class="card"><span class="k">It is stopped by</span><h3>Claims</h3><p>The gate hook refuses an edit to a file another run has claimed, and tells the model why.</p></div>
+  </div>
+  <div class="note warn"><b>A prompt step that did not commit needs <code>--force</code> to resume.</b> It may already have edited files, and running it again is a second billed session. Check <code>git status</code> and <code>git diff</code> on the branch first.</div>
+</section>
+
+<!-- 05 -->
+<section class="chapter" id="workflow">
+  <header><div class="eyebrow">Chapter 05</div><h2>Running and landing it</h2></header>
+  <div class="col stack">
+    <p>Once the plan is written and proven, the rest is: start the receiver, run it, land it. The first three stages below are free, and <code>/iterum:fleet-plan</code> has already done the first two.</p>
+  </div>
   <figure>
     <div class="fig">
       <svg viewBox="0 0 900 250" role="img" aria-label="Six stages: write a check that fails on main, dry-run the plan, start telemetry, run the paid plan, land with check, and record. The first three are free.">
