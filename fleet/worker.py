@@ -57,6 +57,7 @@ def _shell(cmd, task, cwd=None):
         cmd,
         shell=True,
         cwd=cwd,
+        env=os.environ | {"ITERUM_TASK": queue._run_id(task["task_id"])},
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,

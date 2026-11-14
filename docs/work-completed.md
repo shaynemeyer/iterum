@@ -2,6 +2,16 @@
 
 Items moved here from `todo.md` once done. Newest first.
 
+## A queue task is linked to its run
+
+Completed 2026-11-14. Moved from `todo.md` (Overnight queue, the last of its five items):
+
+> **Nothing links a task to its run.** `status` lists task 1 and run `3c79b05dfdcf` apart; the morning view cannot say which feature failed where.
+
+**Change.** The worker's default `do_work` gives its command `ITERUM_TASK` (the task's ledger id, `task-<device>-<id>`); `fleet.run` logs it as `queue_task` in `run.started` when set. No schema change; the link syncs with the events. Nothing reads it yet (`status`, `report`).
+
+**Evidence.** Before, on a scratch database, a task running a plan and its run `11b9e10222f8` shared nothing but the plan path inside the task's shell string, and the run id inside a failure reason. After: `run.started` carries `queue_task` `task-test-1` (run failed) and `task-test-2` (run done); a run started by hand carries none. `iterum drill run`, `claims` and `kill` pass.
+
 ## The worker owns a task's branch
 
 Completed 2026-11-14. Moved from `todo.md` (Overnight queue):

@@ -656,7 +656,7 @@ if __name__ == "__main__":
         # wrong --plan file, so compare on every resume and refuse on mismatch.
         check_resumable(run_id, plan, args.force)
     else:
-        run_id = db.start_run("worker-1", args.plan or "six step demo")
+        run_id = db.start_run("worker-1", args.plan or "six step demo", os.environ.get("ITERUM_TASK"))
         print(f"run {run_id} started")
     try:
         execute(run_id, plan, branch, args.target, args.allow_claude, args.fix_retries)

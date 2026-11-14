@@ -14,12 +14,6 @@ Status: open, written 2026-11-10 after the merge gate was finished. The fence an
 
 How this work has been done, and should continue: one small step at a time; reproduce a problem before fixing it; check each change against the three drills (`fleet.merge_drill`, a few seconds; `fleet.claims_drill` and `fleet.kill_drill`, about 50 seconds each, runnable in parallel) and the built-in `fleet.run` plan on a scratch `ITERUM_DB`; when a drill gains a check, break the code once to see it fail, and undo the break by reversing the edit, not with `git checkout` (that also discards uncommitted work).
 
-## Overnight queue
-
-Status: open, 2026-11-13, from the free experiment in `overnight-design.md` section 5a (two dry plans queued on a scratch database, drained by one worker).
-
-1. **Nothing links a task to its run.** `status` lists task 1 and run `3c79b05dfdcf` apart; the morning view cannot say which feature failed where.
-
 ## Fix loop follow-ups
 
 Status: open, 2026-11-13. The loop is built (`work-completed.md`).

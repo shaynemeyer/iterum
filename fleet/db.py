@@ -114,14 +114,16 @@ def log(con, run_id, kind, stage="harness", seq=None, **payload):
     )
 
 
-def start_run(agent, task):
+def start_run(agent, task, queue_task=None):
+    """Insert a running run and log run.started. queue_task is the queue task's ledger id when a worker started it."""
     run_id = uuid.uuid4().hex[:12]
+    links = {"queue_task": queue_task} if queue_task else {}
     with write() as con:
         con.execute(
             "INSERT INTO runs (run_id, agent, task, status, started_at) VALUES (?,?,?,'running',?)",
             (run_id, agent, task, time.time()),
         )
-        log(con, run_id, "run.started", agent=agent, task=task)
+        log(con, run_id, "run.started", agent=agent, task=task, **links)
     return run_id
 
 
