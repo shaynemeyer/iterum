@@ -40,6 +40,8 @@ Decisions and why they were made. Newest first. Entries are never deleted; a dec
 
 ## 2026-11-13: `/fleet-plan` is a user-level skill; its plans go in a gitignored `plans/`
 
+*Superseded in part by 2026-11-14, "`/fleet-plan` ships in this repo as the `iterum` plugin": the skill is no longer user-level; plans still go in `plans/`.*
+
 **Decision.** `/fleet-plan` lives at `~/.claude/skills/fleet-plan/SKILL.md`, started from inside the app repo, with Iterum at `${ITERUM_HOME:-~/github/iterum}`. It writes each plan, dry plan, check script and plan document to `plans/<slug>/` in this repo, which is gitignored. Settles the first two open decisions in `overnight-design.md` section 6. The first version plans one chunk; a bigger feature gets a list of chunks and a question.
 
 **Context.** The user chose both options, 2026-11-13. Personal skills load in every project on the machine (https://code.claude.com/docs/en/skills, "Choose where skills load"); `disable-model-invocation: true` keeps it to `/fleet-plan` only, and `$ARGUMENTS` carries the sentence (same page).
