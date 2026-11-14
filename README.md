@@ -48,6 +48,7 @@ Every event carries a UUIDv7 `uid` and the `device` that wrote it, so ledgers fr
 | `fleet/sync.py` | `sync` shares events across devices through a private git repo; `export` and `import` run single steps |
 | `fleet/*_drill.py`, `fleet/drill.sh` | Drills that kill or crash the harness and check it recovers; `drill.sh` contends SQLite writers ([docs/drill.md](docs/drill.md)) |
 | `scripts/seed-ledger.py` | Records the harness audit in the ledger |
+| `plugins/iterum/`, `.claude-plugin/marketplace.json` | A Claude Code plugin whose `/iterum:fleet-plan` skill turns a one-sentence feature into a plan, proven free before anything is billed |
 
 [CLAUDE.md](CLAUDE.md) lists every command.
 
@@ -76,6 +77,15 @@ iterum project                    # rebuild knowledge from the ledger
 If your shell cannot find `iterum`, run `uv tool update-shell` and open a new terminal. The install is editable, so a `git pull` updates the command.
 
 The first `iterum project` run reports DRIFT and exits 1 while the knowledge table is still empty. Run it again to confirm MATCH.
+
+To create plans with `/iterum:fleet-plan`, install the plugin from this checkout, then run the skill from a Claude Code session in your app repo:
+
+```bash
+claude plugin marketplace add "$PWD"   # this checkout, as a plugin marketplace
+claude plugin install iterum@iterum
+```
+
+The skill looks for Iterum at `~/github/iterum`; set `ITERUM_HOME` if you cloned it elsewhere.
 
 ## Everyday commands
 
