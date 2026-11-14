@@ -2,6 +2,16 @@
 
 Items moved here from `todo.md` once done. Newest first.
 
+## The worker leaves the app detached, so landing works
+
+Completed 2026-11-14. Moved from `todo.md` (Overnight queue, from the first real night):
+
+> **The worker leaves the app on the base branch, so every landing is refused** ("main is checked out in a worktree"). Return to the base detached instead. Free test: today's scratch-repo tasks, then an `iterum land` that must succeed without a manual detach.
+
+**Change.** `fleet/worker.py`, `_on_branch()`: after a task, the worker runs `git switch --detach <base>` instead of `git switch <base>`, on both the failed and the finished path. `iterum land` refuses a target that is checked out ("main is checked out in a worktree; landing would leave its index behind"), and the worker had been leaving every night on `main`.
+
+**Evidence.** Scratch repo and database. Before: one queued plan finished, the app was on `main`, and `iterum land night/a` was refused (exit 1, `main` unchanged). After: a finished task and a failed one (its edit committed on `night/b` as "iterum: what task 2 left behind"), the app detached at the base commit with a clean tree, `iterum land night/a` landed at once (`17e6122`); a stray edit still stopped the worker (exit 1, task handed back). `iterum drill kill` passes.
+
 ## The fix loop's paid test
 
 Completed 2026-11-14. Moved from `todo.md` (Fix loop follow-ups, its only item):

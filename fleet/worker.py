@@ -83,7 +83,10 @@ def _git(repo, *args):
 
 @contextmanager
 def _on_branch(task, payload):
-    """Run the block in the task's repo, on a new branch from its base, then switch back to the base.
+    """Run the block in the task's repo, on a new branch from its base, then return to the base, detached.
+
+    Detached, not on the base branch: `iterum land` refuses a target that is checked out,
+    so leaving the app on main would refuse every morning's landing.
 
     Yields the repo, or None for a task without one, which runs where the worker runs.
     A failed task's leftovers are committed on its branch first, so they stay there for
@@ -101,10 +104,10 @@ def _on_branch(task, payload):
         if _git(repo, "status", "--porcelain"):
             _git(repo, "add", "--all")
             _git(repo, "commit", "--quiet", "-m", f"iterum: what task {task['task_id']} left behind")
-        _git(repo, "switch", payload["base"])
+        _git(repo, "switch", "--detach", payload["base"])
         raise
     if not _git(repo, "status", "--porcelain"):
-        _git(repo, "switch", payload["base"])
+        _git(repo, "switch", "--detach", payload["base"])
 
 
 def _default_do_work(task):

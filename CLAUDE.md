@@ -24,7 +24,7 @@ iterum resume <run_id> [--plan p.json] [--allow-claude <usd>] [--force]
 iterum recovery [--idle-seconds 60] [--max-attempts 3]   # list dead runs, halt over-retried ones
 iterum recovery halt <run_id> "<reason>"        # give up on one failed or stale run (logs run.halted)
 iterum sync [export|import]                     # no argument: export, commit, pull, push, import, rebuild
-iterum add "<cmd>" [--max-attempts 1] [--repo DIR --branch NAME [--base main]]   # queue a shell command (usually `iterum run <plan>`) for a worker; default one attempt; with --repo, the worker runs it on a new branch from --base and switches back after
+iterum add "<cmd>" [--max-attempts 1] [--repo DIR --branch NAME [--base main]]   # queue a shell command (usually `iterum run <plan>`) for a worker; default one attempt; with --repo, the worker runs it on a new branch from --base, then returns to --base detached (a checked-out target refuses `iterum land`)
 iterum worker <name> [--budget-s 30]            # claim, run and report tasks until the budget ends
 iterum dlq [redrive <task_id>]                  # list dead-lettered tasks, or put one back on the queue
 iterum conflicts [resolve <task_id> "<decision>"]   # list conflicts waiting for a person, or settle one
