@@ -39,12 +39,18 @@ Every event carries a UUIDv7 `uid` and the `device` that wrote it, so ledgers fr
 | `fleet/recovery.py` | Lists runs that died and halts ones retried too often |
 | `fleet/step.py`, `fleet/idem.py` | Retries a step only when its failure class allows; at-most-once side effects with receipts. Not yet called by `fleet.run` (`docs/commit-once-design.md`) |
 | `fleet/queue.py`, `fleet/worker.py` | A work queue with dependencies, leases, fences and a dead-letter queue, and the worker loop that drains it |
+| `fleet/add.py` | `iterum add`: queues a shell command, usually an `iterum run`, optionally on a new branch of a repo |
 | `fleet/dlq.py`, `fleet/conflicts.py` | Lists dead-lettered tasks and puts one back on the queue; lists conflicts waiting for a person and settles one |
 | `fleet/claim.py` | Claims on files: leases that expire, with fences that make expiry safe |
 | `fleet/merge.py` | Lands a branch only while every changed file has a live claim and, with `--check`, a command passes on the merged tree |
 | `fleet/gate.py` | A `PreToolUse` hook that refuses an edit to a file another run has claimed; not registered here, wire it up yourself |
 | `fleet/telemetry.py` | Receives Claude Code telemetry and records each API request's cost; settings in [`.env.example`](.env.example) |
+| `fleet/governor.py` | `iterum budget`: a fleet-wide spend ceiling, summed from the ledger's `spend.reported` events; runs and workers stop at it |
+| `fleet/approve.py` | An approval gate for irreversible actions (`iterum approve`, `deny`; nothing calls it yet), and `iterum freeze`/`thaw` to stop new queue work |
 | `fleet/view.py` | Read-only views: live sessions and runs, one run's trace, failures per stage |
+| `fleet/canary.py` | `iterum canary`: flags recent runs whose median events, seconds or cost moved from the runs before them; detects change, not wrong output |
+| `fleet/replay.py`, `fleet/eval.py`, `fleet/scorecard.py` | Replays a run or queue task from the ledger on a scratch database; `iterum eval` turns past runs into a regression suite; `iterum scorecard` compares two git revisions on it |
+| `fleet/sweep.py` | `iterum sweep`: runs each plan several times in rotated order and compares pass rate beside cost |
 | `fleet/sync.py` | `sync` shares events across devices through a private git repo; `export` and `import` run single steps |
 | `fleet/*_drill.py`, `fleet/drill.sh` | Drills that kill or crash the harness and check it recovers; `drill.sh` contends SQLite writers ([docs/drill.md](docs/drill.md)) |
 | `scripts/seed-ledger.py` | Records the harness audit in the ledger |
