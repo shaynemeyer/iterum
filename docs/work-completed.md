@@ -2,6 +2,16 @@
 
 Items moved here from `todo.md` once done. Newest first.
 
+## A failed task keeps the end of its stderr
+
+Completed 2026-11-14. Moved from `todo.md` (Overnight queue):
+
+> **A task's reason is the first 200 characters of stderr** (`_default_do_work()`), here starting with git's `Switched to a new branch`. A longer error would lose the plan's message at the end.
+
+**Change.** `fleet/worker.py`'s `_default_do_work()` keeps the last `ERROR_TAIL` (2,000) characters of stderr, as `fleet.run` and `fleet.merge` keep of a failed step or check. A long error makes a long `iterum dlq` line.
+
+**Evidence.** A scratch database, a task printing 360 characters of noise and then `check: /notes did not answer 200`. Before: `iterum dlq`, `task.failed` and `task.dead_lettered` all ended at `noise noise ... no`. After: all end with the check's message. A short error (`short`) and no stderr (`exit 3`) read as before. `iterum drill kill` passes.
+
 ## `iterum add`: queue a task from the shell, one attempt by default
 
 Completed 2026-11-14. Moved from `todo.md` (Overnight queue, items 1 and 2):

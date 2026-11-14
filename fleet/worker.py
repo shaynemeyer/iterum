@@ -35,6 +35,7 @@ BUDGET_S = float(os.environ.get("FLEET_WORKER_BUDGET_S", 12))
 TASK_TIMEOUT_S = float(os.environ.get("FLEET_TASK_TIMEOUT_S", 600))
 HEARTBEAT = queue.LEASE_TTL / 3  # a few beats can be lost before the lease expires
 REAP_EVERY = 5
+ERROR_TAIL = 2000  # characters of a failed command's stderr kept as the reason; the cause is usually at the end
 
 
 def _time_left(task):
@@ -81,7 +82,7 @@ def _default_do_work(task):
         )
     code, stdout, stderr = _shell(payload["cmd"], task)
     if code != 0:
-        raise RuntimeError(stderr.strip()[:200] or f"exit {code}")
+        raise RuntimeError(stderr.strip()[-ERROR_TAIL:] or f"exit {code}")
     return stdout.strip()[:200]
 
 
