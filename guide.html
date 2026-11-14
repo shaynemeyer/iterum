@@ -517,7 +517,7 @@ iterum thaw                                      <span class="c"># last, after t
   <div class="note"><b>Approvals.</b> <code>iterum status</code> lists approval requests and <code>iterum approve|deny &lt;fingerprint&gt;</code> settles one. Requests come from <code>approve.require()</code>, which nothing in Iterum calls yet, so the list stays empty until your own code calls it.</div>
   <div class="col stack" id="night">
     <h3>A night's queue</h3>
-    <p>Plan each feature with <code>/iterum:fleet-plan</code> and answer no to "Implement this feature?". Queue each plan with the app repo and a branch name, set the night's budget, and start one worker. For each task, the worker makes the branch from <code>--base</code> (default <code>main</code>), runs the plan there, and switches back.</p>
+    <p>Plan each feature with <code>/iterum:fleet-plan</code> and answer no to "Implement this feature?". Queue each plan with the app repo and a branch name, set the night's budget, and start one worker. For each task, the worker makes the branch from <code>--base</code> (default <code>main</code>), runs the plan there, and returns to the base detached, so <code>iterum land</code> can move it in the morning.</p>
   </div>
   <div class="term"><button type="button">Copy</button><pre><span class="c"># terminal 1</span>
 iterum receiver
@@ -534,10 +534,11 @@ iterum worker night-1 --budget-s 600</pre></div>
     <table>
       <thead><tr><th>When</th><th>The worker</th></tr></thead>
       <tbody>
-        <tr><td>The plan finishes</td><td>Switches the app back to the base. The branch holds the plan's commit, ready to land.</td></tr>
-        <tr><td>The plan fails</td><td>Commits whatever the failed run left on the task's own branch ("iterum: what task N left behind"), switches back, and dead-letters the task with the end of the error: usually the check's own message.</td></tr>
+        <tr><td>The plan finishes</td><td>Returns the app to the base, detached: <code>iterum land</code> refuses a target that is checked out. The branch holds the plan's commit, ready to land.</td></tr>
+        <tr><td>The plan fails</td><td>Commits whatever the failed run left on the task's own branch ("iterum: what task N left behind"), returns to the base detached, deletes the branch if it holds no commits (so the task can be queued again on the same name), and dead-letters the task with the end of the error: usually the check's own message.</td></tr>
         <tr><td>The app has uncommitted changes before a task</td><td>Hands the task back and stops, listing the changes. Every queued task stays queued. Nothing is cleaned up for you: the changes may be someone's work.</td></tr>
         <tr><td>The ceiling is reached</td><td>Stops before its next claim, leaving queued tasks queued.</td></tr>
+        <tr><td>A ceiling is set, but its shell has no telemetry settings or the receiver is not answering</td><td>Stops before its next claim, leaving queued tasks queued: the ceiling could not count the night's spend. Start it from the shell where <code>.env.example</code> is sourced. It stops even for tasks with no prompt steps, since a task holds only a shell command.</td></tr>
       </tbody>
     </table>
   </div>
@@ -677,9 +678,9 @@ iterum scorecard main                   <span class="c"># did my working tree br
         <tr><td class="err">a plan that declares files must not run on main</td><td>You are on the target branch.</td><td><code>git switch -c feat/&lt;name&gt;</code></td></tr>
         <tr><td class="err">this plan has prompt steps, which are billed to you</td><td>No cap given.</td><td>Add <code>--allow-claude 0.05</code> (the cap per prompt step).</td></tr>
         <tr><td class="err">prompt step 1 declares no files</td><td>A prompt step must list what it may edit.</td><td>Add <code>["file:..."]</code> as the step's fourth field.</td></tr>
-        <tr><td class="err">a ceiling is set, but claude would not report its spend</td><td>Telemetry settings not loaded in this shell.</td><td><code>source .env.example</code></td></tr>
+        <tr><td class="err">a ceiling is set, but claude would not report its spend</td><td>Telemetry settings not loaded in this shell (a worker prints it after "stopped: no task was claimed").</td><td><code>source .env.example</code></td></tr>
         <tr><td class="err">the telemetry receiver ... did not answer</td><td>Receiver not running.</td><td>Start <code>iterum receiver</code>, with the same <code>ITERUM_DB</code> if you set one.</td></tr>
-        <tr><td class="err">the telemetry receiver writes to X, but this run reads Y</td><td>Two different databases.</td><td>Unset <code>ITERUM_DB</code> in both shells, or make it the same absolute path.</td></tr>
+        <tr><td class="err">the telemetry receiver writes to X, but this process reads Y</td><td>Two different databases.</td><td>Unset <code>ITERUM_DB</code> in both shells, or make it the same absolute path.</td></tr>
         <tr><td class="err">file:app/page.tsx held by worker-1 (run 813631d110df)</td><td>Another run holds the file.</td><td>Wait for it to land or expire, or work on another file.</td></tr>
         <tr><td class="err">stopped before step 2: fleet headroom is -0.0100 USD</td><td>Over the ceiling.</td><td><code>iterum budget set &lt;usd&gt;</code>, then resume with the same plan.</td></tr>
         <tr><td class="err">may still be alive: its heartbeat is 12s old</td><td>The run might still be running.</td><td>Wait, or <code>--force</code> if you know it is gone.</td></tr>
