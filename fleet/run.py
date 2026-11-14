@@ -658,4 +658,7 @@ if __name__ == "__main__":
     else:
         run_id = db.start_run("worker-1", args.plan or "six step demo")
         print(f"run {run_id} started")
-    execute(run_id, plan, branch, args.target, args.allow_claude, args.fix_retries)
+    try:
+        execute(run_id, plan, branch, args.target, args.allow_claude, args.fix_retries)
+    except RuntimeError as e:  # a failed step, already recorded; its message is what a person needs
+        sys.exit(f"run {run_id} failed: {e}")

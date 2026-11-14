@@ -2,6 +2,16 @@
 
 Items moved here from `todo.md` once done. Newest first.
 
+## `iterum run` prints a failed step's error, not a traceback
+
+Completed 2026-11-13. Moved from `todo.md` (`/fleet-plan` follow-ups):
+
+> **A failed step prints a Python traceback.** `iterum run` re-raises the step's `RuntimeError`, so the check's message comes at the end of a traceback (seen in the dry runs, 2026-11-13). Print the error and exit 1 instead.
+
+**Change.** `fleet/run.py`'s `__main__` catches the step's `RuntimeError` (already recorded as `step.failed`) and exits with `run <id> failed: <error>`. `run_steps()` still raises, so `fleet.replay` is unchanged.
+
+**Evidence.** The `tag-links` dry plan on a scratch database: before, exit 1 with 20 lines of traceback ending in `/notes has no link to /notes/tags/plans`; after, exit 1 with `run 5e543b532b9d failed: step failed with exit 1:` and that line, run and step 3 `failed` as before. `fleet.claims_drill` (whose lost-claim case fails a step the same way) passes; a fix-loop run out of retries ends with the same one message.
+
 ## Landing after a run's claims expire
 
 Completed 2026-11-13. Not from `todo.md`: found when the tag-pages landing was refused (`nextjs-first-run.md`).
