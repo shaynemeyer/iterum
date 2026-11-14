@@ -2,6 +2,18 @@
 
 Decisions and why they were made. Newest first. Entries are never deleted; a decision that is reversed is marked "Superseded by" the entry that replaces it. Open decisions live in `open-questions.md`.
 
+## 2026-11-14: A dirty app tree before a task stops the worker
+
+**Decision.** When a task names a repo (`iterum add --repo`) and that repo has uncommitted changes before the task starts, the worker stops and leaves the queue as it is; it does not fail the task. Settles the first open question of `overnight-design.md` section 5b. Not built yet (step 2 of that sketch).
+
+**Context.** The user chose this, 2026-11-14. Tasks get one attempt by default, so failing the task would dead-letter it, and every later task would meet the same tree and dead-letter too: one stray edit would empty the night's queue.
+
+**Alternatives.** Fail the task (above); clean the tree (would throw away someone's work).
+
+**Evidence.** The worker already stops this way at the spend ceiling, leaving queued tasks queued (`fleet/worker.py`, `governor.headroom()`).
+
+**Affects.** `fleet/worker.py`.
+
 ## 2026-11-13: `/fleet-plan` is a user-level skill; its plans go in a gitignored `plans/`
 
 **Decision.** `/fleet-plan` lives at `~/.claude/skills/fleet-plan/SKILL.md`, started from inside the app repo, with Iterum at `${ITERUM_HOME:-~/github/iterum}`. It writes each plan, dry plan, check script and plan document to `plans/<slug>/` in this repo, which is gitignored. Settles the first two open decisions in `overnight-design.md` section 6. The first version plans one chunk; a bigger feature gets a list of chunks and a question.

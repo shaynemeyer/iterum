@@ -45,8 +45,8 @@ def _time_left(task):
     return min(TASK_TIMEOUT_S, task["deadline"] - time.time())
 
 
-def _shell(cmd, task):
-    """Run the task's cmd and return (returncode, stdout, stderr).
+def _shell(cmd, task, cwd=None):
+    """Run the task's cmd in cwd and return (returncode, stdout, stderr).
 
     It gets its own process group, recorded on the lease, so that reap() waits
     for it if this worker is killed. If _shell exits early for any reason (a
@@ -56,6 +56,7 @@ def _shell(cmd, task):
     p = subprocess.Popen(
         cmd,
         shell=True,
+        cwd=cwd,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
@@ -71,6 +72,31 @@ def _shell(cmd, task):
     return p.returncode, stdout, stderr
 
 
+def _git(repo, *args):
+    """Run git in repo and return its stdout; raise RuntimeError with git's message on failure."""
+    p = subprocess.run(["git", "-C", repo, *args], capture_output=True, text=True)
+    if p.returncode != 0:
+        raise RuntimeError(f"git {' '.join(args)} failed: {p.stderr.strip()}")
+    return p.stdout.strip()
+
+
+@contextmanager
+def _on_branch(payload):
+    """Run the block in the task's repo, on a new branch from its base; switch back to the base after.
+
+    Yields the repo, or None for a task without one, which runs where the worker runs.
+    """
+    repo = payload.get("repo")
+    if repo is None:
+        yield None
+        return
+    _git(repo, "switch", "-c", payload["branch"], payload["base"])
+    try:
+        yield repo
+    finally:
+        _git(repo, "switch", payload["base"])
+
+
 def _default_do_work(task):
     payload = json.loads(task["payload"] or "{}")
     if "fail" in payload:
@@ -80,7 +106,8 @@ def _default_do_work(task):
             "task payload has no 'cmd': give the task a shell command, or set "
             "FLEET_WORK_MODULE to a module exporting do_work(task)"
         )
-    code, stdout, stderr = _shell(payload["cmd"], task)
+    with _on_branch(payload) as repo:
+        code, stdout, stderr = _shell(payload["cmd"], task, cwd=repo)
     if code != 0:
         raise RuntimeError(stderr.strip()[-ERROR_TAIL:] or f"exit {code}")
     return stdout.strip()[:200]
