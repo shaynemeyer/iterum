@@ -367,7 +367,7 @@ footer img { width: 72px; height: auto; }
       <div class="card reveal"><div class="icon i4"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 8v4l3 2"/></svg></div>
         <p class="tables">fleet/replay.py · eval.py</p><h3>Regression suite</h3><p>Replays a recorded run through the real run and queue code, with no model and no shell. Save a run as a case, and the suite fails when a change makes it end differently.</p></div>
       <div class="card reveal"><div class="icon i5"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 18a8 8 0 1 1 16 0"/><path d="M12 18l4-5"/><path d="M3 21h18"/></svg></div>
-        <p class="tables">fleet/governor.py · telemetry.py</p><h3>Spend ceiling</h3><p>One ceiling for the whole fleet, summed from Claude Code's own telemetry. Once it is reached, runs stop before their next step and workers before their next task, and a stopped run can resume.</p></div>
+        <p class="tables">fleet/governor.py · telemetry.py</p><h3>Spend ceiling</h3><p>One ceiling for the whole fleet, summed from Claude Code's own telemetry. Once it is reached, runs stop before their next step and workers before their next task, and a stopped run can resume. Before a night, set a limit and reset the count; in the morning, <code>iterum budget</code> shows what the night cost.</p></div>
       <div class="card reveal"><div class="icon i6"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17l6-5-6-5"/><path d="M12 19h8"/></svg></div>
         <p class="tables">fleet/run.py · gate.py</p><h3>Prompt steps</h3><p>A plan step can be a Claude Code prompt. It runs only with <code style="white-space:nowrap">--allow-claude</code> and a dollar cap, gets only the Read, Edit and Write tools, and a hook refuses any edit to a file another run has claimed.</p></div>
       <div class="card reveal"><div class="icon i4"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16M4 10h10M4 15h7"/><path d="M15 15l2 2 4-4"/></svg></div>
@@ -426,6 +426,43 @@ footer img { width: 72px; height: auto; }
     <div class="reveal">
       <figure class="shot"><picture><source srcset="img/report-day-dark.png" media="(prefers-color-scheme: dark)"><img src="img/report-day-light.png" alt="A daily Iterum report: a banner saying 2 things need a person, tiles for runs, steps, merges and spend with 7-day trend lines, a table of runs with their steps, and spend by hour by model" width="1000" loading="lazy"></picture></figure>
       <p class="shotcap">Example data. <a href="guide.html#reports">More in the guide</a>.</p>
+    </div>
+  </div>
+</section>
+
+<section id="budget" style="padding-top:40px">
+  <div class="wrap split">
+    <div class="reveal">
+      <p class="eyebrow">A budget for the night</p>
+      <h2>Know what tonight will cost before you sleep</h2>
+      <p class="sub">Set a limit, reset the count, start a worker. Each task's prompt steps are capped on their own, and the worker stops claiming work once the night's spend reaches the limit. In the morning one command says what the night cost.</p>
+      <div class="tags">
+        <div class="tagrow"><span class="tag match">SET</span><span>The most you will spend tonight, for the whole fleet.</span></div>
+        <div class="tagrow"><span class="tag match">RESET</span><span>Count from zero now. The ledger keeps what was set aside.</span></div>
+        <div class="tagrow"><span class="tag match">MORNING</span><span>Spent, headroom, and since when, from Claude Code's own telemetry.</span></div>
+      </div>
+      <p class="shotcap" style="margin-top:20px;text-align:left">Example data. <a href="guide.html#spend">More in the guide</a>.</p>
+    </div>
+    <div class="term reveal" role="img" aria-label="Terminal: set a one-dollar budget and reset it in the evening, a worker runs two tasks overnight, and in the morning iterum budget shows 0.0028 dollars spent of 1.00">
+      <div class="term-bar"><i></i><i></i><i></i><span>~/my-app</span></div>
+<div class="term-body"><span class="dim"># 22:00</span>
+<span class="p">❯</span> iterum budget set 1 &amp;&amp; iterum budget reset
+reset: 0.2321 USD no longer counted
+<span class="p">❯</span> iterum worker night-1
+night-1  task 1 (shell)  <span class="t-ok">done</span>
+night-1  task 2 (shell)  <span class="t-ok">done</span>
+
+<span class="dim"># 07:00</span>
+<span class="p">❯</span> iterum budget
+ceiling 1.00  spent <span class="t-ok">0.0028</span>  headroom 0.9972 USD</div>
+      <div style="padding:0 22px 24px">
+        <svg viewBox="0 0 400 44" width="100%" role="presentation" style="display:block">
+          <rect x="0" y="6" width="400" height="12" rx="6" fill="#24324a"/>
+          <rect x="0" y="6" width="6" height="12" rx="6" fill="#5cc8b8"/>
+          <text x="0" y="38" fill="#8193a3" font-size="11" font-family="JetBrains Mono, monospace">$0.0028 spent</text>
+          <text x="400" y="38" fill="#8193a3" font-size="11" font-family="JetBrains Mono, monospace" text-anchor="end">ceiling $1.00</text>
+        </svg>
+      </div>
     </div>
   </div>
 </section>
