@@ -40,7 +40,10 @@ def payloads(con, kind, start, end):
 
 
 def runs(con, start, end):
-    """Runs started in the window, each with its plan name (report_run.plan_name()), cost and steps."""
+    """Runs started in the window, each with its plan name (report_run.plan_name()), queue task, cost and steps.
+
+    queue_task is the task's ledger id (task-<device>-<task_id>) when a worker started the run, else None.
+    """
     out = []
     for r in con.execute("SELECT * FROM runs WHERE started_at>=? AND started_at<? ORDER BY started_at", (start, end)):
         cost = con.execute(
@@ -50,8 +53,12 @@ def runs(con, start, end):
         steps = con.execute(
             "SELECT seq, intent, status, started_at, ended_at FROM steps WHERE run_id=? ORDER BY seq", (r["run_id"],)
         )
+        queue_task = con.execute(
+            "SELECT json_extract(payload,'$.queue_task') FROM events WHERE run_id=? AND kind='run.started'", (r["run_id"],)
+        ).fetchone()
         out.append({
             "run_id": r["run_id"], "plan": report_run.plan_name(r["task"]), "status": r["status"],
+            "queue_task": queue_task[0] if queue_task else None,
             "started_at": r["started_at"], "ended_at": r["ended_at"], "cost_usd": cost,
             "steps": [dict(s) for s in steps],
         })

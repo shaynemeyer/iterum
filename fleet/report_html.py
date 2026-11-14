@@ -244,15 +244,20 @@ def step_strip(run):
             f'{"".join(parts)}</svg> <span class="muted">{done}/{len(steps)}</span>')
 
 
+def task_label(queue_task):
+    """'task 5' for a run a worker started (ledger id task-<device>-5), else a dash."""
+    return f'task {escape(queue_task.rsplit("-", 1)[1])}' if queue_task else '<span class="muted">-</span>'
+
+
 def runs_table(runs):
     """One row per run started that day."""
     if not runs:
         return '<p class="muted">No runs started.</p>'
     rows = "".join(
-        f'<tr><td>{clock(r["started_at"])}</td><td>{run_link(r["run_id"])}</td><td>{escape(r["plan"])}</td>'
+        f'<tr><td>{clock(r["started_at"])}</td><td>{run_link(r["run_id"])}</td><td>{escape(r["plan"])}</td><td>{task_label(r.get("queue_task"))}</td>'
         f'<td>{pill(r["status"])}</td><td class=n>{duration(r["started_at"], worked_until(r))}</td>'
         f'<td class=n>{usd(r["cost_usd"])}</td><td class=steps>{step_strip(r)}</td></tr>' for r in runs)
-    return (f'<div class="scroll"><table><tr><th>Started</th><th>Run</th><th>Plan</th><th>Status</th><th class=n>Took</th>'
+    return (f'<div class="scroll"><table><tr><th>Started</th><th>Run</th><th>Plan</th><th>Task</th><th>Status</th><th class=n>Took</th>'
             f'<th class=n>Cost</th><th>Steps</th></tr>{rows}</table></div>')
 
 
