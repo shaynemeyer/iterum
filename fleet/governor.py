@@ -15,8 +15,11 @@ pass the ceiling by one step's spend (decision log, 2026-11-12).
 """
 
 import argparse
+import json
+import os
 import sys
 import time
+import urllib.request
 from datetime import datetime
 
 from fleet import db, telemetry
@@ -77,6 +80,31 @@ def headroom():
     """USD left under the ceiling; infinite when no ceiling is set, negative once over."""
     s = status()
     return float("inf") if s is None else s[0] - s[1]
+
+
+def unseen_spend():
+    """Why the ceiling could not see claude's spend from this process, or None.
+
+    None when no ceiling is set. The ceiling counts only what fleet.telemetry logs, so
+    this names the problem when claude would not export telemetry, the receiver does not
+    answer, or it writes to another database. A receiver that dies later is still missed
+    (docs/decision-log.md, 2026-11-11).
+    """
+    if status() is None:
+        return None
+    endpoint = os.environ.get("OTEL_EXPORTER_OTLP_LOGS_ENDPOINT")
+    if os.environ.get("CLAUDE_CODE_ENABLE_TELEMETRY") != "1" or not endpoint:
+        return "a ceiling is set, but claude would not report its spend. Load the telemetry settings first:\n  source .env.example"
+    try:
+        with urllib.request.urlopen(endpoint, timeout=5) as r:
+            receiver_db = json.load(r)["db"]
+    except OSError as e:
+        return (f"a ceiling is set, but the telemetry receiver at {endpoint} did not answer ({e}). Start it first:\n"
+                "  iterum receiver")
+    if receiver_db != str(db.DB.resolve()):
+        return (f"the telemetry receiver writes to {receiver_db}, but this process reads {db.DB.resolve()}.\n"
+                "  Start fleet.telemetry with the same ITERUM_DB.")
+    return None
 
 
 def halt_resumable(run_id, reason):

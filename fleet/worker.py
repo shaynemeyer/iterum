@@ -235,6 +235,19 @@ def stop_at_ceiling(worker):
     )
 
 
+def stop_on_unseen_spend(worker):
+    """Exit before claiming when a ceiling is set and it could not see claude's spend.
+
+    The worker's environment is every task's, so a missing telemetry setting or a dead
+    receiver would fail each plan with prompt steps, and dead-letter the night. Stopping
+    leaves the queue queued. It also stops a queue of shell-only tasks under a ceiling:
+    a task holds only a shell string, so the worker cannot tell which plans call claude.
+    """
+    problem = governor.unseen_spend()
+    if problem:
+        sys.exit(f"{worker}  stopped: no task was claimed. {problem}")
+
+
 def stop_on_dirty_repo(task, worker):
     """Hand the task back and exit if the repo it names has uncommitted changes.
 
@@ -262,6 +275,7 @@ def main(worker, budget_s=BUDGET_S):
             _reap(worker)
             next_reap = time.time() + REAP_EVERY
         stop_at_ceiling(worker)
+        stop_on_unseen_spend(worker)
         task = queue.claim(worker)
         if not task:
             time.sleep(0.2)

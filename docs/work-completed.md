@@ -2,6 +2,16 @@
 
 Items moved here from `todo.md` once done. Newest first.
 
+## A worker that could not see spend stops before claiming
+
+Completed 2026-11-14. Moved from `todo.md` (Overnight queue, from the first real night):
+
+> **A worker without telemetry settings dead-letters every task under a ceiling.** Stop before claiming instead, as the dirty-tree stop does.
+
+**Change.** `fleet/governor.py`, `unseen_spend()`: the body of `fleet/run.py`'s `check_receiver()` (ceiling set; telemetry settings present; receiver answers with this database), returning the problem instead of exiting. `check_receiver()` calls it for a plan with prompt steps, as before. `fleet/worker.py`, `stop_on_unseen_spend()`: before each claim, beside `stop_at_ceiling()`, the worker exits 1 with the problem, so the queue stays queued. A task holds only a shell string, so the worker cannot tell which plans have prompt steps: under a ceiling, a shell-only queue also needs the settings and the receiver (the simple option; `iterum add --plan` in `ideas.md` would make it precise).
+
+**Evidence.** Scratch repo and database, ceiling $1. Before: with no telemetry settings, two queued `iterum run <plan>` tasks (one prompt step) were both dead-lettered with "a ceiling is set, but claude would not report its spend", worker exit 0. After: no settings, receiver down, and receiver on another database each stopped the worker with exit 1 and the matching message, the task still `queued`; with the receiver on this database the task ran (`done`, nothing dead-lettered); with no ceiling and no settings the worker ran a task as before. `iterum run` of the same plan still refused with no settings and with the receiver down, creating no run. `iterum drill kill` and `iterum drill run` pass.
+
 ## A failed task's empty branch is deleted
 
 Completed 2026-11-14. Moved from `todo.md` (Overnight queue, from the first real night):

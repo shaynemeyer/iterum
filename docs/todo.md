@@ -17,8 +17,7 @@ How this work has been done, and should continue: one small step at a time; repr
 
 Status: open, 2026-11-14, from `overnight-design.md` section 5d. In order:
 
-1. **A worker without telemetry settings dead-letters every task under a ceiling.** Stop before claiming instead, as the dirty-tree stop does.
-2. **The morning report does not show the night:** runs named `plan.json` (use the plan folder), no dead-lettered tasks under needs-a-person, no ready-to-land list with land commands, no task-to-run link, spend not split from interactive sessions.
+1. **The morning report does not show the night:** runs named `plan.json` (use the plan folder), no dead-lettered tasks under needs-a-person, no ready-to-land list with land commands, no task-to-run link, spend not split from interactive sessions.
 
 ## Overnight queue, from the rerun
 
