@@ -19,6 +19,9 @@ Status: open, 2026-11-14, from `overnight-design.md` section 5d. In order:
 
 1. **The morning report does not show the night:** runs named `plan.json` (use the plan folder), no dead-lettered tasks under needs-a-person, no ready-to-land list with land commands, no task-to-run link, spend not split from interactive sessions.
 
+   Progress 2026-11-14: runs are named by plan folder (`report_run.plan_name()`: a `plan.json` takes its folder's name, any other file keeps its own) in the day, several-day and run reports; today's report lists dead-lettered tasks under needs-a-person (task, branch, how many wait on it, reason; current state, so a past day leaves them out, as dead runs). Checked on the real database: the day's four runs read `tag-counts`, `note-footer`, `not-found-links`, `robots-sitemap`, and the page lists the night's tasks 1 to 4. Next: a "Ready to land" section (done, unlanded runs with branch, files, cost and the full `iterum land ... --check` command), then spend split into runs and interactive sessions.
+2. **A dead-lettered task cannot be dismissed, only redriven.** Found 2026-11-14 with item 1: tasks 1 to 4 of the first night were superseded by tasks 5 and 6, which landed, yet they stay dead-lettered and keep `iterum status` and the report's banner red. Same shape as failed runs before `iterum recovery halt` (`cli-plan.md`, 2026-11-13). Proposal: `iterum dlq drop <task_id> "<reason>"`, logging an event, leaving the row out of `dead_letters()`.
+
 ## Overnight queue, from the rerun
 
 Status: open, 2026-11-14, from `overnight-design.md` section 5c.

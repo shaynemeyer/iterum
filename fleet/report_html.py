@@ -275,12 +275,20 @@ def landed_table(landed):
     return f'<div class="scroll"><table><tr><th>At</th><th>Branch</th><th>Files</th></tr>{rows}</table></div>'
 
 
+def dead_letter_item(task):
+    """One dead-lettered task: its id, branch, how many wait on it, and why it failed."""
+    branch = f' on {escape(task["branch"])}' if task["branch"] else ""
+    waiting = f' ({task["waiting"]} waiting on it)' if task["waiting"] else ""
+    return f'<li>Task {task["task_id"]}{branch} dead-lettered{waiting}: {escape(task["reason"] or "")}</li>'
+
+
 def person_list(needs):
     """What needs a person, one line each, or 'Nothing'."""
     items = [f'<li>Run {run_link(r["run_id"])} is {escape(r["status"])}</li>' for r in needs["dead_runs"]]
     items += [f'<li>Merge of {escape(m["branch"])} refused: {escape(m["reason"] or "")}</li>' for m in needs["refused_merges"]]
     items += [f'<li>Approval {escape(a["fingerprint"][:16])}: {escape(a["action"])} ({escape(a["scope"])} step {a["seq"]})</li>' for a in needs["approvals"]]
     items += [f'<li>Conflict, task {t}</li>' for t in needs["conflicts"]]
+    items += [dead_letter_item(t) for t in needs["dead_letters"]]
     return f'<ul class="flag">{"".join(items)}</ul>' if items else '<p class="muted">Nothing.</p>'
 
 

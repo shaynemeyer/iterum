@@ -39,7 +39,7 @@ def payloads(con, kind, start, end):
 
 
 def runs(con, start, end):
-    """Runs started in the window, each with its plan file name, cost and steps."""
+    """Runs started in the window, each with its plan name (report_run.plan_name()), cost and steps."""
     out = []
     for r in con.execute("SELECT * FROM runs WHERE started_at>=? AND started_at<? ORDER BY started_at", (start, end)):
         cost = con.execute(
@@ -50,7 +50,7 @@ def runs(con, start, end):
             "SELECT seq, intent, status, started_at, ended_at FROM steps WHERE run_id=? ORDER BY seq", (r["run_id"],)
         )
         out.append({
-            "run_id": r["run_id"], "plan": Path(r["task"]).name, "status": r["status"],
+            "run_id": r["run_id"], "plan": report_run.plan_name(r["task"]), "status": r["status"],
             "started_at": r["started_at"], "ended_at": r["ended_at"], "cost_usd": cost,
             "steps": [dict(s) for s in steps],
         })
@@ -68,7 +68,7 @@ def earlier_runs(con, start, end):
         kinds = {}
         for k in r["kinds"].split(" "):
             kinds[k] = kinds.get(k, 0) + 1
-        out.append({"run_id": r["run_id"], "plan": Path(r["task"]).name, "status": r["status"],
+        out.append({"run_id": r["run_id"], "plan": report_run.plan_name(r["task"]), "status": r["status"],
                     "started_at": r["started_at"], "events": kinds})
     return out
 
@@ -114,7 +114,7 @@ def trend(con, day, days=7):
 def needs_person(con, start, end, now):
     """Merges refused in the window and, when `now` (today's report), what iterum status flags at this moment.
 
-    Dead runs, pending approvals and conflicts are current state, not the day's, so a past day leaves them out.
+    Dead runs, pending approvals, conflicts and dead-lettered tasks are current state, not the day's, so a past day leaves them out.
     """
     return {
         "dead_runs": [{"run_id": r[0], "status": r[3], "idle_s": r[4]} for r in recovery.dead_runs()] if now else [],
@@ -125,7 +125,14 @@ def needs_person(con, start, end, now):
         "approvals": [{"fingerprint": a["fingerprint"], "action": a["action"], "scope": a["run_id"], "seq": a["seq"]}
                       for a in approve.pending()] if now else [],
         "conflicts": [t["task_id"] for t in queue.human_tasks()] if now else [],
+        "dead_letters": [dead_letter(t) for t in queue.dead_letters()] if now else [],
     }
+
+
+def dead_letter(task):
+    """A dead-lettered task as the report shows it: its id, branch (if it had one), reason and how many wait on it."""
+    payload = json.loads(task["payload"] or "{}")
+    return {"task_id": task["task_id"], "branch": payload.get("branch"), "reason": task["reason"], "waiting": task["waiting"]}
 
 
 def spend_by_hour(con, start, end):

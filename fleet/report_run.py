@@ -9,6 +9,12 @@ from pathlib import Path
 from fleet import db, telemetry, view
 
 
+def plan_name(task):
+    """A run's plan as people name it: the folder of a `plan.json` (as /iterum:fleet-plan writes them), else the file name."""
+    path = Path(task)
+    return path.parent.name if path.name == "plan.json" and path.parent.name else path.name
+
+
 def run_report(run_id):
     """The run, its steps, its events in order, its spend and its merges; None if there is no such run."""
     con = db.connect()
@@ -26,7 +32,7 @@ def run_report(run_id):
     first = next((e for e in events if e["failure"]), None)
     spend = [e["payload"] for e in events if e["kind"] == telemetry.KIND]
     return {
-        "run_id": run_id, "plan": Path(run["task"]).name, "agent": run["agent"], "status": run["status"],
+        "run_id": run_id, "plan": plan_name(run["task"]), "agent": run["agent"], "status": run["status"],
         "started_at": run["started_at"], "ended_at": run["ended_at"],
         "cost_usd": sum(p.get("cost_usd") or 0 for p in spend), "requests": len(spend),
         "failing_stage": first["stage"] if first else None,

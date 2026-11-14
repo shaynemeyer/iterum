@@ -9,6 +9,7 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 
 from fleet import db, governor, telemetry, view
+from fleet.report_run import plan_name
 
 
 def window(days, today=None):
@@ -81,7 +82,7 @@ def cost_per_plan(con, start, end):
         " WHERE r.started_at>=? AND r.started_at<? ORDER BY r.started_at",
         (telemetry.KIND, start, end),
     ):
-        plans.setdefault(Path(r["task"]).name, []).append({"run_id": r["run_id"], "status": r["status"], "cost_usd": r["cost"]})
+        plans.setdefault(plan_name(r["task"]), []).append({"run_id": r["run_id"], "status": r["status"], "cost_usd": r["cost"]})
     return plans
 
 
