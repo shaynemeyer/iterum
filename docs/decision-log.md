@@ -10,7 +10,7 @@ Decisions and why they were made. Newest first. Entries are never deleted; a dec
 
 **Alternatives.** The skill in this repo, run from the Iterum folder with the app path as an argument; plans in `docs/.local-only/` (mixes generated plans with private notes) or in the app repo (its tree would carry them).
 
-**Evidence.** None yet: the first test is a vague request in an interactive session, which must produce questions and no files.
+**Evidence.** First test, 2026-11-13, by the user in the app repo (session `f4ea394a`): `/fleet-plan make the notes better` read the repo, asked with AskUserQuestion (four one- or two-file improvements, model, cap), wrote nothing until the user approved its recommendation (tags as links to tag pages, Haiku, $0.10), then wrote `plans/tag-links/` (`Open questions: None`), showed the check failing on `main` and the dry run failing at step 3, and asked "Implement this feature?" without running anything billed. Its first cap options ($1, $2, $5) ignored past costs, so the skill now reads spend per run from the ledger before suggesting a model or cap.
 
 **Affects.** `.gitignore`; nothing in `fleet/`.
 

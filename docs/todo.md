@@ -20,6 +20,13 @@ Status: open, 2026-11-13. The loop is built (`work-completed.md`).
 
 1. **Paid test**, with the user's OK: one Haiku feature with `--fix-retries`, to see whether a retry fixes a real mistake. The tags page (2026-11-13) passed first try, so no retry ran; item 5 of the list above is the next try.
 
+## `/fleet-plan` follow-ups
+
+Status: open, 2026-11-13, from the first test (decision log, "`/fleet-plan` is a user-level skill").
+
+1. **The check is never shown to pass on a correct change.** `/fleet-plan` proves a check fails on `main`, but not that it passes on a correct version, as the hand-written checks were (`nextjs-first-run.md`, the tag pages). A wrong check fails a correct change, and the fix loop then pays for retries that cannot succeed. Until something covers it, the paid run is the first time a generated check meets a correct version.
+2. **A failed step prints a Python traceback.** `iterum run` re-raises the step's `RuntimeError`, so the check's message comes at the end of a traceback (seen in the dry runs, 2026-11-13). Print the error and exit 1 instead.
+
 ## The `pgid` write window
 
 `_spawn()` starts a step's command (shell or `claude`), then writes `steps.pgid`. A kill between the two leaves a running command with no group to check, and a resume can overlap it. The window is one SQLite write. `Popen` cannot report the group before the child starts. The worker's `_shell()` has the same window before `queue.record_pgid()`; a reap there reruns the task alongside the command. Not reproduced; leave it unless it shows up.
