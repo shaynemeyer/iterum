@@ -2,6 +2,18 @@
 
 Decisions and why they were made. Newest first. Entries are never deleted; a decision that is reversed is marked "Superseded by" the entry that replaces it. Open decisions live in `open-questions.md`.
 
+## 2026-11-14: One task per file per night
+
+**Decision.** In one night's queue, at most one task claims a given file. `/fleet-plan` puts chunks that share a file, or that depend on each other, into one plan as consecutive prompt steps on one branch; only chunks with no file in common become separate tasks. Nothing in `fleet/` enforces it.
+
+**Context.** The user chose option (a), 2026-11-14. In the overnight rerun (`overnight-design.md` section 5c), two queued plans claimed the same file: the first finished and kept its claim until landing, so the second was refused inside the claim's 300 s and dead-lettered on its one attempt. And each task's branch starts from `--base`, so a dependent chunk would not see its parent's work until a person lands it in the morning.
+
+**Alternatives.** (b) The same rule, also refused by `iterum add` when a queued task already declares one of a plan's files: the fallback if a hand-queued night collides. (c) Stacked branches, a dependent task starting from its parent's branch and taking over its claims: claim handover and a landing order for a problem not yet met.
+
+**Evidence.** The rerun's `claim.refused` event (run `ede3e38e348d`, held by `cdbe66143945`, scratch database). Parallel chunks already needed disjoint files (`overnight-design.md` section 4). Not tested: a task started after the claim expires, then the first run's landing.
+
+**Affects.** `~/.claude/skills/fleet-plan/SKILL.md` (Rule 2). A plan with several prompt steps runs them one after another, so less of a big feature runs in parallel.
+
 ## 2026-11-14: A dirty app tree before a task stops the worker
 
 **Decision.** When a task names a repo (`iterum add --repo`) and that repo has uncommitted changes before the task starts, the worker stops and leaves the queue as it is; it does not fail the task. Settles the first open question of `overnight-design.md` section 5b. Not built yet (step 2 of that sketch).

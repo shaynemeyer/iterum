@@ -18,8 +18,7 @@ How this work has been done, and should continue: one small step at a time; repr
 
 Status: open, 2026-11-14, from `overnight-design.md` section 5c.
 
-1. **Two tasks on the same file in one night: the second is refused** by the first run's unlanded claim, and dead-letters. Needs a decision on how a night orders chunks that share files or depend on each other (each branch starts from `main`); see section 5c. Not tested: a task started after the claim expires, and then the first run's landing.
-2. **A finished task keeps a stale reason.** `queue.finish()` leaves `tasks.reason` from an earlier hand-back or failure. Cosmetic.
+1. **A finished task keeps a stale reason.** `queue.finish()` leaves `tasks.reason` from an earlier hand-back or failure. Cosmetic.
 
 ## Fix loop follow-ups
 

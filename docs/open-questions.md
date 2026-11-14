@@ -12,18 +12,6 @@ Decisions not made yet. When one is answered, record it in `decision-log.md`, ad
 
 **Settled by.** The paid fix-loop test, then the decisions on `/fleet-plan`, the night's queue and the morning report.
 
-## How should one night handle chunks that share files or depend on each other?
-
-**Context.** The overnight rerun (`overnight-design.md` section 5c, 2026-11-14): two queued plans claimed the same file; the first finished and kept its claim until landing, so the second was refused inside the claim's 300 s and dead-lettered on its one attempt. Not tested: a task started after the claim expires would take it, and the first run's landing would then be refused (`claim.expired_own()` accepts only an unchanged row). Separately, every task's branch starts from `--base`, so a chunk that depends on another (`depends_on`) does not see its work until that one is landed, and a person lands in the morning (`overnight-design.md` section 4, item 5).
-
-**Options.** (a) One task per file per night: `/fleet-plan` puts chunks that share files, or depend on each other, into one plan with several prompt steps, and only disjoint chunks become separate tasks. (b) The same rule, also refused by `iterum add` when a queued task already declares one of the plan's files. (c) Stacked branches: a dependent task starts from its parent's branch, and the parent's claims pass to it; landing order then matters.
-
-**Leaning.** (a) now: no code, and it matches the rule that parallel chunks need disjoint files (`overnight-design.md` section 4). (b) if a night is ever queued by hand and collides.
-
-**Blocks.** Queueing a real night with more than one chunk of one feature.
-
-**Settled by.** The user's choice; then a first real night with two or more disjoint chunks.
-
 ## What should Iterum's reports look like, and where?
 
 **Context.** Everything is in `agent.db`, but it is only visible as text over seven commands, which answer "what is the state now" and not "how did today go" or "how is this changing". Partly settled 2026-11-13 (decision log, "A day's report is a static page beside the database"): `iterum report` writes option A for one day. What is left is below. Sections, sources and increments are in `reporting-plan.md`.
