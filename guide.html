@@ -213,10 +213,9 @@ footer { color: var(--muted); font-size: 0.86rem; border-top: 1px solid var(--li
   <div class="stack col">
     <h3>A typical session</h3>
     <ol class="steps">
-      <li><div><p><b>Pick one small feature</b> and the two or three files it touches. Create a branch for it in the app repo.</p></div></li>
-      <li><div><p><b>Write the plan and a check script</b>: prompt step, build, check, commit, every step claiming those files. Run the check on <code>main</code> and make sure it fails. <a href="#plans">Writing a plan</a>, <a href="#prompts">Prompt steps</a>.</p></div></li>
-      <li><div><p><b>Dry-run it for free</b> on a scratch database with the prompt replaced by <code>echo dry</code>. It should fail at the check and nowhere else. <a href="#workflow">Shipping a feature</a>.</p></div></li>
-      <li><div><p><b>Start the receiver, load the telemetry settings, run it for real</b> with <code>--allow-claude</code>. Read the diff and the cost.</p></div></li>
+      <li><div><p><b>Plan it with <code>/iterum:fleet-plan</code></b> from a Claude Code session in the app repo: one sentence about the feature. It asks until nothing is open, then writes the plan, a check script and a plan document, proves the check fails on <code>main</code>, and dry-runs the plan for free. <a href="#workflow">Shipping a feature</a>.</p></div></li>
+      <li><div><p><b>Read the plan document</b>: the files, the prompt, what the check looks for, the model and the cap. Nothing is billed until you say yes. To write a plan by hand instead, see <a href="#plans">Writing a plan</a> and <a href="#prompts">Prompt steps</a>.</p></div></li>
+      <li><div><p><b>Run it now, or queue it for the night.</b> Now: start the receiver, load the telemetry settings, and run it with <code>--allow-claude</code> and <code>--fix-retries 2</code> on a feature branch. Tonight: queue it with <code>iterum add</code> and start a worker. <a href="#night">A night's queue</a>.</p></div></li>
       <li><div><p><b>Land it</b> with the printed command plus <code>--check</code>. If it is refused, fix on the branch and land again. <a href="#landing">Landing a branch</a>.</p></div></li>
       <li><div><p><b>If anything stops,</b> read its status and resume; nothing finished runs twice. <a href="#stopped">When a run stops</a>. Delete the merged branch when you are done.</p></div></li>
     </ol>
@@ -230,7 +229,7 @@ footer { color: var(--muted); font-size: 0.86rem; border-top: 1px solid var(--li
         <tbody>
           <tr><td><b>App repo</b>, on a feature branch</td><td><code>iterum run</code><br><code>iterum land</code><br><code>iterum sweep</code></td><td>Steps run in the current folder; the branch check and the landing use this repo.</td></tr>
           <tr><td><b>Iterum repo</b></td><td><code>iterum drill run</code><br><code>uv run scripts/seed-ledger.py</code></td><td>The built-in drill lists <code>fleet/</code> and writes <code>out/</code> in the current folder; the seed script is not part of the installed command.</td></tr>
-          <tr><td><b>Anywhere</b></td><td>everything else: <code>iterum status</code>, <code>receiver</code>, <code>budget</code>, <code>recovery</code>, <code>view</code>, <code>worker</code>, <code>dlq</code>, <code>conflicts</code>, <code>approve</code>, <code>freeze</code>, <code>canary</code>, <code>sync</code>, <code>project</code>, <code>report</code>, <code>doctor</code>, <code>eval</code>, <code>scorecard</code>, the other drills</td><td>They work on the harness and its database, not on your app.</td></tr>
+          <tr><td><b>Anywhere</b></td><td>everything else: <code>iterum status</code>, <code>receiver</code>, <code>budget</code>, <code>recovery</code>, <code>view</code>, <code>add</code>, <code>worker</code>, <code>dlq</code>, <code>conflicts</code>, <code>approve</code>, <code>freeze</code>, <code>canary</code>, <code>sync</code>, <code>project</code>, <code>report</code>, <code>doctor</code>, <code>eval</code>, <code>scorecard</code>, the other drills</td><td>They work on the harness and its database, not on your app.</td></tr>
         </tbody>
       </table>
     </div>
@@ -258,6 +257,13 @@ uv tool install --editable .      <span class="c"># installs iterum; editable, s
 iterum doctor                     <span class="c"># writes ./harness-audit.json</span>
 uv run scripts/seed-ledger.py     <span class="c"># records it as layer.checked events</span>
 iterum project                    <span class="c"># builds knowledge; the first run always reports DRIFT</span></pre></div>
+  <div class="col stack">
+    <p>To plan features from a sentence, install the <code>iterum</code> Claude Code plugin from your clone. It adds <code>/iterum:fleet-plan</code> to every project:</p>
+  </div>
+  <div class="term"><button type="button">Copy</button><pre>claude plugin marketplace add "$PWD"   <span class="c"># from the iterum clone: its .claude-plugin/marketplace.json</span>
+claude plugin install iterum@iterum
+claude plugin list                     <span class="c"># iterum@iterum ... enabled</span></pre></div>
+  <div class="note"><b>Cloned somewhere other than <code>~/github/iterum</code>?</b> Set <code>ITERUM_HOME</code> to the clone in your shell profile. <code>/iterum:fleet-plan</code> writes plans to <code>$ITERUM_HOME/plans/</code>, which git ignores, so your app's tree stays clean.</div>
   <div class="note"><b>Shell cannot find <code>iterum</code>?</b> Run <code>uv tool update-shell</code> and open a new terminal. Each <code>iterum</code> command runs a module as <code>python -m</code> would, so <code>uv run python -m fleet.&lt;module&gt;</code> from the Iterum repo still works. The database is created on first use at <code>~/.local/share/iterum/agent.db</code>.</div>
 </section>
 
@@ -392,8 +398,26 @@ iterum run feature.json</pre></div>
 <section class="chapter" id="workflow">
   <header><div class="eyebrow">Chapter 05</div><h2>Shipping a feature, start to finish</h2></header>
   <div class="col stack">
-    <p>This is the routine that shipped every feature run so far. The first three stages are free and catch most mistakes in the plan itself before any money is spent.</p>
+    <p>This is the routine that shipped every feature run so far. The first three stages are free and catch most mistakes in the plan itself before any money is spent. <code>/iterum:fleet-plan</code> does the first two for you.</p>
   </div>
+  <div class="col stack">
+    <h3>Planning with <code>/iterum:fleet-plan</code></h3>
+    <p>Start Claude Code in the app repo and describe the feature in one sentence. The skill reads the repo and what past runs cost, then asks questions until nothing about the feature is open: what it does, which files, what counts as done, the model, the cap. A vague request gets questions, never a plan. Then it writes four files to <code>$ITERUM_HOME/plans/&lt;slug&gt;/</code>, proves the check fails on <code>main</code>, dry-runs the plan on a scratch database, and asks <b>"Implement this feature?"</b> Nothing is billed before your yes.</p>
+  </div>
+  <div class="term"><button type="button">Copy</button><pre><span class="c"># in a Claude Code session started in the app repo</span>
+/iterum:fleet-plan add links back to the home page and to /notes on the not-found page</pre></div>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>File</th><th>What it holds</th></tr></thead>
+      <tbody>
+        <tr><td><code>plan.md</code></td><td>The plan in plain words: feature, files, prompt, build, what the check looks for, model, cap, retries, chunks, and a last line <code>Open questions: None</code>.</td></tr>
+        <tr><td><code>plan.json</code></td><td>Prompt step, build, check, commit; every step claims the same files.</td></tr>
+        <tr><td><code>dry.json</code></td><td>The same plan with the prompt replaced by <code>echo dry</code>, for the free run.</td></tr>
+        <tr><td><code>check.sh</code></td><td>Runs after the build. Prints every miss, one line each, on stderr, and exits 1 if there was any. Each line names exactly what is expected, because it becomes the model's feedback on a retry.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="note"><b>One task per file per night.</b> A feature larger than one prompt step is split into chunks of one to three files. Chunks that share a file, or depend on each other, go into one plan as steps in order; only chunks with no file in common become separate plans. A run keeps its claims until it is landed, so a second plan on the same file would be refused.</div>
   <figure>
     <div class="fig">
       <svg viewBox="0 0 900 250" role="img" aria-label="Six stages: write a check that fails on main, dry-run the plan, start telemetry, run the paid plan, land with check, and record. The first three are free.">
@@ -456,13 +480,29 @@ iterum receiver
 
 <span class="c"># terminal 2, from the app repo, on a feature branch</span>
 source &lt;iterum&gt;/.env.example
-iterum run feature.json --allow-claude 0.05
-<span class="o">run 12c0572d5ec1 done
-land with: iterum land feat/home-copy --run-id 12c0572d5ec1 --fence file:app/page.tsx=5</span>
+git switch -c feat/note-footer main
+iterum run &lt;iterum&gt;/plans/note-footer/plan.json --allow-claude 0.05 --fix-retries 2
+<span class="o">run 663ba8f2873c started
+  step 1  notes footer  -&gt; committed
+  step 2  build  -&gt; committed
+  step 3  check the footer  -&gt; failed; fix retry 1/2 from step 1
+  step 1  notes footer  -&gt; committed
+  step 2  build  -&gt; committed
+  step 3  check the footer  -&gt; failed; fix retry 2/2 from step 1
+  step 1  notes footer  -&gt; committed
+  step 2  build  -&gt; committed
+  step 3  check the footer  -&gt; committed
+  step 4  commit it  -&gt; committed
+run 663ba8f2873c done
+land with: iterum land feat/note-footer --run-id 663ba8f2873c --fence 'file:app/notes/[slug]/page.tsx=16'</span>
 
-iterum land feat/home-copy --run-id 12c0572d5ec1 \
-  --check "bun install --frozen-lockfile &amp;&amp; bun run build"   <span class="c"># fences: the run's own claims</span></pre></div>
-  <div class="note"><b>What it costs.</b> Six Haiku feature steps on 2026-11-12 cost between $0.0011 and $0.0020 each, 3 to 5 turns, against a $0.05 cap.</div>
+iterum land feat/note-footer --run-id 663ba8f2873c \
+  --check "bun install --frozen-lockfile &amp;&amp; bun run build"   <span class="c"># add --check yourself: it runs in a fresh copy, so install first</span></pre></div>
+  <div class="col stack">
+    <h3>The fix loop</h3>
+    <p>With <code>--fix-retries N</code>, a step that fails after a prompt step does not end the run. Its error, the last 2,000 characters, is added to the prompt, and the prompt step runs again, then every step after it, up to N times, each under its own cap. In the run above, the check named a missing sentence; the retry added it, and the check then named a missing link; the second retry added that and passed. Out of retries, the run fails as before.</p>
+  </div>
+  <div class="note"><b>What it costs.</b> Across 54 Haiku prompt steps so far, the median cost was $0.0011 and 43 cost under $0.003; the most was $0.023, in 2 to 13 turns. The run above cost $0.00277 for three tries. The cap is Claude Code's own estimate, which spend can pass, so a step's real limit is close to its cap, not exact.</div>
 </section>
 
 <!-- 06 -->
@@ -543,7 +583,16 @@ iterum view trace &lt;run_id&gt;                    <span class="c"># the run st
   </div>
   <div class="term"><button type="button">Copy</button><pre>iterum budget set 3        <span class="c"># a $3.00 ceiling; spend counts from the first time you set one</span>
 iterum budget              <span class="c"># show it</span>
-<span class="o">ceiling 3.00  spent 2.3859  headroom 0.6141 USD  (since 2026-11-11 10:44)</span></pre></div>
+<span class="o">ceiling 3.00  spent 2.3859  headroom 0.6141 USD  (since 2026-11-11 10:44)</span>
+iterum budget reset        <span class="c"># count from zero again, keeping the ceiling</span>
+<span class="o">reset: 2.3859 USD no longer counted
+ceiling 3.00  spent 0.0000  headroom 3.0000 USD  (since 2026-11-14 07:30)</span></pre></div>
+  <div class="col stack">
+    <p><b>A budget for the night.</b> Setting a ceiling changes only the limit; spend keeps counting from the first time you set one. Before a night's queue, set the ceiling to what you will spend tonight and reset, and in the morning <code>iterum budget</code> shows what the night cost. The reset is logged as a <code>budget.reset</code> event with the spend it set aside, so nothing is lost from the ledger.</p>
+  </div>
+  <div class="term"><button type="button">Copy</button><pre>iterum budget set 1
+iterum budget reset</pre></div>
+  <div class="note warn"><b>Your own sessions count too.</b> The receiver records any Claude Code session started from a shell where <code>.env.example</code> was sourced, and the ceiling adds up everything it records. Source it only in the terminal that runs plans and workers, and start your interactive <code>claude</code> elsewhere.</div>
   <figure>
     <div class="fig">
       <svg viewBox="0 0 860 170" role="img" aria-label="Before each step, iterum run compares headroom with what the step needs; it runs the step or stops the run as budget_exhausted.">
@@ -629,7 +678,14 @@ git worktree remove ../app-latest                           <span class="c"># wh
 <section class="chapter" id="queue">
   <header><div class="eyebrow">Chapter 10</div><h2>The work queue</h2></header>
   <div class="col stack">
-    <p>For many small independent jobs, use the queue instead of plans. Tasks are added from Python (the snippets below run from the Iterum repo); workers claim them under a 30-second lease with a fence, run them, and report one outcome. The default worker runs the shell command in the task's <code>cmd</code>.</p>
+    <p>The queue holds work for later: shell commands, usually whole plans. <code>iterum add</code> queues one; workers claim them under a 30-second lease with a fence, run them, and report one outcome. A task gets one attempt unless you say otherwise, because a plan already retries inside itself (<code>--fix-retries</code>) and rerunning it whole cannot help.</p>
+  </div>
+  <div class="term"><button type="button">Copy</button><pre>iterum add "echo hello"
+<span class="o">task 1 queued</span>
+iterum add "make test" --max-attempts 3      <span class="c"># retried after a backoff: 5 s, then 10 s</span>
+iterum worker worker-1 --budget-s 5</pre></div>
+  <div class="col stack">
+    <p>A task that must wait for another needs <code>depends_on</code>, which only Python has today (from the Iterum repo):</p>
   </div>
   <div class="term"><button type="button">Copy</button><pre>uv run python -c "from fleet import db, queue; db.init();
 a = queue.add('shell', {'cmd': 'echo hello'})
@@ -671,6 +727,36 @@ FLEET_WORK_MODULE=mypackage.mywork iterum worker worker-1   <span class="c"># yo
 iterum status                                    <span class="c"># FROZEN or not, and pending approvals</span>
 iterum thaw                                      <span class="c"># last, after the fix is queued</span></pre></div>
   <div class="note"><b>Approvals.</b> <code>iterum status</code> lists approval requests and <code>iterum approve|deny &lt;fingerprint&gt;</code> settles one. Requests come from <code>approve.require()</code>, which nothing in Iterum calls yet, so the list stays empty until your own code calls it.</div>
+  <div class="col stack" id="night">
+    <h3>A night's queue</h3>
+    <p>Plan each feature with <code>/iterum:fleet-plan</code> and answer no to "Implement this feature?". Queue each plan with the app repo and a branch name, set the night's budget, and start one worker. For each task, the worker makes the branch from <code>--base</code> (default <code>main</code>), runs the plan there, and switches back.</p>
+  </div>
+  <div class="term"><button type="button">Copy</button><pre><span class="c"># terminal 1</span>
+iterum receiver
+
+<span class="c"># terminal 2, the only one with the telemetry settings</span>
+source &lt;iterum&gt;/.env.example
+iterum add "iterum run &lt;iterum&gt;/plans/not-found-links/plan.json --allow-claude 0.05 --fix-retries 2" \
+  --repo ~/code/my-app --branch night/not-found-links
+iterum add "iterum run &lt;iterum&gt;/plans/robots-sitemap/plan.json --allow-claude 0.05 --fix-retries 2" \
+  --repo ~/code/my-app --branch night/robots-sitemap
+iterum budget set 1 &amp;&amp; iterum budget reset
+iterum worker night-1 --budget-s 600</pre></div>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>When</th><th>The worker</th></tr></thead>
+      <tbody>
+        <tr><td>The plan finishes</td><td>Switches the app back to the base. The branch holds the plan's commit, ready to land.</td></tr>
+        <tr><td>The plan fails</td><td>Commits whatever the failed run left on the task's own branch ("iterum: what task N left behind"), switches back, and dead-letters the task with the end of the error: usually the check's own message.</td></tr>
+        <tr><td>The app has uncommitted changes before a task</td><td>Hands the task back and stops, listing the changes. Every queued task stays queued. Nothing is cleaned up for you: the changes may be someone's work.</td></tr>
+        <tr><td>The ceiling is reached</td><td>Stops before its next claim, leaving queued tasks queued.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="col stack">
+    <p>Each run records its task (<code>queue_task</code> in its <code>run.started</code> event), so a run and the task that started it can be matched in the ledger. In the morning, <code>iterum status</code>, <code>iterum dlq</code> and <code>iterum report</code> show what finished and what failed; land each finished branch with <code>iterum land</code> and <code>--check</code>. Landing stays a decision for a person.</p>
+  </div>
+  <div class="note warn"><b>Use <code>night/&lt;slug&gt;</code>, not <code>feat/&lt;slug&gt;</code>.</b> <code>/iterum:fleet-plan</code>'s dry run already made <code>feat/&lt;slug&gt;</code>, and the worker cannot make a branch that exists. The empty <code>feat/&lt;slug&gt;</code> branches can be deleted.</div>
 </section>
 
 <!-- 11 -->
@@ -818,7 +904,7 @@ iterum scorecard main                   <span class="c"># did my working tree br
 </section>
 
 <footer>
-  Written from the Iterum repository as of 2026-11-13: <code>CLAUDE.md</code>, the module docstrings, the error messages in <code>fleet/run.py</code>, and the run records in <code>docs/</code>. Commands run from the Iterum repo root unless they change your app; those run from the app repo, as the table under <a href="#where">Where to run what</a> lists.
+  Written from the Iterum repository as of 2026-11-14: <code>CLAUDE.md</code>, the module docstrings, the error messages in <code>fleet/run.py</code>, and the run records in <code>docs/</code>. Commands run from the Iterum repo root unless they change your app; those run from the app repo, as the table under <a href="#where">Where to run what</a> lists.
 </footer>
 
 </main>
