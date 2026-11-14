@@ -2,6 +2,24 @@
 
 Items moved here from `todo.md` once done. Newest first.
 
+## A setup guide, and the README catches up
+
+Completed 2026-11-14. Not from `todo.md`: the user asked for a setup guide with diagrams, with `/iterum:fleet-plan` as the preferred way to create a plan.
+
+**Change.** `docs/setup-guide.md`: install, device name, audit and seed, installing the `iterum` plugin, creating a plan with `/iterum:fleet-plan` (or by hand), running, resuming and landing, then the queue, prompt steps and sync, with Mermaid diagrams and a troubleshooting table (`e364290`). README: a link to the guide (`4c33a64`), the plugin's install commands and a Components row (`548c79e`), and Components rows for `add`, `governor`, `approve`, `canary`, `replay`/`eval`/`scorecard` and `sweep` (`0a2e874`).
+
+**Evidence.** Every command output in the guide came from a scratch database and git repo: doctor, seed, `project` (DRIFT then MATCH), `status`, a three-step plan, a failed step fixed and resumed, `iterum land`, the main-branch refusal, `iterum add --repo --branch` with a worker, and the receiver's `GET /v1/logs`. A worker under a ceiling without telemetry settings stopped before claiming, now a troubleshooting row. `claude plugin validate` passed on the marketplace and the plugin, with warnings only. Not run: the plugin install on a clean machine (it was already installed here), `/iterum:fleet-plan` itself and prompt steps (billed), and `land --check`.
+
+## A finished task no longer keeps a stale reason
+
+Completed 2026-11-14. Moved from `todo.md` (Overnight queue, from the rerun):
+
+> 1. **A finished task keeps a stale reason.** `queue.finish()` leaves `tasks.reason` from an earlier hand-back or failure. Cosmetic.
+
+**Change.** `fleet/queue.py`, `finish()` sets `reason = NULL` with `status = 'done'`. Only dead-lettered tasks have their reason read (`report.dead_letter()`, `iterum dlq`), and each earlier failure or hand-back stays in the ledger as its own event.
+
+**Evidence.** Scratch database, before: a task with `--max-attempts 2` that failed once ("first-try-broke") and then succeeded ended `done` with reason `first-try-broke`. After: the same task ends `done` with no reason, its `task.failed` event still in the ledger; a clean task has none; a failing task is dead-lettered with `exit 1` as before. `iterum eval add` on the retried task replays and passes; `iterum drill kill` passed.
+
 ## The worker writes the day's report when it stops
 
 Completed 2026-11-14. Moved from `todo.md` (Overnight queue, from the first real night, item 1), whose last part this was:

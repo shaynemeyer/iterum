@@ -214,11 +214,14 @@ def record_pgid(task_id, fence, pgid):
 
 
 def finish(task_id, worker, fence, result=None):
-    """Mark the task done and keep its result. Raises Fenced or Refused if the worker has lost it."""
+    """Mark the task done and keep its result. Raises Fenced or Refused if the worker has lost it.
+
+    Clears the reason an earlier failure or hand-back left; the ledger keeps those events.
+    """
     with db.write() as con:
         _require_lease(con, task_id, worker, fence)
         con.execute(
-            "UPDATE tasks SET status='done', result=?, ended_at=? WHERE task_id=?",
+            "UPDATE tasks SET status='done', result=?, reason=NULL, ended_at=? WHERE task_id=?",
             (json.dumps(result), time.time(), task_id),
         )
         con.execute("DELETE FROM leases WHERE task_id=?", (task_id,))
