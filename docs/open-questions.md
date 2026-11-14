@@ -54,16 +54,6 @@ Decisions not made yet. When one is answered, record it in `decision-log.md`, ad
 
 **Settled by.** A plan that needs it, and choosing whether a waiting run reuses `halted` or gets its own status. Test plan for (a): a scratch-database drill that pauses, restarts, approves and resumes, and checks that a changed param asks again.
 
-## Should `fleet.run` refuse a prompt plan with no output check?
-
-**Context.** A wrong answer that passes every check ends `done`, and no layer closes that; an output check written per plan and proven to fail on `main` is what shrinks it (`overnight-design.md`). It has worked once: the free dry run's unawaited `params` got past the build and was caught only by the output check (`nextjs-first-run.md`). But nothing enforces one. `check_prompt_steps()` refuses a prompt step without `--allow-claude` or without files, and runs a plan whose only check is the build, or none. And `fleet.run` cannot tell which step is the check: a step's command is an opaque shell string, the same problem as `approve.require()` (question above).
-
-**Options.** (a) Mark a check step in the plan (a field or a step kind), and refuse a plan with a prompt step and no marked check after it. (b) Require a `--check CMD` on `fleet.run` for prompt plans, run after the last prompt step. (c) Leave it to `/fleet-plan`, which already requires a check that fails on `main` (`overnight-design.md`), and enforce nothing in `fleet.run`.
-
-**Blocks.** Nothing yet. Matters for unattended runs, where nobody reads the diff before morning.
-
-**Settled by.** Whether hand-written plans should be held to the same rule as `/fleet-plan`'s, and whether a marked check step is worth another plan field.
-
 ## Should some actions get exactly-once, not just at-most-once?
 
 **Context.** `commit_once()` guarantees at most once. A failure after the side effect leaves the receipt `in_flight`, and the step stays blocked until a human checks. Getting exactly once across that failure needs the target system to take part, and `commit_once()` cannot involve it: it calls `action()` with no arguments, so the key never leaves `agent.db`.

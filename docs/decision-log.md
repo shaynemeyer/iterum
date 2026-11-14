@@ -2,6 +2,20 @@
 
 Decisions and why they were made. Newest first. Entries are never deleted; a decision that is reversed is marked "Superseded by" the entry that replaces it. Open decisions live in `open-questions.md`.
 
+## 2026-11-14: `fleet.run` does not require an output check; `/fleet-plan` does
+
+**Decision.** `fleet.run` keeps running a prompt plan whose only check is the build, or none; requiring an output check stays the job of `/fleet-plan`, which writes `check.sh`, proves it fails on `main` and that the dry run fails at it, before anything is billed. Option (c) of the open question "Should `fleet.run` refuse a prompt plan with no output check?", which is removed.
+
+**Context.** The user chose (c), 2026-11-14. A wrong answer that passes every check ends `done`, and unattended nights are where nobody reads the diff before morning; but with no unattended landing (decision log, "Landing stays a person's morning step"), a person still reads it before it reaches `main`.
+
+**Alternatives.** (a) Mark a check step in the plan and refuse a prompt plan with no marked check after it: holds hand-written plans to the same rule, at the cost of a new plan field. (b) A required `--check CMD` on `fleet.run` for prompt plans: a second way to express a check beside plan steps. Both guard against hand-written plans, which have not yet shipped a wrong answer.
+
+**Evidence.** `plugins/iterum/skills/fleet-plan/SKILL.md` (the check fails on `main`; the dry run fails at the check). The output check caught an unawaited `params` that the build let through in the free dry run (`nextjs-first-run.md`). The reverse gap stays open: a generated check is not shown to pass on a correct change before the paid run (`todo.md`, two cases so far).
+
+**Revisit when.** A hand-written prompt plan lands a wrong answer, or plans start being written outside `/fleet-plan` for nights.
+
+**Affects.** `open-questions.md`. Nothing in `fleet/` changes.
+
 ## 2026-11-14: Reports are a static page and a local server, written by the worker when it stops
 
 **Decision.** Reports stay as built: option A, a static page per day (`iterum report`), and option B, the same pages served live on `127.0.0.1` (`iterum report --serve`). The worker writes today's page when it stops; `fleet.run` does not write one per run. C (Rich in the terminal), D (a Textual TUI) and E (a published page) are not pursued until a need shows. Settles the open question "What should Iterum's reports look like, and where?", which is removed.
