@@ -21,3 +21,17 @@ Raised 2026-11-13. `iterum report` writes an HTML page (and a PDF with `--pdf`) 
 ## Readable small values in report charts
 
 Raised 2026-11-13. On a linear scale, small spend vanishes beside a large day: Haiku's spend on 2026-11-12 is invisible next to the $2.02 Opus hour, and one costly plan squeezes the cost-per-plan dots. Options: a total label on each bar, a log-scale option, or a second chart for the small series. The table views and hover titles already give the values. Settled by whether the charts are read for totals or for small series.
+
+## A spend limit for one night
+
+Raised 2026-11-14, when the first attended night stopped at headroom -$0.79: the fleet ceiling's window had been open since 2026-11-11, and three interactive Opus sessions that day counted against it ($1.49), started from a shell where `.env.example` was sourced. `iterum budget reset` (decision log, 2026-11-14) fixes it by hand, before each night.
+
+**Options.**
+
+1. **Manual reset** (what exists): `iterum budget set <usd>`, `iterum budget reset`, then start the worker. Simple; easy to forget, and resets the one ceiling for the whole machine.
+2. **A daily reset at a chosen hour**: `iterum budget set 1 --resets-at 17:00`, the window computed at each check as the most recent 17:00, so an evening and the night after it share one window. Not at midnight: a night crossing 00:00 would get two days' ceilings. Needs a column for the hour in `budgets`, the repo's first schema migration. No scheduler.
+3. **A limit on the worker**: `iterum worker night-1 --max-usd 1` stops claiming once the spend of its own tasks' runs (found through `run.started`'s `queue_task`) reaches the limit. Counts only the night's work, not interactive sessions; leaves the fleet ceiling alone; no schema change.
+
+**Either way.** Interactive sessions count against any ledger-based limit while their shell has `.env.example` sourced; options 1 and 2 count them, 3 does not.
+
+**Settled by.** A night that started with a stale window because the reset was forgotten (favours 2), or interactive sessions eating into a night's budget (favours 3).

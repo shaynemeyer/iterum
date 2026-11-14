@@ -2,6 +2,18 @@
 
 Decisions and why they were made. Newest first. Entries are never deleted; a decision that is reversed is marked "Superseded by" the entry that replaces it. Open decisions live in `open-questions.md`.
 
+## 2026-11-14: `iterum budget reset` counts spend from zero again
+
+**Decision.** `iterum budget reset` moves the fleet ceiling's `window_start` to now and keeps the limit, so spend counts from zero; it logs `budget.reset` (run `fleet`, stage `governance`) with the spend it stopped counting and the old window start, in the same write. With no ceiling set it exits 1. Amends the 2026-11-10 entry, under which spend counted only from the first time a ceiling was set.
+
+**Context.** The user asked for it, 2026-11-14: the first attended night's worker stopped at headroom -$0.79 under a $3 ceiling whose window had been open since 2026-11-11. $2.40 of that was `iterum run` runs (mostly the 2026-11-12 sweep) and $1.49 three interactive Opus sessions that day, started from a shell where `.env.example` was sourced, so their telemetry reached the receiver. `iterum budget set` changes only the limit (`ON CONFLICT ... SET limit_usd`), so raising it was the only way out.
+
+**Alternatives.** A calendar-day window (resets at midnight, in the middle of a night, so a night could spend up to twice the ceiling); a rolling 24-hour window (no jump, but not what was asked); raising the ceiling each time (the old spend keeps counting).
+
+**Evidence.** Scratch database: reset with no ceiling exits 1; $1.25 logged, reset prints "1.2500 USD no longer counted" and headroom returns to the full ceiling; $0.10 logged after the reset counts; the ledger holds `budget.reset` with `spent_usd` 1.25 and the old `window_was`.
+
+**Affects.** `fleet/governor.py`, `CLAUDE.md`. `budgets` does not sync, so a reset is per machine, as the ceiling is. Whether interactive sessions should count against the fleet ceiling at all is not decided.
+
 ## 2026-11-14: The fix loop's paid test uses an induced mistake
 
 **Decision.** The paid `--fix-retries` test uses a feature whose check requires something the prompt does not say (option b), so the first try likely fails the check and the error names what is missing. Every real run keeps `--fix-retries` (option a), and the first natural retry is recorded.

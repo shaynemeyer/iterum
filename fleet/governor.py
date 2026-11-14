@@ -11,9 +11,11 @@ pass the ceiling by one step's spend (decision log, 2026-11-12).
 
     iterum budget
     iterum budget set <usd>
+    iterum budget reset
 """
 
 import argparse
+import sys
 import time
 from datetime import datetime
 
@@ -30,6 +32,22 @@ def set_ceiling(limit_usd):
             " ON CONFLICT(scope) DO UPDATE SET limit_usd=excluded.limit_usd",
             (SCOPE, limit_usd, time.time()),
         )
+
+
+def reset():
+    """Count spend from now on, keeping the ceiling. Returns the spend it stopped counting, or None with no ceiling.
+
+    Logs `budget.reset` with that spend and the old window start, so the ledger shows what was set aside.
+    """
+    with db.write() as con:
+        row = con.execute("SELECT window_start FROM budgets WHERE scope=?", (SCOPE,)).fetchone()
+        if not row:
+            return None
+        before = spent(con, row["window_start"])
+        con.execute("UPDATE budgets SET window_start=? WHERE scope=?", (time.time(), SCOPE))
+        db.log(con, "fleet", "budget.reset", stage="governance",
+               spent_usd=before, window_was=row["window_start"])
+        return before
 
 
 def spent(con, since):
@@ -88,11 +106,17 @@ def main():
     parser = argparse.ArgumentParser(prog="uv run python -m fleet.governor")
     commands = parser.add_subparsers(dest="command")
     commands.add_parser("set").add_argument("usd", type=float)
+    commands.add_parser("reset", help="count spend from now on, keeping the ceiling")
     args = parser.parse_args()
 
     db.init()  # a fresh agent.db has no tables yet; safe to repeat
     if args.command == "set":
         set_ceiling(args.usd)
+    elif args.command == "reset":
+        before = reset()
+        if before is None:
+            sys.exit("no ceiling set: iterum budget set <usd>")
+        print(f"reset: {before:.4f} USD no longer counted")
     show()
 
 
