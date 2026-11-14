@@ -19,6 +19,7 @@ COMMANDS = {
     "view": ("fleet.view", []),
     "budget": ("fleet.governor", []),
     "recovery": ("fleet.recovery", []),
+    "add": ("fleet.add", []),
     "worker": ("fleet.worker", []),
     "dlq": ("fleet.dlq", []),
     "conflicts": ("fleet.conflicts", []),

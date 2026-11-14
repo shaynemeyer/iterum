@@ -2,6 +2,18 @@
 
 Items moved here from `todo.md` once done. Newest first.
 
+## `iterum add`: queue a task from the shell, one attempt by default
+
+Completed 2026-11-14. Moved from `todo.md` (Overnight queue, items 1 and 2):
+
+> **No command adds a task.** Only `queue.add()` from Python.
+
+> **The queue retried each failed plan, and the retries buried the cause.** Plan tasks got the default `max_attempts` 3. Attempts 2 and 3 failed at once on `fatal: a branch named 'feat/<slug>' already exists`, and that became the dead letter's reason. The real cause (the check's message) is only in the first attempt's event and in the run. A plan already retries inside itself (`--fix-retries`); rerunning it whole from the queue cannot help.
+
+**Change.** `fleet/add.py`: `iterum add "<cmd>" [--max-attempts N]` queues a `shell` task with `queue.add()`; `--max-attempts` defaults to 1, since a plan retries inside itself.
+
+**Evidence.** A scratch database, a task that makes a directory (as a plan makes its branch) and then fails as a check does. With the default: one attempt, `iterum dlq` shows `check: /notes did not answer 200`. With `--max-attempts 3`: attempts 2 and 3 fail on `mkdir: branch: File exists`, and that is the dead letter's reason, as in the experiment.
+
 ## `iterum run` prints a failed step's error, not a traceback
 
 Completed 2026-11-13. Moved from `todo.md` (`/fleet-plan` follow-ups):
