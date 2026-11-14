@@ -98,6 +98,22 @@ Status: proposal, nothing built. For item 5 above.
 
 **Free test.** The two tasks of the 2026-11-14 reproduction, rewritten with `--repo` and `--branch`: task 1's edit is committed on `feat/a`, task 2 starts clean on `feat/b`, the app ends on `main`. Then a stray edit in the app before the worker starts: the worker stops and both tasks stay `ready`.
 
+## 5c. Rerun with the fixes, 2026-11-14
+
+Free, no prompt steps: scratch database, the real app, tasks queued with `iterum add "iterum run <plan>" --repo <app> --branch feat/night-<x>`, one `iterum worker night-1`. Plan A: `echo dry`, build, the tag-pages check (passes on `main`, the feature has landed). Plan B: append a line to a file (stands in for a half-done prompt step), build, a check that fails.
+
+What held:
+
+- **The dirty-tree stop.** The first start met an untracked `harness-audit.json` (an `iterum doctor` run in the wrong folder): the worker stopped (exit 1), listed it, handed task 1 back; both tasks stayed `ready`, the app untouched. Without the stop, `git switch` would have carried it and a failed task's `git add --all` committed it.
+- **Branches.** Task 1 ran on `feat/night-a` and finished `done`; the app ended on `main`, clean.
+- **Leftovers.** Plan B alone (on `app/notes/page.tsx`): the run failed at its check, the dead letter's reason is the check's message, the half-done edit is committed on `feat/night-b2` as "iterum: what task 3 left behind", and the app ended clean on `main`.
+- **The link.** Every run's `run.started` names its task (`task-test-1`, `-2`, `-3`).
+
+What broke or is missing:
+
+1. **Two tasks on the same file in one night: the second is refused.** Plans A and B both claimed `app/notes/tags/[tag]/page.tsx`. Run A finished and kept its claim, as every run does until it is landed; run B started 2.5 minutes later, inside the claim's 300 s, and was refused before any step ran (`claim.refused`), so its one attempt dead-lettered. By design, and the test plans should not have shared a file, but `/fleet-plan` chunks of one feature could. Not tested: a task started after the claim expires would take it, and run A's landing would then be refused (`claim.expired_own()` accepts only an unchanged row). Dependent chunks have a second problem: each branch starts from `main`, so a chunk does not see the chunk it depends on until that one is landed.
+2. **A finished task keeps a stale reason.** Task 1 was handed back once ("repo has uncommitted changes") and then finished `done`, but `tasks.reason` still says "repo has uncommitted changes". `finish()` does not clear it. Cosmetic: `dlq` does not list done tasks.
+
 ## 6. Open decisions
 
 - *Settled 2026-11-13 (decision log): `/fleet-plan` is user-level, plans go in a gitignored `plans/`.*
