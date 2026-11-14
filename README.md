@@ -55,6 +55,8 @@ Every event carries a UUIDv7 `uid` and the `device` that wrote it, so ledgers fr
 
 Requires Python 3.14 and [uv](https://docs.astral.sh/uv/). The doctor also checks for the `claude` CLI.
 
+For a step-by-step walkthrough, from install to a first landed run, with the `/iterum:fleet-plan` skill for creating plans, see [docs/setup-guide.md](docs/setup-guide.md).
+
 Name this device once, in your shell profile (for example `~/.zshrc`), then open a new terminal:
 
 ```bash
