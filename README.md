@@ -53,6 +53,7 @@ Every event carries a UUIDv7 `uid` and the `device` that wrote it, so ledgers fr
 | `fleet/sweep.py` | `iterum sweep`: runs each plan several times in rotated order and compares pass rate beside cost |
 | `fleet/sync.py` | `sync` shares events across devices through a private git repo; `export` and `import` run single steps |
 | `fleet/*_drill.py`, `fleet/drill.sh` | Drills that kill or crash the harness and check it recovers; `drill.sh` contends SQLite writers ([docs/drill.md](docs/drill.md)) |
+| `install.sh` | Installs the `iterum` command and the plugin, and records this machine's audit in the ledger |
 | `scripts/seed-ledger.py` | Records the harness audit in the ledger |
 | `plugins/iterum/`, `.claude-plugin/marketplace.json` | A Claude Code plugin whose `/iterum:fleet-plan` skill turns a one-sentence feature into a plan, proven free before anything is billed |
 
@@ -64,34 +65,14 @@ Requires Python 3.14 and [uv](https://docs.astral.sh/uv/). The doctor also check
 
 For a step-by-step walkthrough, from install to a first landed run, with the `/iterum:fleet-plan` skill for creating plans, see [docs/setup-guide.md](docs/setup-guide.md).
 
-Name this device once, in your shell profile (for example `~/.zshrc`), then open a new terminal:
-
-```bash
-export ITERUM_DEVICE=laptop       # unique per machine; every event records it
-```
-
-Then, in order:
-
 ```bash
 git clone https://github.com/shaynemeyer/iterum.git && cd iterum
-uv tool install --editable .      # installs the iterum command
-iterum doctor                     # audit this machine, writes harness-audit.json
-uv run scripts/seed-ledger.py     # record the audit in the ledger
-iterum project                    # rebuild knowledge from the ledger
+./install.sh
 ```
+
+`install.sh` asks for a name for this machine (every event records it; set `ITERUM_DEVICE` to skip the question), installs the `iterum` command, audits the machine and records the audit in the ledger, builds knowledge, and installs the Claude Code plugin that adds `/iterum:fleet-plan` (skipped if `claude` is not installed). It stops at the first failed step. At the end it prints the `export` lines to add to your shell profile (for example `~/.zshrc`): `ITERUM_DEVICE`, and `ITERUM_HOME` if you cloned somewhere other than `~/github/iterum`.
 
 If your shell cannot find `iterum`, run `uv tool update-shell` and open a new terminal. The install is editable, so a `git pull` updates the command.
-
-The first `iterum project` run reports DRIFT and exits 1 while the knowledge table is still empty. Run it again to confirm MATCH.
-
-To create plans with `/iterum:fleet-plan`, install the plugin from this checkout, then run the skill from a Claude Code session in your app repo:
-
-```bash
-claude plugin marketplace add "$PWD"   # this checkout, as a plugin marketplace
-claude plugin install iterum@iterum
-```
-
-The skill looks for Iterum at `~/github/iterum`; set `ITERUM_HOME` if you cloned it elsewhere.
 
 ## Everyday commands
 

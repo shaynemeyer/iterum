@@ -121,11 +121,11 @@ On the second computer:
 git clone <your-private-repo-url> ~/private-data
 ```
 
-Then clone Iterum and install it as described in the [README](../README.md#setup). You can skip the `doctor` and `seed-ledger` steps; sync brings the history across.
+Then clone Iterum and run `./install.sh` as described in the [README](../README.md#setup); sync brings the history across.
 
 ### Step 2. Give it its own name
 
-Add a **different** name to this computer's shell profile, then open a new terminal:
+When `install.sh` asks for a name, give this computer a **different** one, and add the line it prints to the shell profile, then open a new terminal:
 
 ```bash
 export ITERUM_DEVICE=desktop

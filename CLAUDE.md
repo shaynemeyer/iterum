@@ -11,6 +11,7 @@ A small Python harness for a fleet of Claude Code agents, built on one SQLite fi
 Python 3.14 is required (`uuid.uuid7()`, and the unparenthesized `except A, B:` in `fleet/doctor.py`). Install the `iterum` command once with `uv tool install --editable .` (editable, so it runs this checkout's code); it works from any folder except where noted.
 
 ```bash
+./install.sh                                    # from the repo root, once: asks for ITERUM_DEVICE (unless set), installs iterum, runs doctor, seed-ledger and project, installs the plugin
 iterum status                                   # freeze, spend, receiver, runs, queue, what needs a person, canary; exit 1 when something needs a person
 iterum report [--date D | --days N | --run RUN_ID | --serve [--port 8780]] [--out page.html] [--open] [--pdf] [--json]   # a day's work as one HTML page in reports/ beside the database, plus a page per linked run and an index.html (--pdf: also a PDF, via headless Chrome), or the data as JSON; a day with no activity writes nothing and says so
 iterum doctor                                   # audit this machine, writes ./harness-audit.json

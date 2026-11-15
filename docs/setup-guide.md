@@ -46,34 +46,16 @@ You never write to the ledger by hand. The commands do it, and `iterum project` 
 
 ```bash
 git clone https://github.com/shaynemeyer/iterum.git && cd iterum
-uv tool install --editable .
+./install.sh
 ```
 
-The install is editable, so a later `git pull` updates the command. If your shell cannot find `iterum`, run `uv tool update-shell` and open a new terminal.
+`install.sh` stops at the first step that fails. In order, it:
 
-**Check:** `iterum --help` lists the commands.
-
-## 2. Name this device
-
-Every event records the device that wrote it, and any command that writes an event refuses to run without a name. Add this to your shell profile (for example `~/.zshrc`), then open a new terminal:
-
-```bash
-export ITERUM_DEVICE=laptop    # unique per machine
-```
-
-The database goes to `~/.local/share/iterum/agent.db` (or `$XDG_DATA_HOME/iterum/agent.db`). Set `ITERUM_DB` only if you want it elsewhere.
-
-> **Trying things out?** Point `ITERUM_DB` at a throwaway file, such as `ITERUM_DB=/tmp/scratch.db`, and nothing touches your real database.
-
-## 3. Audit and seed the ledger
-
-Run these from the repo root, in order:
-
-```bash
-iterum doctor                    # audit this machine, writes ./harness-audit.json
-uv run scripts/seed-ledger.py    # record the audit as events
-iterum project                   # rebuild knowledge from the ledger
-```
+1. Asks for a name for this machine, offering its hostname. Every event records the device that wrote it, and any command that writes an event refuses to run without one. Set `ITERUM_DEVICE` first to skip the question; without a terminal to ask on, the script requires it.
+2. Installs the `iterum` command with `uv tool install --editable .`. The install is editable, so a later `git pull` updates the command.
+3. Audits this machine (`iterum doctor`, which writes `./harness-audit.json`) and records the audit as the first events in the ledger (`uv run scripts/seed-ledger.py`).
+4. Builds knowledge from the ledger (`iterum project`). The first run reports DRIFT, because the knowledge table starts empty; the script runs it again and expects MATCH.
+5. Installs the Claude Code plugin from this checkout, which adds the `/iterum:fleet-plan` skill ([Claude Code plugin docs](https://code.claude.com/docs/en/plugins/publish.md)). If `claude` is not installed, it skips this and prints the two commands to run later.
 
 The doctor grades seven layers of your Claude Code setup. On a fresh machine most say `NOTHING`, which is expected:
 
@@ -85,11 +67,18 @@ tooling        NOTHING      no .claude/agents/*.md
 wrote harness-audit.json
 ```
 
-The first `iterum project` reports DRIFT and exits 1, because the knowledge table starts empty. Run it again:
+At the end it prints the lines to add to your shell profile (for example `~/.zshrc`). Add them, then open a new terminal:
 
-```text
-MATCH - the projection is rebuildable from the ledger
+```bash
+export ITERUM_DEVICE=laptop            # the name you gave
+export ITERUM_HOME=/path/to/iterum     # printed only if you cloned somewhere other than ~/github/iterum
 ```
+
+The skill writes plans to `$ITERUM_HOME/plans/` (gitignored). If your shell cannot find `iterum`, run `uv tool update-shell` and open a new terminal.
+
+The database goes to `~/.local/share/iterum/agent.db` (or `$XDG_DATA_HOME/iterum/agent.db`). Set `ITERUM_DB` only if you want it elsewhere.
+
+> **Trying things out?** Point `ITERUM_DB` at a throwaway file, such as `ITERUM_DB=/tmp/scratch.db`, and nothing touches your real database.
 
 **Check:** `iterum status` prints one screen and exits 0:
 
@@ -101,26 +90,9 @@ RECEIVER  not configured (OTEL_EXPORTER_OTLP_LOGS_ENDPOINT unset; source .env.ex
 NEEDS A PERSON  nothing
 ```
 
-## 4. Install the fleet-plan skill
+`claude plugin list` shows `iterum@iterum` with `Status: ✔ enabled`, and typing `/iterum:fleet-plan` in a Claude Code session started from your app repo offers the skill. It is the preferred way to create a plan: it turns a one-sentence feature request into a plan, a check script and a plain-words summary, and proves the plan for free before anything is billed.
 
-This repo ships a Claude Code plugin named `iterum` with one skill, `/iterum:fleet-plan`. It is the preferred way to create a plan: it turns a one-sentence feature request into a plan, a check script and a plain-words summary, and proves the plan for free before anything is billed.
-
-Add this checkout as a plugin marketplace, then install the plugin from it ([Claude Code plugin docs](https://code.claude.com/docs/en/plugins/publish.md)):
-
-```bash
-claude plugin marketplace add ~/github/iterum    # the path to your Iterum checkout
-claude plugin install iterum@iterum
-```
-
-The skill looks for Iterum at `~/github/iterum` and writes plans to its `plans/` folder (gitignored). If you cloned somewhere else, tell it where, in your shell profile:
-
-```bash
-export ITERUM_HOME=/path/to/iterum
-```
-
-**Check:** `claude plugin list` shows `iterum@iterum` with `Status: ✔ enabled`, and typing `/iterum:fleet-plan` in a Claude Code session started from your app repo offers the skill.
-
-## 5. Create a plan
+## 2. Create a plan
 
 A plan is a JSON list of steps: `[seq, intent, command, [resources]]`. A command is a shell string or a prompt, `{"prompt": "...", "model": "..."}`. Resources are the files the run claims, such as `"file:app/page.tsx"`.
 
@@ -172,7 +144,7 @@ Write the JSON yourself when you want to learn the mechanics or need a shell-onl
  [3, "commit it", "git commit -qam 'Greeting'", ["file:hello.txt"]]]
 ```
 
-## 6. Run it
+## 3. Run it
 
 Iterum records each step as `proposed` before it runs and `committed` after, so a run killed at any point can resume where it stopped.
 
@@ -247,7 +219,7 @@ iterum run plan.json --allow-claude 0.10
 
 The receiver answers `GET /v1/logs` with the database it writes to, which must match the run's. See [telemetry/claude-code-telemetry.md](telemetry/claude-code-telemetry.md) and [claude-step-design.md](claude-step-design.md).
 
-## 7. Land the branch
+## 4. Land the branch
 
 `iterum land` merges the branch only while every changed file still has a live claim from the run. Run it from the repo, on `main` or detached at it: it detaches a clean `main` checkout itself, lands, and leaves you on `main` with the new commit. It refuses when `main` has local changes, or is checked out in another worktree.
 
@@ -281,7 +253,7 @@ Add `--check "<install> && <build>"` to run your build on the merged tree before
 
 **Check:** `iterum report --open` shows the day's runs as an HTML page, with unlanded runs under Ready to land.
 
-## 8. Optional extras
+## 5. Optional extras
 
 ### The work queue
 
@@ -327,12 +299,12 @@ With `--repo` and `--branch`, the worker creates the branch from `main`, runs th
 | Symptom | Cause and fix |
 | --- | --- |
 | `iterum: command not found` | Run `uv tool update-shell` and open a new terminal |
-| A command complains about `ITERUM_DEVICE` | Set it in your shell profile (step 2) |
+| A command complains about `ITERUM_DEVICE` | Set it in your shell profile (step 1) |
 | First `iterum project` says DRIFT | Expected on an empty database; run it again |
 | "a plan that declares files must not run on main" | Switch to another branch |
 | `iterum land` refuses | `main` has local changes or is checked out in another worktree, or a changed file has no live claim |
 | `iterum worker` stops: "a spend limit is set, but claude would not report its spend" | With a ceiling or `--max-usd` set, `source .env.example` and run `iterum receiver` first |
-| `/iterum:fleet-plan` is not offered | Run `claude plugin list`; install it (step 4) and start a new session |
+| `/iterum:fleet-plan` is not offered | Run `claude plugin list`; install it (step 1) and start a new session |
 | The skill cannot find Iterum | Set `ITERUM_HOME` to your checkout |
 | `RECEIVER not configured` in status | Only matters for prompt steps; `source .env.example` and start `iterum receiver` |
 
