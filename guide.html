@@ -376,10 +376,9 @@ iterum budget reset        <span class="c"># count from zero again, keeping the 
 <span class="o">reset: 2.3859 USD no longer counted
 ceiling 3.00  spent 0.0000  headroom 3.0000 USD  (since 2026-11-14 07:30)</span></pre></div>
   <div class="col stack">
-    <p><b>A budget for the night.</b> Setting a ceiling changes only the limit; spend keeps counting from the first time you set one. Before a night's queue, set the ceiling to what you will spend tonight and reset, and in the morning <code>iterum budget</code> shows what the night cost. The reset is logged as a <code>budget.reset</code> event with the spend it set aside, so nothing is lost from the ledger.</p>
+    <p><b>A budget for the night.</b> Give the worker its own limit with <code>--max-usd</code>. It counts only the spend of the runs that worker starts, so your interactive sessions do not eat into it, and the fleet ceiling still applies beside it. The worker stops before a claim, and a run before a step, that would pass it: a prompt step starts only if its whole cap fits in what is left. What did not run stays queued; a run stopped mid-plan is dead-lettered and can be resumed. A session can pass its own cap a little (Claude Code's estimate is client-side), so a night can too. Setting a ceiling changes only the limit; to count the fleet's spend from zero, <code>iterum budget reset</code>, logged as a <code>budget.reset</code> event with the spend it set aside.</p>
   </div>
-  <div class="term"><button type="button">Copy</button><pre>iterum budget set 1
-iterum budget reset</pre></div>
+  <div class="term"><button type="button">Copy</button><pre>iterum worker night-1 --until-empty --max-usd 1</pre></div>
   <div class="note warn"><b>Your own sessions count too.</b> The receiver records any Claude Code session started from a shell where <code>.env.example</code> was sourced, and the ceiling adds up everything it records. Source it only in the terminal that runs plans and workers, and start your interactive <code>claude</code> elsewhere.</div>
   <figure>
     <div class="fig">
@@ -517,7 +516,7 @@ iterum thaw                                      <span class="c"># last, after t
   <div class="note"><b>Approvals.</b> <code>iterum status</code> lists approval requests and <code>iterum approve|deny &lt;fingerprint&gt;</code> settles one. Requests come from <code>approve.require()</code>, which nothing in Iterum calls yet, so the list stays empty until your own code calls it.</div>
   <div class="col stack" id="night">
     <h3>A night's queue</h3>
-    <p>Plan each feature with <code>/iterum:fleet-plan</code> and answer no to "Implement this feature?". Queue each plan with the app repo and a branch name, set the night's budget, and start one worker. For each task, the worker makes the branch from <code>--base</code> (default <code>main</code>), runs the plan there, and returns to the base detached, so <code>iterum land</code> can move it in the morning.</p>
+    <p>Plan each feature with <code>/iterum:fleet-plan</code> and answer no to "Implement this feature?". Queue each plan with the app repo and a branch name, and start one worker with the night's budget, <code>--max-usd</code>. For each task, the worker makes the branch from <code>--base</code> (default <code>main</code>), runs the plan there, and returns to the base detached, so <code>iterum land</code> can move it in the morning.</p>
   </div>
   <div class="term"><button type="button">Copy</button><pre><span class="c"># terminal 1</span>
 iterum receiver
@@ -528,8 +527,7 @@ iterum add "iterum run &lt;iterum&gt;/plans/not-found-links/plan.json --allow-cl
   --repo ~/code/my-app --branch night/not-found-links
 iterum add "iterum run &lt;iterum&gt;/plans/robots-sitemap/plan.json --allow-claude 0.05 --fix-retries 2" \
   --repo ~/code/my-app --branch night/robots-sitemap
-iterum budget set 1 &amp;&amp; iterum budget reset
-iterum worker night-1 --budget-s 600</pre></div>
+iterum worker night-1 --budget-s 600 --until-empty --max-usd 1</pre></div>
   <div class="tbl">
     <table>
       <thead><tr><th>When</th><th>The worker</th></tr></thead>
@@ -537,8 +535,8 @@ iterum worker night-1 --budget-s 600</pre></div>
         <tr><td>The plan finishes</td><td>Returns the app to the base, detached: <code>iterum land</code> refuses a target that is checked out. The branch holds the plan's commit, ready to land.</td></tr>
         <tr><td>The plan fails</td><td>Commits whatever the failed run left on the task's own branch ("iterum: what task N left behind"), returns to the base detached, deletes the branch if it holds no commits (so the task can be queued again on the same name), and dead-letters the task with the end of the error: usually the check's own message.</td></tr>
         <tr><td>The app has uncommitted changes before a task</td><td>Hands the task back and stops, listing the changes. Every queued task stays queued. Nothing is cleaned up for you: the changes may be someone's work.</td></tr>
-        <tr><td>The ceiling is reached</td><td>Stops before its next claim, leaving queued tasks queued.</td></tr>
-        <tr><td>A ceiling is set, but its shell has no telemetry settings or the receiver is not answering</td><td>Stops before its next claim, leaving queued tasks queued: the ceiling could not count the night's spend. Start it from the shell where <code>.env.example</code> is sourced. It stops even for tasks with no prompt steps, since a task holds only a shell command.</td></tr>
+        <tr><td>The ceiling, or the night's <code>--max-usd</code>, is reached</td><td>Stops before its next claim, leaving queued tasks queued. A plan already running stops before a step it cannot afford; its task is dead-lettered and its run can be resumed.</td></tr>
+        <tr><td>A ceiling or <code>--max-usd</code> is set, but its shell has no telemetry settings or the receiver is not answering</td><td>Stops before its next claim, leaving queued tasks queued: the ceiling could not count the night's spend. Start it from the shell where <code>.env.example</code> is sourced. It stops even for tasks with no prompt steps, since a task holds only a shell command.</td></tr>
       </tbody>
     </table>
   </div>
