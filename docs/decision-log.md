@@ -2,6 +2,18 @@
 
 Decisions and why they were made. Newest first. Entries are never deleted; a decision that is reversed is marked "Superseded by" the entry that replaces it. Open decisions live in `open-questions.md`.
 
+## 2026-11-15: `/fleet-plan` checks fail fast on a busy port, and servers start only through them
+
+**Decision.** Every `check.sh` the skill writes for a web app first exits 1 with `port <N> is already in use` on stderr if anything answers on its port, before starting its own server. And the planning session starts a server only through `check.sh`; to look at a page by hand it uses the same start-and-`trap` pattern, never `pkill -f "next start"`.
+
+**Context.** The feed-link dry run failed at the check with every page answering 500, while the same commit gave 200 in the worktree. A `next-server` with parent PID 1 still held port 3237. The cause, from the planning session's transcript: after proof 2, it started `next start -p 3237` by hand and stopped it with `pkill -f "next start -p 3237"`, which matches only the `next start` parent; the server child survived, serving a worktree that was then removed. The dry run's own server could not take the port, and its output goes to `/dev/null`, so nothing said so. At night the same would fail the check after the paid prompt steps, and the fix loop would pay for retries that answer "500" with code changes.
+
+**Alternatives.** The skill rule alone (stops this cause, not a leftover from anything else: a dev server on the same port, a SIGKILLed check); the port check alone (makes any leftover plain, but planning would keep making them); a fixed check port per app with a pre-flight kill (would kill servers that are not the check's).
+
+**Evidence.** The orphan started at 08:42:13, three seconds after that command; the feed-link `check.sh`, run again in the app, passed and left port 3237 free. Recreated with the same `next start ... &` and `pkill -f`: an orphan `next-server` (parent PID 1) held 3237, and the check with the new line printed `port 3237 is already in use` and exited 1. With the orphan stopped, it passed and left the port free.
+
+**Affects.** `plugins/iterum/skills/fleet-plan/SKILL.md`; `plans/feed-link/check.sh` (gitignored); `nextjs-first-run.md`, the feed-link night. Checks written before this (`plans/sitemap`, `feed`, `search`, ...) lack the port line.
+
 ## 2026-11-14: `iterum land` ends on the target branch, updated
 
 **Decision.** `iterum land` detaches a clean checkout of the target in `--repo` itself, lands, and then, refused or not, puts a checkout it finds detached at the target's old or new commit, with no local changes, back on the target. After a landing the app is on `main` with the new commit. Still refused: the target checked out in another worktree, or checked out in `--repo` with local changes. A checkout on another branch or commit is left alone.
