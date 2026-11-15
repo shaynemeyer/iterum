@@ -585,7 +585,7 @@ iterum report --serve                   <span class="c"># live, on 127.0.0.1:878
     <p>A day or several-day report also writes a page for each run it lists and rebuilds <code>index.html</code>, so run ids are links and every page links back to the index. A day with no activity writes nothing and says which dates have data. <code>--serve</code> answers only on <code>127.0.0.1</code>, refuses requests for any other host name, and stops with Ctrl-C.</p>
   </div>
   <figure>
-    <div class="fig" style="padding:0;overflow:hidden"><picture><source srcset="img/report-day-dark.png" media="(prefers-color-scheme: dark)"><img src="img/report-day-light.png" alt="A daily report: a banner saying 2 things need a person, the failed run and refused merge listed, four tiles with 7-day trend lines, the runs table with each run's steps, and spend by hour split by model" width="1000" loading="lazy" style="display:block;width:100%;height:auto"></picture></div>
+    <div class="fig" style="padding:0;overflow:hidden"><picture><source srcset="img/report-day-dark.png" media="(prefers-color-scheme: dark)"><img src="img/report-day-light.png" alt="A daily report: a banner saying 1 thing needs a person, the refused merge listed, four tiles with 7-day trend lines, the runs table with each run's cost, peak context and steps, one run failed at its second step, and spend by hour split by model" width="1000" loading="lazy" style="display:block;width:100%;height:auto"></picture></div>
     <figcaption><b>A day.</b> The banner says whether anything needs you; here a run failed at its second step and a merge was refused by its check. Tiles carry the last seven days as a trend. Example data.</figcaption>
   </figure>
   <figure>
