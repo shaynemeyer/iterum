@@ -45,7 +45,7 @@ Every event carries a UUIDv7 `uid` and the `device` that wrote it, so ledgers fr
 | `fleet/merge.py` | Lands a branch only while every changed file has a live claim and, with `--check`, a command passes on the merged tree |
 | `fleet/gate.py` | A `PreToolUse` hook that refuses an edit to a file another run has claimed; not registered here, wire it up yourself |
 | `fleet/telemetry.py` | Receives Claude Code telemetry and records each API request's cost; settings in [`.env.example`](.env.example) |
-| `fleet/governor.py` | `iterum budget`: a fleet-wide spend ceiling, summed from the ledger's `spend.reported` events; runs and workers stop at it |
+| `fleet/governor.py` | `iterum budget`: a fleet-wide spend ceiling, summed from the ledger's `spend.reported` events, and a night's limit (`iterum worker --max-usd`) on one worker's runs; runs and workers stop at either |
 | `fleet/approve.py` | An approval gate for irreversible actions (`iterum approve`, `deny`; nothing calls it yet), and `iterum freeze`/`thaw` to stop new queue work |
 | `fleet/view.py` | Read-only views: live sessions and runs, one run's trace, failures per stage |
 | `fleet/canary.py` | `iterum canary`: flags recent runs whose median events, seconds or cost moved from the runs before them; detects change, not wrong output |

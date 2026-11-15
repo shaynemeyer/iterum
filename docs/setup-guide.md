@@ -289,11 +289,14 @@ Queue a plan and let a worker run it. When you answer no to "Implement this feat
 
 ```bash
 iterum add "iterum run /path/to/plan.json" --repo . --branch feature/queued
-iterum worker w1 --budget-s 1800 --until-empty
+iterum worker w1 --budget-s 1800 --until-empty --max-usd 0.50
 ```
+
+`--max-usd` is the most the worker's own runs may spend; interactive sessions do not count. It stops before a claim, or before a step, that would pass it, and leaves the rest queued. It needs the telemetry receiver, as a ceiling does.
 
 ```text
 task 1 queued
+w1  night de79f0a7fb33: at most 0.50 USD
 w1  task 1 (shell)  done
 w1  queue empty, stopping
 w1  report: ~/.local/share/iterum/reports/report-<date>.html
