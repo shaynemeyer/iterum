@@ -2,6 +2,18 @@
 
 Decisions and why they were made. Newest first. Entries are never deleted; a decision that is reversed is marked "Superseded by" the entry that replaces it. Open decisions live in `open-questions.md`.
 
+## 2026-11-15: Notifications go through one command hook, `ITERUM_NOTIFY`, off by default
+
+**Decision.** Iterum notifies through a single setting, `ITERUM_NOTIFY`, holding a shell command it runs with a plain-text summary on stdin. Unset, nothing is sent; the day's report page is written as today. Iterum ships no channel of its own. The setup guide documents examples, the macOS one first: `osascript -e 'display notification ...'` ([Mac Automation Scripting Guide: Displaying Notifications](https://developer.apple.com/library/archive/documentation/LanguageUt/Conceptual/MacAutomationScriptingGuide/DisplayNotifications.html)), then `notify-send` on Linux, a mail command, and `curl` to a Slack incoming webhook.
+
+**Context.** `ideas.md`, "Notify when plans finish: Slack, email or text" (raised 2026-11-15 by the user; removed there now it is taken up). The user asked about OS notifications, then "what if a user doesn't have slack".
+
+**Alternatives.** Built-in channels, `--notify slack|email|sms` (each needs credentials kept out of a public repo, and code and tests per channel); Slack only, built in (a user without Slack gets nothing); a desktop notification by default on macOS when the setting is unset (works with no setup, but macOS-only code, and Iterum's own platform paths stay none).
+
+**Limits.** A macOS notification reaches only someone at that Mac; overnight it waits in Notification Center. It is attributed to the app that ran `osascript` (likely the terminal), which needs notifications allowed in System Settings. Whether `osascript` can post from a worker started over SSH or by `launchd` is not verified.
+
+**Affects.** `fleet/worker.py` (where it would fire, beside `write_report()`); `docs/setup-guide.md`; `todo.md`.
+
 ## 2026-11-15: A night has its own spend limit, `iterum worker --max-usd`
 
 **Decision.** `iterum worker <name> --max-usd X` runs a night that does not spend more than X on its own runs. The worker checks the night's headroom before each claim, and `fleet.run` before each step, where a prompt step starts only if its whole cap fits. The night's spend is the `spend.reported` of the runs whose `run.started` names the night, so interactive sessions do not count against it. The fleet ceiling still applies beside it. `/fleet-plan` states the worst case, (prompt steps + fix retries) × cap per plan, and puts `--max-usd` in the worker command.
