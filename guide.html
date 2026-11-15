@@ -596,7 +596,7 @@ iterum report --serve                   <span class="c"># live, on 127.0.0.1:878
     <table>
       <thead><tr><th>Page</th><th>Command</th><th>Shows</th></tr></thead>
       <tbody>
-        <tr><td>A day</td><td><code>iterum report [--date D]</code></td><td>What needs a person; runs, steps, merges and spend with 7-day trends; every run with its steps; earlier runs touched that day; spend by hour; merges landed</td></tr>
+        <tr><td>A day</td><td><code>iterum report [--date D]</code></td><td>What needs a person; runs, steps, merges and spend with 7-day trends; every run with its steps, cost and peak context per request, marked when over the 100K a chunk should stay under; earlier runs touched that day; spend by hour; merges landed</td></tr>
         <tr><td>Several days</td><td><code>iterum report --days N</code></td><td>Spend per day and against the ceiling; runs per day by status; failures by stage with counts; cost per plan, one dot per run; the largest context peaks</td></tr>
         <tr><td>One run</td><td><code>iterum report --run &lt;id&gt;</code></td><td>Status and first failing stage; a timeline of its steps; every event in order, failures marked with their details; its merges</td></tr>
       </tbody>
