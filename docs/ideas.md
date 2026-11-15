@@ -18,7 +18,7 @@ Raised 2026-11-15 by the user, asking whether notifications would work on Window
 
 1. **WSL:** run Iterum inside WSL, a Linux environment, unchanged. Untested; a desktop notification would have to reach Windows from Linux.
 2. **Native:** a Windows path for each item above (a lock that is not `fcntl`, process groups through Windows job objects or `CREATE_NEW_PROCESS_GROUP`, a shell choice for plans), each checked on a Windows machine. The process-group safety is the hard part.
-3. **Say so:** state in the README that Iterum needs macOS or Linux (or WSL), and leave it there.
+3. **Say so:** state in the README that Iterum needs macOS or Linux (or WSL), and leave it there. Done 2026-11-15: the README's Setup says it is built and tested on macOS, does not run on Windows, and that Linux or WSL may work but is untested.
 
 **Settled by.** Whether anyone needs it on Windows, and a Windows machine (or WSL) to test on.
 

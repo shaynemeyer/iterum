@@ -60,7 +60,7 @@ Every event carries a UUIDv7 `uid` and the `device` that wrote it, so ledgers fr
 
 ## Setup
 
-Requires Python 3.14 and [uv](https://docs.astral.sh/uv/). The doctor also checks for the `claude` CLI.
+Requires Python 3.14 and [uv](https://docs.astral.sh/uv/). The doctor also checks for the `claude` CLI. Built and tested on macOS. It does not run on Windows, since it relies on Unix process groups and file locks; Linux, or WSL on Windows, may work but is untested.
 
 For a step-by-step walkthrough, from install to a first landed run, with the `/iterum:fleet-plan` skill for creating plans, see [docs/setup-guide.md](docs/setup-guide.md).
 
