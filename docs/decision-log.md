@@ -2,6 +2,20 @@
 
 Decisions and why they were made. Newest first. Entries are never deleted; a decision that is reversed is marked "Superseded by" the entry that replaces it. Open decisions live in `open-questions.md`.
 
+## 2026-11-14: `/fleet-plan` proves a check passes on a correct version, and reads the whole page
+
+**Decision.** Option (c) of the open question "Should `/fleet-plan` prove a check passes on a correct version?", which is removed. The skill gets a new proof 2, between "fails on `main`" and the dry run: in the same throwaway worktree, the planning session writes the feature itself as the prompt asks, builds it, and runs every check, which must pass; a wrong check is fixed and proof 1 repeated; the version is never committed. A rule a correct version needs but the prompt does not state is noted in `plan.md`, and the user asked whether the prompt should name it. And the `check.sh` instructions now say to read the whole document with `<script>` payloads removed, not one element, and to remove React's `<!-- -->` separators and decode entities before matching text.
+
+**Context.** The user chose (c), 2026-11-14. Of five generated checks, the `search` check failed a correct page: it read only `<main>`, and under `cacheComponents: true` the results inside `<Suspense>` are streamed into a hidden `<div>` after it. Only a hand-written correct version showed it, before the paid run, which then passed (`nextjs-first-run.md`).
+
+**Alternatives.** (a) The proof alone; (b) the rule alone, which covers only failure modes already met; (d) nothing, a wrong check costing the retries and a failed run.
+
+**Evidence.** `sitemap`, `feed` and `search` were proven this way by hand on 2026-11-14, each in a few minutes, nothing billed. In `search`, the correct version also met the `<Suspense>` rule the paid run then hit and recovered from with one `fix.retry`.
+
+**Limits.** The session that writes the check also writes the correct version, so a misunderstanding of the feature they share passes both. The proof costs the planning session's tokens, counted against the fleet ceiling as `session-` spend.
+
+**Affects.** `plugins/iterum/skills/fleet-plan/SKILL.md`; `todo.md` (the follow-up is done).
+
 ## 2026-11-14: `fleet.run` does not require an output check; `/fleet-plan` does
 
 **Decision.** `fleet.run` keeps running a prompt plan whose only check is the build, or none; requiring an output check stays the job of `/fleet-plan`, which writes `check.sh`, proves it fails on `main` and that the dry run fails at it, before anything is billed. Option (c) of the open question "Should `fleet.run` refuse a prompt plan with no output check?", which is removed.

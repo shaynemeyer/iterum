@@ -2,6 +2,16 @@
 
 Items moved here from `todo.md` once done. Newest first.
 
+## `/fleet-plan` proves a check passes on a correct version
+
+Completed 2026-11-14. Moved from `todo.md` (`/fleet-plan` follow-ups):
+
+> 1. **The check is never shown to pass on a correct change.** `/fleet-plan` proves a check fails on `main`, but not that it passes on a correct version, as the hand-written checks were (`nextjs-first-run.md`, the tag pages). A wrong check fails a correct change, and the fix loop then pays for retries that cannot succeed. Until something covers it, the paid run is the first time a generated check meets a correct version. First case, 2026-11-13: the `tag-links` check passed on the run's correct change (`nextjs-first-run.md`). Second, 2026-11-14: the `tag-counts` check did the same. Third and fourth, 2026-11-14: the `sitemap` and `feed` checks passed on the runs' correct changes, and before the paid runs on a hand-written correct version, done by hand in the session, not by the skill. Four cases, all first-try runs. Fifth, 2026-11-14, `search`: the first page check **would have failed a correct page** (content under `<Suspense>` is streamed after `<main>`, which it read alone), found only by testing it on a hand-written correct version; fixed before the paid run, which then passed after a natural retry (`nextjs-first-run.md`). So the gap is real, not theoretical. To close it, the skill would take that step itself: a correct version written in a throwaway worktree, the check run against it, then thrown away. Not done; it means writing the feature once by hand (or by a model) before the paid run. Undecided: `open-questions.md`, "Should `/fleet-plan` prove a check passes on a correct version?"
+
+**Change.** `plugins/iterum/skills/fleet-plan/SKILL.md`: a new proof 2 (in the worktree from proof 1, write the feature as the prompt asks, build, every check must pass, the version never committed), and a rule in the `check.sh` instructions (read the whole page without `<script>` payloads, remove `<!-- -->`, decode entities). Decision log, "`/fleet-plan` proves a check passes on a correct version, and reads the whole page".
+
+**Evidence.** `claude plugin validate plugins/iterum` passes with its earlier warnings. The proof is the one taken by hand for `sitemap`, `feed` and `search` (`nextjs-first-run.md`); the skill itself has not run it yet.
+
 ## The worker can stop once the queue is empty
 
 Completed 2026-11-14. Found in the second real night (`overnight-design.md` section 5e): with both tasks done, the worker kept polling an empty queue until stopped by hand, so the report waited for its 30-minute budget or a Ctrl-C.

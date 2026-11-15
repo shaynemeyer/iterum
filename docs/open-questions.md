@@ -12,20 +12,6 @@ Decisions not made yet. When one is answered, record it in `decision-log.md`, ad
 
 **Settled by.** Those two decisions; a real night may show whether either matters.
 
-## Should `/fleet-plan` prove a check passes on a correct version?
-
-**Context.** `/fleet-plan` proves each check fails on `main` and that the dry run fails at it, but not that it passes on a correct change (`todo.md`, `/fleet-plan` follow-ups, item 1). A check that fails a correct change makes the fix loop pay for retries that cannot succeed (two retries, about $0.10 at a $0.05 cap), then fails the run, and the morning shows a failure that is the check's fault. Five cases so far (`nextjs-first-run.md`): `tag-links` and `tag-counts` were only checked by the paid run; `sitemap`, `feed` and `search` were also run against a correct version written by hand in a throwaway worktree, by the session that wrote the checks, before the paid run. One of the five was wrong: the `search` check read only `<main>`, but under the app's `cacheComponents: true` the results inside `<Suspense>` are streamed into a hidden `<div>` after it, so it failed the correct page. Only the hand-written version showed that; the run then passed with the fixed check.
-
-**Options.**
-(a) The skill writes a correct version itself, in a throwaway `git worktree` from `main`, builds it and runs the check, which must pass, then removes the worktree; a third proof beside the two it has. Catches what the search case hit. Costs the planning session's own tokens (an interactive session, counted against the fleet ceiling as `session-` spend) and some minutes; the same session writes the check and the correct version, so a misunderstanding they share passes both.
-(b) Only add the lesson as a rule in the skill, for example "read the whole page with `<script>` payloads removed, not one element". No cost per plan; covers only failure modes already met.
-(c) Both: the rule, and the correct-version proof.
-(d) Leave it: a wrong check costs at most the retries and a failed run, found in the morning.
-
-**Blocks.** Nothing. Matters more as nights grow: a wrong check wastes a whole task, and in a plan with several chunks, everything after it.
-
-**Settled by.** The user's choice of how much planning cost a night is worth. More nights would show how often a generated check is wrong (one in five so far, from a small sample).
-
 ## Should `claude.finished` keep the whole result envelope?
 
 **Context.** `claude_step()` logs only `exit_code`, `session_id`, `total_cost_usd`, `num_turns`, `is_error` and `permission_denials`. The first paid run (2026-11-11) therefore kept no full copy of a success envelope for `claude-step-design.md`. Its `num_turns` was 5 against 3 API requests in telemetry, for reasons not known. The second Next.js run (`095cf7955377`) reported `num_turns: 11` under `--max-turns 10`, without failing, while its transcript shows about 7 rounds of tool calls; 7 `spend.reported` events arrived.
