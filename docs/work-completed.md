@@ -2,6 +2,20 @@
 
 Items moved here from `todo.md` once done. Newest first.
 
+## A night's own spend limit, `iterum worker --max-usd`
+
+Completed 2026-11-15. Closes the overnight question (`overnight-design.md` section 6; removed from `open-questions.md`).
+
+**Change.** `fleet/governor.py`: `set_night()`, `night_spent()`, `night_headroom()`, and `unseen_spend(night)`. `fleet/worker.py`: `--max-usd` starts a night (`start_night()`), exports `ITERUM_NIGHT`, and checks the night's headroom before each claim. `fleet/db.py` and `fleet/run.py`: `run.started` records `night`, and `stop_at_ceiling()` checks the smaller headroom before each step. `/fleet-plan` states each plan's worst case and gives the worker command with `--max-usd`. Commits `58ea54b`, `2905782`.
+
+**Evidence.** Decision log, 2026-11-15, "A night has its own spend limit".
+
+## Use `fleet.merge --check` on real runs
+
+Completed 2026-11-15, replaced in `todo.md` by "run a feature only when you want it in the app" (decision log, 2026-11-15, "Feature runs only when the feature is wanted"). Moved from `todo.md`:
+
+> **Use `fleet.merge --check` on the next real runs.** Built and tested 2026-11-11 (`merge-check-design.md` section 6; moved to `work-completed.md`); first real use in the seventh Next.js run, two checks passing in about 5 s each; used again 2026-11-12 to land the notes section, whose printed command, with a quoted `[slug]` fence, pasted unchanged into zsh (`nextjs-first-run.md`). A staged refusal the same day: two branches that each built alone broke when merged, `--check` refused the second, kept its claim and left `main` alone, and after a hand fix it landed under the same fence (`nextjs-first-run.md`). The home-page copy (run `12c0572d5ec1`, 2026-11-12), the first run under `--restricted`, landed with `--check` on the first try. **No more runs just to find an unstaged refusal** (decided 2026-11-12): five Haiku runs that day (copy, links, one About link, and a concurrent pair where one read a file the other changed) each made a narrow edit with an output check and landed cleanly, and the staged refusal already showed the gate refuse, keep the claim and leave `main` alone. Keep using `--check` on every landing; record a refusal when one comes. Six Next.js feature runs (`nextjs-first-run.md`) surfaced three findings, each now handled: MCP tools and user context reaching prompt steps (decision log), a model-made syntax error (caught by the build step, fixed by hand, resumed for free), and branches that each build landing into a `main` that does not (now refused by `--check`). A free experiment showed a file-changing step that runs twice is fixed in the plan, so option B waits for an outside effect that cannot be checked first (decision log). Watch for a model mistake that gets past the build and `--check`: it would reopen the docs-hint decision (decision log, 2026-11-12, "Prompt steps stay bare"). Confirm each plan and its cap with the user before anything is billed, and record what runs surface here or in `open-questions.md`.
+
 ## `iterum land` leaves the app on `main`, updated
 
 Completed 2026-11-14. Found after the search night: the app sat detached at `02e15c7`, one landing behind `main` (`4d50086`), so a plan read the old files. Reproduced on a scratch repo: detached at `main`, `iterum land` moved `main` and left the checkout and its files behind.

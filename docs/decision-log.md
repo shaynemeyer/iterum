@@ -2,6 +2,38 @@
 
 Decisions and why they were made. Newest first. Entries are never deleted; a decision that is reversed is marked "Superseded by" the entry that replaces it. Open decisions live in `open-questions.md`.
 
+## 2026-11-15: A night has its own spend limit, `iterum worker --max-usd`
+
+**Decision.** `iterum worker <name> --max-usd X` runs a night that does not spend more than X on its own runs. The worker checks the night's headroom before each claim, and `fleet.run` before each step, where a prompt step starts only if its whole cap fits. The night's spend is the `spend.reported` of the runs whose `run.started` names the night, so interactive sessions do not count against it. The fleet ceiling still applies beside it. `/fleet-plan` states the worst case, (prompt steps + fix retries) × cap per plan, and puts `--max-usd` in the worker command.
+
+**Context.** Closing out the overnight question (`overnight-design.md` section 6). The user's requirement: "run these jobs and DON'T exceed this dollar amount". The fleet ceiling cannot say that: it counts every `spend.reported` since its window, interactive sessions included ($2.30 of $5.00 on 2026-11-15, almost all interactive), and the plans' per-step caps add up to a bound nothing enforces.
+
+**Alternatives.** The fleet ceiling as is, with `iterum budget reset` and `set` before each night (counts interactive spend during the night, and changes the fleet's ceiling); no limit, relying on the plans' worst case (arithmetic, not enforced).
+
+**Evidence.** Scratch databases, fake spend sent through the real receiver ($0.30 per step), night limit $0.50: four one-step tasks, two ran and the worker stopped with two queued; $1.00 of interactive spend did not count; no receiver, stopped before claiming; no `--max-usd`, as before. In one task, shell steps spending $0.30, $0.30, then a third, stopped before the third (`budget_exhausted`); a prompt step capped at $0.25 with $0.20 left never started (a fake `claude` on `PATH` was not called), and capped at $0.15 it did. Commits `58ea54b`, `2905782`.
+
+**Limits.** A session can pass its own `--max-budget-usd`, Claude Code's client-side estimate, so the night can pass X by that much. A task stopped by the limit is dead-lettered (one attempt) with its run resumable; redrive it in a new night. A resume by hand has no `ITERUM_NIGHT` and checks only the fleet.
+
+**Affects.** `fleet/governor.py`, `fleet/worker.py`, `fleet/run.py`, `fleet/db.py`; `plugins/iterum/skills/fleet-plan/SKILL.md`.
+
+## 2026-11-15: The 100K context budget is a planning rule, reported after, never split automatically
+
+**Decision.** The 100K budget keeps chunks small for context efficiency (context rot, `context-rot.md`). It is applied before a run by `/fleet-plan`'s rule of one prompt step touching one to three files; a token estimate before the run is not attempted, since the files a session reads and its turns are known only afterwards. After a run, its peak tokens per request are checked (`iterum view context` today; the morning report next, `todo.md`). A run over budget is reported, and the person splits the chunk when planning again; nothing splits or retries it automatically.
+
+**Context.** The last open decision of `overnight-design.md` section 6 besides the night's budget. Peaks so far: 5,801 to 7,623 tokens per request for the six feature steps of 2026-11-12, 5,816 for the feed-link run.
+
+**Alternatives.** Estimate tokens before each run (not possible from the plan alone); split and retry automatically (an unattended decision about the plan, where landing already stays a person's step).
+
+**Affects.** `overnight-design.md` section 6; `todo.md`.
+
+## 2026-11-15: Feature runs only when the feature is wanted
+
+**Decision.** No more feature runs as an exercise. A run happens when the user wants the feature in the app; what it surfaces becomes work then.
+
+**Context.** The last three runs (note footer, search, feed link) surfaced problems in how checks are written and in planning habits, not in Iterum; the last harness change a run forced was `iterum land` ending on `main` (2026-11-14). Runs to provoke a refusal were already stopped on 2026-11-12.
+
+**Affects.** `todo.md` item 1.
+
 ## 2026-11-15: `/fleet-plan` checks fail fast on a busy port, and servers start only through them
 
 **Decision.** Every `check.sh` the skill writes for a web app first exits 1 with `port <N> is already in use` on stderr if anything answers on its port, before starting its own server. And the planning session starts a server only through `check.sh`; to look at a page by hand it uses the same start-and-`trap` pattern, never `pkill -f "next start"`.

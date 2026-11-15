@@ -44,7 +44,7 @@ Only once nothing is open. Pick a short slug (`tag-pages`) and write to `<iterum
    3. `sh <iterum>/plans/<slug>/check.sh`.
    4. `git add <files> && git commit -m '<summary>'`.
 3. `dry.json`: the same plan with step 1's command replaced by `"echo dry"`.
-4. `plan.md`, in plain words: the feature; files; the prompt; build; what the check looks for; the land check (`<install> && <build>`, below); model; cap per step; `--fix-retries 2`; chunks; and a last line `Open questions: None`. If that line cannot say None, delete the files and go back to Rule 1.
+4. `plan.md`, in plain words: the feature; files; the prompt; build; what the check looks for; the land check (`<install> && <build>`, below); model; cap per step; `--fix-retries 2`; the worst case, (prompt steps + 2) × cap, which is the most the plan can be billed; chunks; and a last line `Open questions: None`. If that line cannot say None, delete the files and go back to Rule 1.
 
 ## Prove it, free
 
@@ -68,6 +68,12 @@ On no, give the line that queues it for the night instead, on a branch the dry r
 
 ```
 iterum add "iterum run <iterum>/plans/<slug>/plan.json --allow-claude <cap> --fix-retries 2 --land-check '<install> && <build>'" --repo <app root> --branch night/<slug>
+```
+
+and the line that runs the night, with the receiver up and `.env.example` sourced, as above. `--max-usd` is the most the night may spend on its own runs: the sum of the queued plans' worst cases, or a lower amount the user names. The worker stops before a claim or step that would pass it and leaves the rest queued.
+
+```
+iterum worker night-1 --until-empty --max-usd <usd>
 ```
 
 `--land-check` is the check for landing: it runs in a fresh temporary copy of the repo with no dependencies installed, so it must install them first; for a bun app, `"bun install --frozen-lockfile && bun run build"`. With the build alone, the landing is refused (`next: command not found`). The run prints the whole `iterum land ... --check` command when done, and the day's `iterum report` lists it under Ready to land. Landing stays a separate decision for a person.
