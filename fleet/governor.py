@@ -82,15 +82,48 @@ def headroom():
     return float("inf") if s is None else s[0] - s[1]
 
 
-def unseen_spend():
+def set_night(night, limit_usd):
+    """Give a night (one worker's batch of tasks) its own spend limit."""
+    with db.write() as con:
+        con.execute(
+            "INSERT INTO budgets (scope, limit_usd, window_start) VALUES (?,?,?)",
+            (f"night:{night}", limit_usd, time.time()),
+        )
+
+
+def night_spent(con, night):
+    """Total reported spend in USD of the runs whose run.started names this night."""
+    return con.execute(
+        "SELECT COALESCE(SUM(json_extract(payload, '$.cost_usd')), 0) FROM events"
+        " WHERE kind=? AND run_id IN (SELECT run_id FROM events"
+        " WHERE kind='run.started' AND json_extract(payload, '$.night')=?)",
+        (telemetry.KIND, night),
+    ).fetchone()[0]
+
+
+def night_headroom(night):
+    """USD left under the night's limit; infinite for no night."""
+    if night is None:
+        return float("inf")
+    con = db.connect()
+    try:
+        limit_usd = con.execute(
+            "SELECT limit_usd FROM budgets WHERE scope=?", (f"night:{night}",)
+        ).fetchone()[0]
+        return limit_usd - night_spent(con, night)
+    finally:
+        con.close()
+
+
+def unseen_spend(night=None):
     """Why the ceiling could not see claude's spend from this process, or None.
 
-    None when no ceiling is set. The ceiling counts only what fleet.telemetry logs, so
+    None when no ceiling is set and no night is given. The ceiling counts only what fleet.telemetry logs, so
     this names the problem when claude would not export telemetry, the receiver does not
     answer, or it writes to another database. A receiver that dies later is still missed
     (docs/decision-log.md, 2026-11-11).
     """
-    if status() is None:
+    if status() is None and night is None:
         return None
     endpoint = os.environ.get("OTEL_EXPORTER_OTLP_LOGS_ENDPOINT")
     if os.environ.get("CLAUDE_CODE_ENABLE_TELEMETRY") != "1" or not endpoint:

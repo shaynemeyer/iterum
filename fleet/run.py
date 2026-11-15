@@ -649,7 +649,8 @@ if __name__ == "__main__":
         check_resumable(run_id, plan, args.force)
     else:
         landing = {"branch": branch, "repo": repo_root(), "target": args.target, "land_check": args.land_check} if branch else None
-        run_id = db.start_run("worker-1", args.plan or "six step demo", os.environ.get("ITERUM_TASK"), landing)
+        run_id = db.start_run("worker-1", args.plan or "six step demo", os.environ.get("ITERUM_TASK"), landing,
+                              os.environ.get("ITERUM_NIGHT"))
         print(f"run {run_id} started")
     try:
         execute(run_id, plan, branch, args.target, args.allow_claude, args.fix_retries, args.land_check)

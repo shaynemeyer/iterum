@@ -26,6 +26,7 @@ import subprocess
 import sys
 import threading
 import time
+import uuid
 from contextlib import contextmanager
 from datetime import date
 
@@ -220,24 +221,35 @@ def _run_one(task, worker, work=None):
     print(f"{label}  done" if error is None else f"{label}  failed: {error}")
 
 
-def stop_at_ceiling(worker):
-    """Exit before claiming another task once the fleet has no headroom left.
+def stop_at_ceiling(worker, night=None):
+    """Exit before claiming another task once the fleet, or this night, has no headroom left.
 
     Checked between tasks, as fleet.run checks between steps, so no task is in
     flight and every queued task stays queued for a worker started after the
     ceiling is raised. A task can still pass the ceiling by its own spend.
     """
     left = governor.headroom()
-    if left > 0:
-        return
-    sys.exit(
-        f"{worker}  stopped: fleet headroom is {left:.4f} USD, so no task was claimed.\n"
-        "raise the ceiling, then start the worker again:\n"
-        "  iterum budget set <usd>"
-    )
+    if left <= 0:
+        sys.exit(
+            f"{worker}  stopped: fleet headroom is {left:.4f} USD, so no task was claimed.\n"
+            "raise the ceiling, then start the worker again:\n"
+            "  iterum budget set <usd>"
+        )
+    left = governor.night_headroom(night)
+    if left <= 0:
+        sys.exit(f"{worker}  stopped: night {night} has {left:.4f} USD left of its --max-usd, so no task was claimed.")
 
 
-def stop_on_unseen_spend(worker):
+def start_night(worker, max_usd):
+    """Give this worker's tasks a shared spend limit; their runs record the night id from ITERUM_NIGHT."""
+    night = uuid.uuid4().hex[:12]
+    governor.set_night(night, max_usd)
+    os.environ["ITERUM_NIGHT"] = night
+    print(f"{worker}  night {night}: at most {max_usd:.2f} USD")
+    return night
+
+
+def stop_on_unseen_spend(worker, night=None):
     """Exit before claiming when a ceiling is set and it could not see claude's spend.
 
     The worker's environment is every task's, so a missing telemetry setting or a dead
@@ -245,7 +257,7 @@ def stop_on_unseen_spend(worker):
     leaves the queue queued. It also stops a queue of shell-only tasks under a ceiling:
     a task holds only a shell string, so the worker cannot tell which plans call claude.
     """
-    problem = governor.unseen_spend()
+    problem = governor.unseen_spend(night)
     if problem:
         sys.exit(f"{worker}  stopped: no task was claimed. {problem}")
 
@@ -275,16 +287,19 @@ def write_report(worker):
     print(f"{worker}  report: {page}" if page else f"{worker}  report: no activity today, none written")
 
 
-def main(worker, budget_s=BUDGET_S, until_empty=False):
-    """Claim and run tasks until the budget ends, or, with until_empty, until no task is left to claim."""
+def main(worker, budget_s=BUDGET_S, until_empty=False, night=None):
+    """Claim and run tasks until the budget ends, or, with until_empty, until no task is left to claim.
+
+    night, from start_night(), stops the worker before a claim once the night's spend reaches its limit.
+    """
     deadline = time.time() + budget_s
     next_reap = 0
     while time.time() < deadline:
         if time.time() >= next_reap:
             _reap(worker)
             next_reap = time.time() + REAP_EVERY
-        stop_at_ceiling(worker)
-        stop_on_unseen_spend(worker)
+        stop_at_ceiling(worker, night)
+        stop_on_unseen_spend(worker, night)
         task = queue.claim(worker)
         if not task:
             if until_empty and not queue.pending():
@@ -301,10 +316,12 @@ if __name__ == "__main__":
     parser.add_argument("worker", help="a name unique to this worker")
     parser.add_argument("--budget-s", type=float, default=BUDGET_S)
     parser.add_argument("--until-empty", action="store_true", help="stop once no task is ready or in progress, not only when the budget ends")
+    parser.add_argument("--max-usd", type=float, help="stop before claiming once the runs this worker started have spent this much")
     args = parser.parse_args()
     stop_on_sigterm()
     db.init()
+    night = start_night(args.worker, args.max_usd) if args.max_usd is not None else None
     try:
-        main(args.worker, args.budget_s, args.until_empty)
+        main(args.worker, args.budget_s, args.until_empty, night)
     finally:
         write_report(args.worker)

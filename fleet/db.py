@@ -114,14 +114,15 @@ def log(con, run_id, kind, stage="harness", seq=None, **payload):
     )
 
 
-def start_run(agent, task, queue_task=None, landing=None):
+def start_run(agent, task, queue_task=None, landing=None, night=None):
     """Insert a running run and log run.started.
 
-    queue_task is the queue task's ledger id when a worker started it. landing is
+    queue_task is the queue task's ledger id when a worker started it; night is the
+    worker's night id when it runs under a night's spend limit. landing is
     {"branch", "repo", "target"} for a run that declares files, so a report can say how to land it.
     """
     run_id = uuid.uuid4().hex[:12]
-    links = ({"queue_task": queue_task} if queue_task else {}) | (landing or {})
+    links = ({"queue_task": queue_task} if queue_task else {}) | ({"night": night} if night else {}) | (landing or {})
     with write() as con:
         con.execute(
             "INSERT INTO runs (run_id, agent, task, status, started_at) VALUES (?,?,?,'running',?)",
