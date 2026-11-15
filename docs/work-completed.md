@@ -2,6 +2,16 @@
 
 Items moved here from `todo.md` once done. Newest first.
 
+## `install.sh`: one script for setup
+
+Completed 2026-11-15. Raised the same day by the user ("should we make the install script a bash script or something?"); never in `todo.md`. The guide's setup was a shell-profile edit and eight commands (install, doctor, seed-ledger, project, three plugin commands).
+
+**Change.** `install.sh`, run once from a clone: checks for `git` and `uv`; asks for the device name only when `ITERUM_DEVICE` is unset (default `hostname -s`), and exits 1 without a terminal to ask on; runs `uv tool install --editable .`, `iterum doctor`, `scripts/seed-ledger.py`, and `iterum project` twice (the first DRIFT expected); installs the plugin, or prints the commands when `claude` is missing; stops at the first failure (`set -euo pipefail`); prints the `ITERUM_DEVICE` line, and `ITERUM_HOME` when not cloned to `~/github/iterum`, for the user's profile, never editing it. README Setup, `setup-guide.md` (steps 1 to 4 merged into "1. Install", later sections renumbered), `sync.md` and CLAUDE.md updated (`d4342de`). On `gh-pages`, the front page and guide install with `./install.sh` (`6b42adb`); the manual now says where Iterum runs (`8552f95`).
+
+**Evidence.** Scratch databases: with `ITERUM_DEVICE=test`, 7 `layer.checked` events, `run.started` and `run.done` recorded under `test`, `iterum project` MATCH, plugin already installed reported without error; with no device and no terminal, the message and exit 1; through a pseudo-terminal, Enter took the default and events were recorded under `Black-Mamba-2`. Live pages fetched after the Pages build contain `install.sh`.
+
+**Not yet seen.** A run on a machine without Python 3.14 (left to `uv tool install`) or without the plugin installed, or on a fresh clone.
+
 ## `iterum budget suggest` and `iterum add --plan`
 
 Completed 2026-11-15. Taken up from `ideas.md`, "Iterum suggests a budget for the night" (raised 2026-11-14 by the user: "it would be a nice feature if iterum could recommend a budget for the night"), and removed there.
