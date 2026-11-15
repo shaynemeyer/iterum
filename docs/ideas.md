@@ -2,6 +2,26 @@
 
 Things that might be worth doing, not yet planned or decided. When one is taken up, it moves to `todo.md` (or a plan), and its decisions go to `decision-log.md`.
 
+## Windows support
+
+Raised 2026-11-15 by the user, asking whether notifications would work on Windows. Iterum does not run natively on Windows today; nothing in the docs says it does, and it has never been tried on one.
+
+**What is Unix-only** (found by reading the code, not by running it on Windows):
+
+- `fcntl`, Unix-only per Python's docs (https://docs.python.org/3/library/fcntl.html): `fleet/merge.py` imports it at the top for the per-repo merge lock, so `iterum land` fails on import; `fleet/merge_drill.py` too.
+- `os.killpg`, Unix-only per Python's docs (https://docs.python.org/3/library/os.html#os.killpg): `fleet/run.py`, `fleet/worker.py` and `fleet/merge.py` kill a step's, task's or check's whole process group with it, and `fleet/proc.py` tests whether a group is alive. That is what stops a resume or a reap from running beside a killed run's command.
+- `start_new_session=True` on `Popen` (a new Unix session per command), which those groups rely on.
+- Plans' shell strings run with `shell=True`, which is `cmd.exe` on Windows, not `sh`: plans and checks written for `sh` (`check.sh`, `&&`, `trap`) would not run as written.
+- Smaller: `iterum report --open` calls macOS `open`; `--pdf` looks for Chrome on `PATH` or the macOS app path.
+
+**Options.**
+
+1. **WSL:** run Iterum inside WSL, a Linux environment, unchanged. Untested; a desktop notification would have to reach Windows from Linux.
+2. **Native:** a Windows path for each item above (a lock that is not `fcntl`, process groups through Windows job objects or `CREATE_NEW_PROCESS_GROUP`, a shell choice for plans), each checked on a Windows machine. The process-group safety is the hard part.
+3. **Say so:** state in the README that Iterum needs macOS or Linux (or WSL), and leave it there.
+
+**Settled by.** Whether anyone needs it on Windows, and a Windows machine (or WSL) to test on.
+
 ## Notify when plans finish: Slack, email or text
 
 Raised 2026-11-15 by the user: "the ability to send notifications when plans are complete to like slack, email or text message".
