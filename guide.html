@@ -89,6 +89,7 @@ iterum run feature.json</pre></div>
   <header><div class="eyebrow">Chapter 01</div><h2>Before you start</h2></header>
   <div class="col stack">
     <p>You need <b>Python 3.14</b> (Iterum uses <code>uuid.uuid7()</code>) and <a href="https://docs.astral.sh/uv/">uv</a>. Prompt steps also need the <code>claude</code> CLI, signed in.</p>
+    <p><b>macOS.</b> Iterum is built and tested on macOS. It does not run on Windows: it relies on Unix process groups and file locks. Linux, or WSL on Windows, may work but is untested.</p>
     <p>Every event records which machine wrote it, so name this machine once, in your shell profile:</p>
   </div>
   <div class="term"><button type="button">Copy</button><pre><span class="c"># ~/.zshrc or ~/.bashrc, then open a new terminal</span>
