@@ -12,6 +12,7 @@ pass the ceiling by one step's spend (decision log, 2026-11-12).
     iterum budget
     iterum budget set <usd>
     iterum budget reset
+    iterum budget suggest
 """
 
 import argparse
@@ -22,7 +23,7 @@ import time
 import urllib.request
 from datetime import datetime
 
-from fleet import db, telemetry
+from fleet import db, suggest, telemetry
 
 SCOPE = "fleet"
 
@@ -168,9 +169,13 @@ def main():
     commands = parser.add_subparsers(dest="command")
     commands.add_parser("set").add_argument("usd", type=float)
     commands.add_parser("reset", help="count spend from now on, keeping the ceiling")
+    commands.add_parser("suggest", help="estimate the ready tasks' cost and suggest a --max-usd for the night")
     args = parser.parse_args()
 
     db.init()  # a fresh agent.db has no tables yet; safe to repeat
+    if args.command == "suggest":
+        suggest.show()
+        return
     if args.command == "set":
         set_ceiling(args.usd)
     elif args.command == "reset":
