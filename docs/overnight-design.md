@@ -141,6 +141,10 @@ What broke or is missing:
 
 Two one-file plans (a sitemap and an RSS feed, `nextjs-first-run.md`), queued as tasks 7 and 8 and drained by one worker, with every fix from section 5d in place. Nothing broke: the receiver check in `iterum status` passed first; both runs finished on the first try ($0.003 together); the app was left clean and detached; the worker wrote the day's report when stopped, listing both runs under Ready to land; and both pasted land commands landed with `--check`. The worker kept polling an empty queue until stopped: with a 30-minute budget, the report waits for the budget or a Ctrl-C.
 
+## 5f. A two-chunk night, 2026-11-14
+
+One plan, two dependent chunks (search on the notes list, `nextjs-first-run.md`), each a prompt step with its own check, as one task under "one task per file per night". The worker ran with `--until-empty` and stopped by itself once the task was done. The second chunk failed the build on a framework rule the prompt left out; the fix loop fed the build error back and the retry passed, the first natural `fix.retry`. Writing the check found it would have failed a correct page (content under `<Suspense>` is streamed outside `<main>`); only testing it on a hand-written correct version showed that.
+
 ## 6. Open decisions
 
 - *Settled 2026-11-13 (decision log): `/fleet-plan` is user-level, plans go in a gitignored `plans/`. Where it lives superseded 2026-11-14: the `iterum` plugin in this repo.*
