@@ -355,3 +355,13 @@ Run `663ba8f2873c` on `feat/note-footer`, plan `plans/note-footer/plan.json` (gi
 - **Each retry fixed exactly what the error named, and only that.** The check stops at its first miss, so two misses cost two retries. A check that listed every miss would likely have needed one. Not tested.
 - Landed with `iterum land feat/note-footer --run-id 663ba8f2873c --fence 'file:app/notes/[slug]/page.tsx=16' --check "bun install --frozen-lockfile && bun run build"` as `2b50a38`: `merge.landed` (`expired` empty), `claim.released`; no claims left. The land command `fleet.run` printed has no `--check`; it was added by hand.
 - The model's own first and second versions are not kept: each retry edits the same file, and only the last is committed.
+
+## Results: a sitemap and an RSS feed, the second real night, 2026-11-14
+
+Two plans (`plans/sitemap/`, `plans/feed/`, gitignored), written by following `/iterum:fleet-plan` by hand in an Iterum session: (1) a Haiku prompt step creating one file (`app/sitemap.ts`; `app/feed.xml/route.ts`), (2) build, (3) `check.sh`, (4) commit, `--allow-claude 0.05 --fix-retries 2 --land-check "bun install --frozen-lockfile && bun run build"`. The sitemap lists every page, note and tag page under the `https://example.com` base `app/robots.ts` already named (the `robots-sitemap` plan had left `/sitemap.xml` a 404); the feed is RSS 2.0, one item per note. Neither touches the other's file, so both were queued as tasks 7 and 8 with `--repo <app> --branch night/<slug>` and drained by one `iterum worker`.
+
+- Proven free before queueing: each check failed on `main` (404); each dry run committed steps 1 and 2 and failed at step 3; and each check passed on a hand-written correct version in a throwaway worktree, a step the skill does not yet take.
+- Both runs `done` on the first try; no `fix.retry`. Sitemap `6d40c604ef1b`: $0.00149, 3 requests, `app/sitemap.ts` +17 lines. Feed `86c9459a2a73`: $0.00153, 3 requests, `app/feed.xml/route.ts` +47 lines.
+- The worker, stopped with Ctrl-C once the queue was empty, wrote the day's report: both runs named by plan folder, linked to tasks 7 and 8, listed under Ready to land with their land commands; spend split $0.0087 runs, $2.89 sessions; needs a person: nothing.
+- Both land commands, pasted from the report, landed with the check: `night/sitemap` as `0af5057`, `night/feed` as `02e15c7`; no claims left. The app stays detached at the old `main`, as the worker leaves it.
+

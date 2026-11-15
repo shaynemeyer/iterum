@@ -137,6 +137,10 @@ What broke or is missing:
 3. **A worker with no telemetry settings under a ceiling dead-letters every task** instead of stopping, like the dirty-tree stop: a condition that fails every task should stop the worker before it claims, leaving the queue as it is.
 4. **The morning report does not show the night.** `iterum report --json` for the day had both runs and their cost, but named both `plan.json`, listed no dead-lettered tasks under needs-a-person, no done-but-unlanded branches with their land commands, no task-to-run link, and spend only as one total with interactive sessions in it.
 
+## 5e. The second real night, 2026-11-14
+
+Two one-file plans (a sitemap and an RSS feed, `nextjs-first-run.md`), queued as tasks 7 and 8 and drained by one worker, with every fix from section 5d in place. Nothing broke: the receiver check in `iterum status` passed first; both runs finished on the first try ($0.003 together); the app was left clean and detached; the worker wrote the day's report when stopped, listing both runs under Ready to land; and both pasted land commands landed with `--check`. The worker kept polling an empty queue until stopped: with a 30-minute budget, the report waits for the budget or a Ctrl-C.
+
 ## 6. Open decisions
 
 - *Settled 2026-11-13 (decision log): `/fleet-plan` is user-level, plans go in a gitignored `plans/`. Where it lives superseded 2026-11-14: the `iterum` plugin in this repo.*
