@@ -501,17 +501,13 @@ night-1  queue empty, stopping</div>
   <div class="wrap">
     <p class="eyebrow">Get started</p>
     <h2>Up and running in a minute</h2>
-    <p class="sub">One <code>uv tool install</code> puts the <code>iterum</code> command on your path. Put <code>ITERUM_DEVICE</code> in your shell profile so every new terminal has it. Built and tested on macOS; it does not run on Windows, and Linux or WSL may work but are untested.</p>
+    <p class="sub">One script installs the <code>iterum</code> command and the Claude Code plugin, and records this machine's first audit. It asks for this machine's name, then prints the line to put in your shell profile. Built and tested on macOS; it does not run on Windows, and Linux or WSL may work but are untested.</p>
     <div class="chips"><span class="chip">macOS</span><span class="chip">Python 3.14</span><span class="chip">uv</span><span class="chip">git</span><span class="chip">Claude Code</span></div>
     <div class="code reveal">
       <button class="copy" type="button">Copy</button>
-<pre id="cmds"><span class="p">$ </span>export ITERUM_DEVICE=laptop       <span class="c"># unique per machine</span>
-<span class="p">$ </span>git clone https://github.com/shaynemeyer/iterum.git
+<pre id="cmds"><span class="p">$ </span>git clone https://github.com/shaynemeyer/iterum.git
 <span class="p">$ </span>cd iterum
-<span class="p">$ </span>uv tool install --editable .      <span class="c"># installs the iterum command</span>
-<span class="p">$ </span>iterum doctor                     <span class="c"># audit this machine</span>
-<span class="p">$ </span>uv run scripts/seed-ledger.py     <span class="c"># record the audit in agent.db</span>
-<span class="p">$ </span>iterum project                    <span class="c"># rebuild knowledge from the ledger</span></pre>
+<span class="p">$ </span>./install.sh                      <span class="c"># asks for this machine's name</span></pre>
     </div>
     <p class="sub" style="margin:28px auto 0;font-size:1rem">Then follow the <a href="guide.html">user guide</a>, read the <a href="https://github.com/shaynemeyer/iterum#readme">README</a>, and the <a href="https://github.com/shaynemeyer/iterum/blob/main/docs/sync.md">sync guide</a> to add more machines.</p>
   </div>

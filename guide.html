@@ -90,25 +90,18 @@ iterum run feature.json</pre></div>
   <div class="col stack">
     <p>You need <b>Python 3.14</b> (Iterum uses <code>uuid.uuid7()</code>) and <a href="https://docs.astral.sh/uv/">uv</a>. Prompt steps also need the <code>claude</code> CLI, signed in.</p>
     <p><b>macOS.</b> Iterum is built and tested on macOS. It does not run on Windows: it relies on Unix process groups and file locks. Linux, or WSL on Windows, may work but is untested.</p>
-    <p>Every event records which machine wrote it, so name this machine once, in your shell profile:</p>
-  </div>
-  <div class="term"><button type="button">Copy</button><pre><span class="c"># ~/.zshrc or ~/.bashrc, then open a new terminal</span>
-export ITERUM_DEVICE=laptop</pre></div>
-  <div class="col stack">
-    <p>Then install the <code>iterum</code> command, audit the machine, and record the audit as the first events in the ledger:</p>
+    <p>Clone Iterum and run its install script:</p>
   </div>
   <div class="term"><button type="button">Copy</button><pre>git clone https://github.com/shaynemeyer/iterum.git &amp;&amp; cd iterum
-uv tool install --editable .      <span class="c"># installs iterum; editable, so a git pull updates it</span>
-iterum doctor                     <span class="c"># writes ./harness-audit.json</span>
-uv run scripts/seed-ledger.py     <span class="c"># records it as layer.checked events</span>
-iterum project                    <span class="c"># builds knowledge; the first run always reports DRIFT</span></pre></div>
+./install.sh</pre></div>
   <div class="col stack">
-    <p>To plan features from a sentence, install the <code>iterum</code> Claude Code plugin from your clone. It adds <code>/iterum:fleet-plan</code> to every project:</p>
+    <p>It asks for a name for this machine (every event records which machine wrote it; set <code>ITERUM_DEVICE</code> to skip the question), then installs the <code>iterum</code> command (editable, so a <code>git pull</code> updates it), audits the machine and records the audit as the first events in the ledger, builds knowledge, and installs the <code>iterum</code> Claude Code plugin, which adds <code>/iterum:fleet-plan</code> to every project. It stops at the first step that fails, and skips the plugin if <code>claude</code> is not installed.</p>
+    <p>At the end it prints the lines to add to your shell profile. Add them, then open a new terminal:</p>
   </div>
-  <div class="term"><button type="button">Copy</button><pre>claude plugin marketplace add "$PWD"   <span class="c"># from the iterum clone: its .claude-plugin/marketplace.json</span>
-claude plugin install iterum@iterum
-claude plugin list                     <span class="c"># iterum@iterum ... enabled</span></pre></div>
-  <div class="note"><b>Cloned somewhere other than <code>~/github/iterum</code>?</b> Set <code>ITERUM_HOME</code> to the clone in your shell profile. <code>/iterum:fleet-plan</code> writes plans to <code>$ITERUM_HOME/plans/</code>, which git ignores, so your app's tree stays clean.</div>
+  <div class="term"><button type="button">Copy</button><pre><span class="c"># ~/.zshrc or ~/.bashrc</span>
+export ITERUM_DEVICE=laptop            <span class="c"># the name you gave</span>
+export ITERUM_HOME=/path/to/iterum     <span class="c"># printed only if not cloned to ~/github/iterum</span></pre></div>
+  <div class="note"><b>Why <code>ITERUM_HOME</code>?</b> <code>/iterum:fleet-plan</code> looks for Iterum there and writes plans to <code>$ITERUM_HOME/plans/</code>, which git ignores, so your app's tree stays clean.</div>
   <div class="note"><b>Shell cannot find <code>iterum</code>?</b> Run <code>uv tool update-shell</code> and open a new terminal. Each <code>iterum</code> command runs a module as <code>python -m</code> would, so <code>uv run python -m fleet.&lt;module&gt;</code> from the Iterum repo still works. The database is created on first use at <code>~/.local/share/iterum/agent.db</code>.</div>
 </section>
 
