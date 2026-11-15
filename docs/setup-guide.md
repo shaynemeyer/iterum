@@ -288,14 +288,15 @@ Add `--check "<install> && <build>"` to run your build on the merged tree before
 Queue a plan and let a worker run it. When you answer no to "Implement this feature?", `/iterum:fleet-plan` gives you this line ready-made:
 
 ```bash
-iterum add "iterum run /path/to/plan.json" --repo . --branch feature/queued
+iterum add --plan /path/to/plan.json --allow-claude 0.05 --fix-retries 2 --repo . --branch feature/queued
+iterum budget suggest
 iterum worker w1 --budget-s 1800 --until-empty --max-usd 0.50
 ```
 
-`--max-usd` is the most the worker's own runs may spend; interactive sessions do not count. It stops before a claim, or before a step, that would pass it, and leaves the rest queued. It needs the telemetry receiver, as a ceiling does.
+`iterum budget suggest` prints each queued task's worst case, (prompt steps + fix retries) x cap, its typical cost from past prompt steps on the same model, and the worker line with `--max-usd` at the sum of the worst cases. It changes nothing. `--max-usd` is the most the worker's own runs may spend; interactive sessions do not count. It stops before a claim, or before a step, that would pass it, and leaves the rest queued. It needs the telemetry receiver, as a ceiling does.
 
 ```text
-task 1 queued
+task 1 queued: iterum run --plan /path/to/plan.json --allow-claude 0.05 --fix-retries 2
 w1  night de79f0a7fb33: at most 0.50 USD
 w1  task 1 (shell)  done
 w1  queue empty, stopping

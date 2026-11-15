@@ -39,13 +39,13 @@ Every event carries a UUIDv7 `uid` and the `device` that wrote it, so ledgers fr
 | `fleet/recovery.py` | Lists runs that died and halts ones retried too often |
 | `fleet/step.py`, `fleet/idem.py` | Retries a step only when its failure class allows; at-most-once side effects with receipts. Not yet called by `fleet.run` (`docs/commit-once-design.md`) |
 | `fleet/queue.py`, `fleet/worker.py` | A work queue with dependencies, leases, fences and a dead-letter queue, and the worker loop that drains it |
-| `fleet/add.py` | `iterum add`: queues a shell command, usually an `iterum run`, optionally on a new branch of a repo |
+| `fleet/add.py` | `iterum add`: queues a shell command, or with `--plan` builds the `iterum run` and keeps its cap and retries, optionally on a new branch of a repo |
 | `fleet/dlq.py`, `fleet/conflicts.py` | Lists dead-lettered tasks and puts one back on the queue; lists conflicts waiting for a person and settles one |
 | `fleet/claim.py` | Claims on files: leases that expire, with fences that make expiry safe |
 | `fleet/merge.py` | Lands a branch only while every changed file has a live claim and, with `--check`, a command passes on the merged tree |
 | `fleet/gate.py` | A `PreToolUse` hook that refuses an edit to a file another run has claimed; not registered here, wire it up yourself |
 | `fleet/telemetry.py` | Receives Claude Code telemetry and records each API request's cost; settings in [`.env.example`](.env.example) |
-| `fleet/governor.py` | `iterum budget`: a fleet-wide spend ceiling, summed from the ledger's `spend.reported` events, and a night's limit (`iterum worker --max-usd`) on one worker's runs; runs and workers stop at either |
+| `fleet/governor.py` | `iterum budget`: a fleet-wide spend ceiling, summed from the ledger's `spend.reported` events, and a night's limit (`iterum worker --max-usd`) on one worker's runs; runs and workers stop at either. `iterum budget suggest` (`fleet/suggest.py`) estimates the queued tasks' cost |
 | `fleet/approve.py` | An approval gate for irreversible actions (`iterum approve`, `deny`; nothing calls it yet), and `iterum freeze`/`thaw` to stop new queue work |
 | `fleet/view.py` | Read-only views: live sessions and runs, one run's trace, failures per stage |
 | `fleet/canary.py` | `iterum canary`: flags recent runs whose median events, seconds or cost moved from the runs before them; detects change, not wrong output |

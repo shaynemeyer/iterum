@@ -67,12 +67,13 @@ iterum run <iterum>/plans/<slug>/plan.json --allow-claude <cap> --fix-retries 2 
 On no, give the line that queues it for the night instead, on a branch the dry run did not make:
 
 ```
-iterum add "iterum run <iterum>/plans/<slug>/plan.json --allow-claude <cap> --fix-retries 2 --land-check '<install> && <build>'" --repo <app root> --branch night/<slug>
+iterum add --plan <iterum>/plans/<slug>/plan.json --allow-claude <cap> --fix-retries 2 --land-check "<install> && <build>" --repo <app root> --branch night/<slug>
 ```
 
-and the line that runs the night, with the receiver up and `.env.example` sourced, as above. `--max-usd` is the most the night may spend on its own runs: the sum of the queued plans' worst cases, or a lower amount the user names. The worker stops before a claim or step that would pass it and leaves the rest queued.
+`--plan` keeps the cap and retries in the task, so once everything for the night is queued, `iterum budget suggest` prints each task's worst case and its typical cost from past runs on the same model, and the line that runs the night with `--max-usd` at the sum of the worst cases. Run it with the receiver up and `.env.example` sourced, as above. `--max-usd` is the most the night may spend on its own runs; the user may name a lower amount. The worker stops before a claim or step that would pass it and leaves the rest queued.
 
 ```
+iterum budget suggest
 iterum worker night-1 --until-empty --max-usd <usd>
 ```
 

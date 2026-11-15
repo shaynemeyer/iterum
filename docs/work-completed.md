@@ -2,6 +2,16 @@
 
 Items moved here from `todo.md` once done. Newest first.
 
+## `iterum budget suggest` and `iterum add --plan`
+
+Completed 2026-11-15. Taken up from `ideas.md`, "Iterum suggests a budget for the night" (raised 2026-11-14 by the user: "it would be a nice feature if iterum could recommend a budget for the night"), and removed there.
+
+**Change.** `fleet/add.py`: `iterum add --plan p.json [--allow-claude] [--fix-retries] [--land-check]` builds the `iterum run --plan` command and keeps `plan` (absolute), `allow_claude` and `fix_retries` in the payload (`9d3f13a`). `fleet/suggest.py`, `iterum budget suggest`: per ready task, "at most" (prompt steps + fix retries) x cap and "typical" prompt steps x the median past cost of one prompt step on its model, then totals and `iterum worker night-1 --until-empty --max-usd <total at most>`; sets nothing (`0101b4d`). `/fleet-plan` queues with `--plan` and runs `suggest`. The sketch's `iterum budget set && reset` became `--max-usd`, built earlier the same day.
+
+**Evidence.** Scratch database: three Haiku prompt-step sessions at $0.001, $0.002, $0.010 and a $5.00 interactive session; six tasks gave at most 0.15 (1 step, cap 0.05, 2 retries), 0.10 (2 steps), 0.50 with typical unknown (Opus, no history), 0 (no prompt steps), unknown (prompt steps, no `--allow-claude`) and unknown (plain command); totals 0.75 and 0.006; `--max-usd 0.75`; no `budgets` row. `iterum add --plan`: payloads as given, a worker ran each, and a quoted `bun install --frozen-lockfile && bun run build` reached `run.started` intact. Real database, read-only: Haiku median $0.00097 over 61 prompt steps (real nights: $0.0011, $0.00093, $0.00054), Opus $0.0133 over 29.
+
+**Not yet seen.** A real night queued with `--plan` and run at the suggested limit.
+
 ## The day's report shows each run's peak context
 
 Completed 2026-11-15. Moved from `todo.md`:
