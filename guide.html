@@ -59,7 +59,7 @@
     <ol class="steps">
       <li><div><p><b>Plan it with <code>/iterum:fleet-plan</code></b> from a Claude Code session in the app repo: one sentence about the feature. It asks until nothing is open, then writes the plan, a check script and a plan document, proves the check fails on <code>main</code>, and dry-runs the plan for free. <a href="#planning">Planning a feature</a>.</p></div></li>
       <li><div><p><b>Read the plan document</b>: the files, the prompt, what the check looks for, the model and the cap. Nothing is billed until you say yes. To write plans yourself, see <a href="manual.html">Writing plans by hand</a>.</p></div></li>
-      <li><div><p><b>Run it now, or queue it for the night.</b> Now: start the receiver, load the telemetry settings, and run it with <code>--allow-claude</code> and <code>--fix-retries 2</code> on a feature branch. Tonight: queue it with <code>iterum add</code> and start a worker. <a href="#night">A night's queue</a>.</p></div></li>
+      <li><div><p><b>Run it now, or queue it for the night.</b> Now: start the receiver, load the telemetry settings, and run it with <code>--allow-claude</code> and <code>--fix-retries 2</code> on a feature branch. Tonight: queue it with <code>iterum add --plan</code>, ask <code>iterum budget suggest</code> what the night may cost, and start a worker with that <code>--max-usd</code>. <a href="#night">A night's queue</a>.</p></div></li>
       <li><div><p><b>Land it</b> with the printed command plus <code>--check</code>. If it is refused, fix on the branch and land again. <a href="#landing">Landing a branch</a>.</p></div></li>
       <li><div><p><b>If anything stops,</b> read its status and resume; nothing finished runs twice. <a href="#stopped">When a run stops</a>. Delete the merged branch when you are done.</p></div></li>
     </ol>
@@ -377,8 +377,10 @@ iterum budget reset        <span class="c"># count from zero again, keeping the 
 ceiling 3.00  spent 0.0000  headroom 3.0000 USD  (since 2026-11-14 07:30)</span></pre></div>
   <div class="col stack">
     <p><b>A budget for the night.</b> Give the worker its own limit with <code>--max-usd</code>. It counts only the spend of the runs that worker starts, so your interactive sessions do not eat into it, and the fleet ceiling still applies beside it. The worker stops before a claim, and a run before a step, that would pass it: a prompt step starts only if its whole cap fits in what is left. What did not run stays queued; a run stopped mid-plan is dead-lettered and can be resumed. A session can pass its own cap a little (Claude Code's estimate is client-side), so a night can too. Setting a ceiling changes only the limit; to count the fleet's spend from zero, <code>iterum budget reset</code>, logged as a <code>budget.reset</code> event with the spend it set aside.</p>
+    <p><b>What to set it to.</b> Queue the night's plans with <code>iterum add --plan</code>, then run <code>iterum budget suggest</code>. For each task it prints the most it can be billed, (prompt steps + fix retries) &times; cap, and its typical cost, the median of past prompt steps on the same model; then the worker line with <code>--max-usd</code> at the sum of the worst cases. It changes nothing. A task queued as a plain command shows "cost unknown".</p>
   </div>
-  <div class="term"><button type="button">Copy</button><pre>iterum worker night-1 --until-empty --max-usd 1</pre></div>
+  <div class="term"><button type="button">Copy</button><pre>iterum budget suggest                              <span class="c"># each task's worst and typical cost, and the line below</span>
+iterum worker night-1 --until-empty --max-usd 0.30</pre></div>
   <div class="note warn"><b>Your own sessions count too.</b> The receiver records any Claude Code session started from a shell where <code>.env.example</code> was sourced, and the ceiling adds up everything it records. Source it only in the terminal that runs plans and workers, and start your interactive <code>claude</code> elsewhere.</div>
   <figure>
     <div class="fig">
@@ -516,18 +518,19 @@ iterum thaw                                      <span class="c"># last, after t
   <div class="note"><b>Approvals.</b> <code>iterum status</code> lists approval requests and <code>iterum approve|deny &lt;fingerprint&gt;</code> settles one. Requests come from <code>approve.require()</code>, which nothing in Iterum calls yet, so the list stays empty until your own code calls it.</div>
   <div class="col stack" id="night">
     <h3>A night's queue</h3>
-    <p>Plan each feature with <code>/iterum:fleet-plan</code> and answer no to "Implement this feature?". Queue each plan with the app repo and a branch name, and start one worker with the night's budget, <code>--max-usd</code>. For each task, the worker makes the branch from <code>--base</code> (default <code>main</code>), runs the plan there, and returns to the base detached, so <code>iterum land</code> can move it in the morning.</p>
+    <p>Plan each feature with <code>/iterum:fleet-plan</code> and answer no to "Implement this feature?". Queue each plan with <code>iterum add --plan</code>, the app repo and a branch name; <code>iterum budget suggest</code> gives the night's budget, and one worker runs them under it, <code>--max-usd</code>. For each task, the worker makes the branch from <code>--base</code> (default <code>main</code>), runs the plan there, and returns to the base detached, so <code>iterum land</code> can move it in the morning.</p>
   </div>
   <div class="term"><button type="button">Copy</button><pre><span class="c"># terminal 1</span>
 iterum receiver
 
 <span class="c"># terminal 2, the only one with the telemetry settings</span>
 source &lt;iterum&gt;/.env.example
-iterum add "iterum run &lt;iterum&gt;/plans/not-found-links/plan.json --allow-claude 0.05 --fix-retries 2" \
+iterum add --plan &lt;iterum&gt;/plans/not-found-links/plan.json --allow-claude 0.05 --fix-retries 2 \
   --repo ~/code/my-app --branch night/not-found-links
-iterum add "iterum run &lt;iterum&gt;/plans/robots-sitemap/plan.json --allow-claude 0.05 --fix-retries 2" \
+iterum add --plan &lt;iterum&gt;/plans/robots-sitemap/plan.json --allow-claude 0.05 --fix-retries 2 \
   --repo ~/code/my-app --branch night/robots-sitemap
-iterum worker night-1 --budget-s 600 --until-empty --max-usd 1</pre></div>
+iterum budget suggest      <span class="c"># one prompt step each: at most (1 + 2) &times; 0.05 = 0.15 per task</span>
+iterum worker night-1 --budget-s 600 --until-empty --max-usd 0.30</pre></div>
   <div class="tbl">
     <table>
       <thead><tr><th>When</th><th>The worker</th></tr></thead>
@@ -560,6 +563,7 @@ iterum worker night-1 --budget-s 600 --until-empty --max-usd 1</pre></div>
         <tr><td><code>iterum view stages [days]</code></td><td>Failures per stage, default the last 7 days</td></tr>
         <tr><td><code>iterum view context [session]</code></td><td>Context size per session, or per request in one session</td></tr>
         <tr><td><code>iterum budget</code></td><td>Ceiling, spend and headroom</td></tr>
+        <tr><td><code>iterum budget suggest</code></td><td>Each queued task's worst and typical cost, and a <code>--max-usd</code> for the night</td></tr>
         <tr><td><code>iterum recovery</code></td><td>Failed runs and running runs whose heartbeat went stale</td></tr>
         <tr><td><code>iterum canary</code></td><td>Recent runs that look unlike the day before</td></tr>
         <tr><td><code>sqlite3 ~/.local/share/iterum/agent.db "select kind, payload from events where run_id='&lt;id&gt;'"</code></td><td>The raw ledger for one run, including <code>claude.finished</code> (cost, turns, denials)</td></tr>
