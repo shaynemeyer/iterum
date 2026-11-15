@@ -109,9 +109,10 @@ def _merge_events():
 
 
 def _refusals(d):
-    d.check("main checked out: exit code", d.merge("main", "run-x", {}), 1)
     d.git("switch", "-q", "--detach")
-    d.git("worktree", "add", "-q", "--detach", str(d.wt), "main")
+    d.git("worktree", "add", "-q", str(d.wt), "main")
+    d.check("main checked out in another worktree: exit code", d.merge("main", "run-x", {"file:a.txt": 1}), 1)
+    d.git("switch", "-q", "--detach", cwd=d.wt)
 
     d.branch("live", {"a.txt": "a2\n"})
     d.landed("live claim", "live", "run-a", {"file:a.txt": claim.acquire("file:a.txt", "run-a", "A"),
@@ -166,6 +167,7 @@ def _lock(d):
 def _crash(d):
     d.branch("crashes", {"b.txt": "b3\n"})
     fence = claim.acquire("file:b.txt", "run-c", "C")
+    d.git("switch", "-q", "--detach")  # as the merge process does first (detach_target); CRASH calls land() directly
     code = subprocess.run([sys.executable, "-c", CRASH, str(d.repo), "crashes", "run-c", "file:b.txt", str(fence)]).returncode
     d.check("crash after update-ref: exit code", code, 9)
     d.check("crash after update-ref: main merges crashes", d.git("rev-parse", "main^2") == d.git("rev-parse", "crashes"), True)

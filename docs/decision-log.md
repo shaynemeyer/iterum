@@ -2,6 +2,18 @@
 
 Decisions and why they were made. Newest first. Entries are never deleted; a decision that is reversed is marked "Superseded by" the entry that replaces it. Open decisions live in `open-questions.md`.
 
+## 2026-11-14: `iterum land` ends on the target branch, updated
+
+**Decision.** `iterum land` detaches a clean checkout of the target in `--repo` itself, lands, and then, refused or not, puts a checkout it finds detached at the target's old or new commit, with no local changes, back on the target. After a landing the app is on `main` with the new commit. Still refused: the target checked out in another worktree, or checked out in `--repo` with local changes. A checkout on another branch or commit is left alone.
+
+**Context.** The user asked to end "on main fully updated", 2026-11-14. After the search night, the app sat detached one landing behind `main` (`02e15c7` against `4d50086`): the worker had returned it to `main` detached before the landing, and `update-ref` moved `main` but not the checkout. Before this, landing refused a checked-out target outright (the first night's morning, `overnight-design.md` section 5d), because `update-ref` leaves that tree's index behind.
+
+**Alternatives.** Move a detached checkout to the new commit but stay detached (built first: up to date, but not on `main`); only print a reminder to `git switch main`; have the worker return to `main` attached (the landing would still leave it behind).
+
+**Evidence.** Scratch repo: detached at `main` and on `main` (clean) each landed and ended on `main` with the new file; on `main` with a staged change, refused with exit 1, `main` and the change untouched; on another branch, landed and stayed there; a failed `--check` exited 1, kept the claim and ended on `main`; `main` in another worktree refused. `fleet.merge_drill` passes (37 checks); its crash case now detaches first, as `main()` does, since it calls `land()` directly; without that, the next landing was refused for local changes, the hazard this guards against.
+
+**Affects.** `fleet/merge.py`, `fleet/merge_drill.py`, `fleet/worker.py` (docstring), `CLAUDE.md`, `docs/setup-guide.md`. Supersedes the refusal of a target checked out in `--repo`.
+
 ## 2026-11-14: `/fleet-plan` proves a check passes on a correct version, and reads the whole page
 
 **Decision.** Option (c) of the open question "Should `/fleet-plan` prove a check passes on a correct version?", which is removed. The skill gets a new proof 2, between "fails on `main`" and the dry run: in the same throwaway worktree, the planning session writes the feature itself as the prompt asks, builds it, and runs every check, which must pass; a wrong check is fixed and proof 1 repeated; the version is never committed. A rule a correct version needs but the prompt does not state is noted in `plan.md`, and the user asked whether the prompt should name it. And the `check.sh` instructions now say to read the whole document with `<script>` payloads removed, not one element, and to remove React's `<!-- -->` separators and decode entities before matching text.

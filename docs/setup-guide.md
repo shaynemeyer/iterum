@@ -249,7 +249,7 @@ The receiver answers `GET /v1/logs` with the database it writes to, which must m
 
 ## 7. Land the branch
 
-`iterum land` merges the branch only while every changed file still has a live claim from the run. The target branch (`main` by default) must not be checked out anywhere, so detach first:
+`iterum land` merges the branch only while every changed file still has a live claim from the run. Run it from the repo, on `main` or detached at it: it detaches a clean `main` checkout itself, lands, and leaves you on `main` with the new commit. It refuses when `main` has local changes, or is checked out in another worktree.
 
 ```mermaid
 sequenceDiagram
@@ -269,12 +269,12 @@ sequenceDiagram
 ```
 
 ```bash
-git switch --detach
 iterum land feature/greeting --run-id 2fe23f9e2eaa --fence file:hello.txt=1
 ```
 
 ```text
 landed feature/greeting on main as a8fc15f9c463
+checkout on main at a8fc15f9c463
 ```
 
 Add `--check "<install> && <build>"` to run your build on the merged tree before landing. The check runs in a fresh copy with no dependencies, so it must install them first. A failing check refuses the landing and keeps the claims. A run started with `--land-check` prints the whole command for you.
@@ -326,7 +326,7 @@ With `--repo` and `--branch`, the worker creates the branch from `main`, runs th
 | A command complains about `ITERUM_DEVICE` | Set it in your shell profile (step 2) |
 | First `iterum project` says DRIFT | Expected on an empty database; run it again |
 | "a plan that declares files must not run on main" | Switch to another branch |
-| `iterum land` refuses | The target is checked out somewhere (`git switch --detach`), or a changed file has no live claim |
+| `iterum land` refuses | `main` has local changes or is checked out in another worktree, or a changed file has no live claim |
 | `iterum worker` stops: "a ceiling is set, but claude would not report its spend" | With a ceiling set, `source .env.example` and run `iterum receiver` first |
 | `/iterum:fleet-plan` is not offered | Run `claude plugin list`; install it (step 4) and start a new session |
 | The skill cannot find Iterum | Set `ITERUM_HOME` to your checkout |

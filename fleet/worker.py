@@ -87,8 +87,8 @@ def _git(repo, *args):
 def _on_branch(task, payload):
     """Run the block in the task's repo, on a new branch from its base, then return to the base, detached.
 
-    Detached, not on the base branch: `iterum land` refuses a target that is checked out,
-    so leaving the app on main would refuse every morning's landing.
+    Detached, not on the base branch: a landing moves the base with update-ref, which would leave
+    a checkout on it behind. `iterum land` then puts the checkout back on the base, updated.
 
     Yields the repo, or None for a task without one, which runs where the worker runs.
     A failed task's leftovers are committed on its branch first, so they stay there for

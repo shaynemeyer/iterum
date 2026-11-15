@@ -2,6 +2,14 @@
 
 Items moved here from `todo.md` once done. Newest first.
 
+## `iterum land` leaves the app on `main`, updated
+
+Completed 2026-11-14. Found after the search night: the app sat detached at `02e15c7`, one landing behind `main` (`4d50086`), so a plan read the old files. Reproduced on a scratch repo: detached at `main`, `iterum land` moved `main` and left the checkout and its files behind.
+
+**Change.** `fleet/merge.py`: `holders()`, `detach_target()` before landing, `end_on_target()` after it in a `finally`; the CLI body moved into `land_cli()`. Decision log, "`iterum land` ends on the target branch, updated", has the cases and evidence.
+
+**Evidence.** Six cases on a scratch repo and `fleet.merge_drill` (37 checks), in the decision log entry. The real app was put on `main` at `4d50086`.
+
 ## `/fleet-plan` proves a check passes on a correct version
 
 Completed 2026-11-14. Moved from `todo.md` (`/fleet-plan` follow-ups):
