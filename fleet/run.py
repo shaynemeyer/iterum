@@ -343,19 +343,28 @@ def execute(run_id, plan, branch=None, target="main", cap_usd=None, fix_retries=
 
 
 def stop_at_ceiling(run_id, seq, cap_usd=None):
-    """Halt the run, resumably, unless the fleet's headroom covers the next step.
+    """Halt the run, resumably, unless the fleet's headroom, and its night's, covers the next step.
 
     A prompt step needs headroom of at least its whole cap (cap_usd), so it is never
     started with less than its --max-budget-usd; a shell step needs headroom above zero.
     Checked before a step is proposed, so a halted run has no step in flight.
     The cap is Claude Code's own estimate and spend can pass it, so a run can still
-    pass the ceiling by however far one step passes its cap.
+    pass the ceiling by however far one step passes its cap. The night is the worker's
+    ITERUM_NIGHT, so a resume by hand checks only the fleet.
     """
-    left = governor.headroom()
+    night = os.environ.get("ITERUM_NIGHT")
+    fleet_left, night_left = governor.headroom(), governor.night_headroom(night)
+    left = min(fleet_left, night_left)
     need = f"its cap of {cap_usd:.4f} USD" if cap_usd is not None else "more than 0 USD"
     if (left >= cap_usd) if cap_usd is not None else (left > 0):
         return
     governor.halt_resumable(run_id, f"headroom {left:.4f} USD before step {seq}, which needs {need}")
+    if night_left < fleet_left:
+        sys.exit(
+            f"run {run_id} stopped before step {seq}: night {night} has {left:.4f} USD left of its --max-usd"
+            f" and the step needs {need}.\nresume it with the same plan, in a new night or by hand:\n"
+            f"  iterum resume {run_id} [--plan yourplan.json]"
+        )
     lower = " (or lower --allow-claude)" if cap_usd is not None else ""
     sys.exit(
         f"run {run_id} stopped before step {seq}: fleet headroom is {left:.4f} USD and the step needs {need}.\n"

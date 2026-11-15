@@ -250,7 +250,7 @@ def start_night(worker, max_usd):
 
 
 def stop_on_unseen_spend(worker, night=None):
-    """Exit before claiming when a ceiling is set and it could not see claude's spend.
+    """Exit before claiming when a ceiling or night limit is set and it could not see claude's spend.
 
     The worker's environment is every task's, so a missing telemetry setting or a dead
     receiver would fail each plan with prompt steps, and dead-letter the night. Stopping

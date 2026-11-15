@@ -327,7 +327,7 @@ With `--repo` and `--branch`, the worker creates the branch from `main`, runs th
 | First `iterum project` says DRIFT | Expected on an empty database; run it again |
 | "a plan that declares files must not run on main" | Switch to another branch |
 | `iterum land` refuses | `main` has local changes or is checked out in another worktree, or a changed file has no live claim |
-| `iterum worker` stops: "a ceiling is set, but claude would not report its spend" | With a ceiling set, `source .env.example` and run `iterum receiver` first |
+| `iterum worker` stops: "a spend limit is set, but claude would not report its spend" | With a ceiling or `--max-usd` set, `source .env.example` and run `iterum receiver` first |
 | `/iterum:fleet-plan` is not offered | Run `claude plugin list`; install it (step 4) and start a new session |
 | The skill cannot find Iterum | Set `ITERUM_HOME` to your checkout |
 | `RECEIVER not configured` in status | Only matters for prompt steps; `source .env.example` and start `iterum receiver` |

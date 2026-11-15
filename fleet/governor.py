@@ -127,12 +127,12 @@ def unseen_spend(night=None):
         return None
     endpoint = os.environ.get("OTEL_EXPORTER_OTLP_LOGS_ENDPOINT")
     if os.environ.get("CLAUDE_CODE_ENABLE_TELEMETRY") != "1" or not endpoint:
-        return "a ceiling is set, but claude would not report its spend. Load the telemetry settings first:\n  source .env.example"
+        return "a spend limit is set, but claude would not report its spend. Load the telemetry settings first:\n  source .env.example"
     try:
         with urllib.request.urlopen(endpoint, timeout=5) as r:
             receiver_db = json.load(r)["db"]
     except OSError as e:
-        return (f"a ceiling is set, but the telemetry receiver at {endpoint} did not answer ({e}). Start it first:\n"
+        return (f"a spend limit is set, but the telemetry receiver at {endpoint} did not answer ({e}). Start it first:\n"
                 "  iterum receiver")
     if receiver_db != str(db.DB.resolve()):
         return (f"the telemetry receiver writes to {receiver_db}, but this process reads {db.DB.resolve()}.\n"
