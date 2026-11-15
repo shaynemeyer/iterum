@@ -21,7 +21,7 @@ import time
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
-from fleet import approve, db, governor, queue, recovery, report_days, report_days_html, report_html, report_index, report_run, report_run_html, telemetry
+from fleet import approve, db, governor, queue, recovery, report_days, report_days_html, report_html, report_index, report_run, report_run_html, telemetry, view
 
 
 def day_window(day):
@@ -40,16 +40,18 @@ def payloads(con, kind, start, end):
 
 
 def runs(con, start, end):
-    """Runs started in the window, each with its plan name (report_run.plan_name()), queue task, cost and steps.
+    """Runs started in the window, each with its plan name (report_run.plan_name()), queue task, cost, steps,
+    and peak_context: the largest context of one of its model requests in tokens (view.CONTEXT_EXPR), None without any.
 
     queue_task is the task's ledger id (task-<device>-<task_id>) when a worker started the run, else None.
     """
     out = []
     for r in con.execute("SELECT * FROM runs WHERE started_at>=? AND started_at<? ORDER BY started_at", (start, end)):
-        cost = con.execute(
-            "SELECT COALESCE(SUM(json_extract(payload,'$.cost_usd')),0) FROM events WHERE run_id=? AND kind=?",
+        cost, peak = con.execute(
+            f"SELECT COALESCE(SUM(json_extract(payload,'$.cost_usd')),0), MAX({view.CONTEXT_EXPR})"
+            " FROM events WHERE run_id=? AND kind=?",
             (r["run_id"], telemetry.KIND),
-        ).fetchone()[0]
+        ).fetchone()
         steps = con.execute(
             "SELECT seq, intent, status, started_at, ended_at FROM steps WHERE run_id=? ORDER BY seq", (r["run_id"],)
         )
@@ -59,7 +61,7 @@ def runs(con, start, end):
         out.append({
             "run_id": r["run_id"], "plan": report_run.plan_name(r["task"]), "status": r["status"],
             "queue_task": queue_task[0] if queue_task else None,
-            "started_at": r["started_at"], "ended_at": r["ended_at"], "cost_usd": cost,
+            "started_at": r["started_at"], "ended_at": r["ended_at"], "cost_usd": cost, "peak_context": peak,
             "steps": [dict(s) for s in steps],
         })
     return out

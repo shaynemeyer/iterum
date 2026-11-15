@@ -10,6 +10,7 @@ from pathlib import Path
 
 SERIES = 8  # categorical slots; further models fold into "other"
 STEP_STATUS = {"committed": "good", "failed": "critical", "proposed": "warning"}
+CONTEXT_BUDGET = 100_000  # tokens per request a chunk should stay well under (decision log, 2026-11-15)
 RUN_STATUS = {"done": "good", "failed": "critical", "halted": "serious", "budget_exhausted": "warning", "running": "warning"}
 
 CSS = """
@@ -244,6 +245,15 @@ def step_strip(run):
             f'{"".join(parts)}</svg> <span class="muted">{done}/{len(steps)}</span>')
 
 
+def peak_context(tokens):
+    """A run's peak context per request, flagged when over CONTEXT_BUDGET: the chunk should be split next time."""
+    if tokens is None:
+        return '<span class="muted">-</span>'
+    if tokens <= CONTEXT_BUDGET:
+        return f"{tokens:,}"
+    return f'<span class="pill"><i style="background:var(--critical)"></i>{tokens:,}, over {CONTEXT_BUDGET // 1000}K</span>'
+
+
 def task_label(queue_task):
     """'task 5' for a run a worker started (ledger id task-<device>-5), else a dash."""
     return f'task {escape(queue_task.rsplit("-", 1)[1])}' if queue_task else '<span class="muted">-</span>'
@@ -256,9 +266,10 @@ def runs_table(runs):
     rows = "".join(
         f'<tr><td>{clock(r["started_at"])}</td><td>{run_link(r["run_id"])}</td><td>{escape(r["plan"])}</td><td>{task_label(r.get("queue_task"))}</td>'
         f'<td>{pill(r["status"])}</td><td class=n>{duration(r["started_at"], worked_until(r))}</td>'
-        f'<td class=n>{usd(r["cost_usd"])}</td><td class=steps>{step_strip(r)}</td></tr>' for r in runs)
+        f'<td class=n>{usd(r["cost_usd"])}</td><td class=n>{peak_context(r.get("peak_context"))}</td><td class=steps>{step_strip(r)}</td></tr>' for r in runs)
     return (f'<div class="scroll"><table><tr><th>Started</th><th>Run</th><th>Plan</th><th>Task</th><th>Status</th><th class=n>Took</th>'
-            f'<th class=n>Cost</th><th>Steps</th></tr>{rows}</table></div>')
+            f'<th class=n>Cost</th><th class=n title="Largest context of one model request, in tokens; budget {CONTEXT_BUDGET:,}">Peak context</th>'
+            f'<th>Steps</th></tr>{rows}</table></div>')
 
 
 def ready_table(ready):

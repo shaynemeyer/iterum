@@ -2,6 +2,16 @@
 
 Items moved here from `todo.md` once done. Newest first.
 
+## The day's report shows each run's peak context
+
+Completed 2026-11-15. Moved from `todo.md`:
+
+> **Show each run's peak tokens per request in the morning report, beside the 100K budget.** `iterum view context` has the numbers; the report does not (decision log, 2026-11-15, "The 100K context budget is a planning rule"). A run over budget is reported, never split automatically.
+
+**Change.** `fleet/view.py`: `CONTEXT_EXPR`, the context of one request (input plus cache read plus cache write tokens), shared by `CONTEXT_SQL` and the report. `fleet/report.py`: `runs()` adds `peak_context`, the largest of a run's requests (also in `--json`). `fleet/report_html.py`: a Peak context column in the runs table; above `CONTEXT_BUDGET` (100,000) it shows a critical dot and "over 100K".
+
+**Evidence.** Real database, read-only: `iterum report --json --date 2026-11-15` gives the feed-link run `287fbb456c7e` a peak of 5,816, the figure in `nextjs-first-run.md`. Scratch database, three runs: 150,000 tokens rendered "150,000, over 100K" with the critical dot, 7,000 plain, and a run with no spend a dash. `iterum view context` unchanged.
+
 ## A night's own spend limit, `iterum worker --max-usd`
 
 Completed 2026-11-15. Closes the overnight question (`overnight-design.md` section 6; removed from `open-questions.md`).

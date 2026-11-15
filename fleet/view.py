@@ -158,13 +158,16 @@ def stages(days=7):
         print(f"{stage:<16} {failures:>9} {events:>8} {failures / events * 100:>6.1f}%")
 
 
-CONTEXT_SQL = """
+# one request's context: input plus cache read plus cache write tokens
+CONTEXT_EXPR = """CAST(json_extract(payload, '$.input_tokens') AS INTEGER)
+     + CAST(json_extract(payload, '$.cache_read_tokens') AS INTEGER)
+     + CAST(json_extract(payload, '$.cache_creation_tokens') AS INTEGER)"""
+
+CONTEXT_SQL = f"""
 SELECT run_id,
        json_extract(payload, '$.session_id') AS session_id,
        ts,
-       CAST(json_extract(payload, '$.input_tokens') AS INTEGER)
-     + CAST(json_extract(payload, '$.cache_read_tokens') AS INTEGER)
-     + CAST(json_extract(payload, '$.cache_creation_tokens') AS INTEGER) AS context
+       {CONTEXT_EXPR} AS context
 FROM events
 WHERE kind = 'spend.reported'
 ORDER BY session_id, ts
