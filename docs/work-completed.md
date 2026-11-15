@@ -2,6 +2,14 @@
 
 Items moved here from `todo.md` once done. Newest first.
 
+## The worker can stop once the queue is empty
+
+Completed 2026-11-14. Found in the second real night (`overnight-design.md` section 5e): with both tasks done, the worker kept polling an empty queue until stopped by hand, so the report waited for its 30-minute budget or a Ctrl-C.
+
+**Change.** `iterum worker --until-empty`: when `claim()` finds nothing and `queue.pending()` is zero, the worker prints "queue empty, stopping" and stops, then writes the report as before. `pending()` counts tasks `ready` (including ones backing off after a failure or waiting on a dependency) or `in_progress` (another worker's task can fail back to ready), leaving out `queue.HUMAN_KIND`, which `claim()` never takes. `--budget-s` still caps the worker. Off by default, so other callers of the worker are unchanged.
+
+**Evidence.** Scratch database, `--budget-s 60 --until-empty`: an empty queue stopped at once, writing no report; two tasks (one an `iterum run`) stopped right after both; a task that failed once waited out its 5 s backoff, then ran and stopped; a dead-lettered task and a ready human task did not keep it alive. With a `sleep 4` task held by another worker, a second worker waited 3 s, until that task was done, then stopped. Without the flag, a worker ran its full 3 s budget. `iterum drill kill` passed.
+
 ## A setup guide, and the README catches up
 
 Completed 2026-11-14. Not from `todo.md`: the user asked for a setup guide with diagrams, with `/iterum:fleet-plan` as the preferred way to create a plan.

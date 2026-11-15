@@ -339,6 +339,22 @@ def results(task_ids):
     return [json.loads(row["result"]) for row in rows]
 
 
+def pending():
+    """How many tasks a worker could still claim: ready (perhaps backing off or waiting on a dependency) or in progress.
+
+    In progress counts because a failed attempt or an expired lease puts the task back to ready.
+    Tasks of HUMAN_KIND are left out: claim() never takes them.
+    """
+    con = db.connect()
+    try:
+        return con.execute(
+            "SELECT COUNT(*) FROM tasks WHERE status IN ('ready','in_progress') AND kind != ?",
+            (HUMAN_KIND,),
+        ).fetchone()[0]
+    finally:
+        con.close()
+
+
 def human_tasks():
     """Tasks waiting for a person, oldest first."""
     con = db.connect()

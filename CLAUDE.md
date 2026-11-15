@@ -26,7 +26,7 @@ iterum recovery [--idle-seconds 60] [--max-attempts 3]   # list dead runs, halt 
 iterum recovery halt <run_id> "<reason>"        # give up on one failed or stale run (logs run.halted)
 iterum sync [export|import]                     # no argument: export, commit, pull, push, import, rebuild
 iterum add "<cmd>" [--max-attempts 1] [--repo DIR --branch NAME [--base main]]   # queue a shell command (usually `iterum run <plan>`) for a worker; default one attempt; with --repo, the worker runs it on a new branch from --base, then returns to --base detached (a checked-out target refuses `iterum land`); a failed task's branch is deleted when it has no commits beyond --base
-iterum worker <name> [--budget-s 30]            # claim, run and report tasks until the budget ends, then write today's report page (as `iterum report`)
+iterum worker <name> [--budget-s 30] [--until-empty]   # claim, run and report tasks until the budget ends (--until-empty: or once no task is ready or in progress), then write today's report page (as `iterum report`)
 iterum dlq [redrive <task_id> | drop <task_id> "<reason>"]   # list dead-lettered tasks, put one back on the queue, or give up on one
 iterum conflicts [resolve <task_id> "<decision>"]   # list conflicts waiting for a person, or settle one
 iterum view [trace <run_id> | stages [days] | context [session]]   # live sessions and runs, one run's trace, failures per stage, or context size per request

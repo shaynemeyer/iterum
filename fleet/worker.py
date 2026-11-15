@@ -2,6 +2,7 @@
 
     iterum worker worker-1
     iterum worker worker-1 --budget-s 30
+    iterum worker worker-1 --budget-s 1800 --until-empty
     FLEET_WORK_MODULE=mypackage.mywork iterum worker worker-1
 
 `do_work` is yours. The default below runs whatever shell command the task
@@ -274,7 +275,8 @@ def write_report(worker):
     print(f"{worker}  report: {page}" if page else f"{worker}  report: no activity today, none written")
 
 
-def main(worker, budget_s=BUDGET_S):
+def main(worker, budget_s=BUDGET_S, until_empty=False):
+    """Claim and run tasks until the budget ends, or, with until_empty, until no task is left to claim."""
     deadline = time.time() + budget_s
     next_reap = 0
     while time.time() < deadline:
@@ -285,6 +287,9 @@ def main(worker, budget_s=BUDGET_S):
         stop_on_unseen_spend(worker)
         task = queue.claim(worker)
         if not task:
+            if until_empty and not queue.pending():
+                print(f"{worker}  queue empty, stopping")
+                return
             time.sleep(0.2)
             continue
         stop_on_dirty_repo(task, worker)
@@ -295,10 +300,11 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run one queue worker.")
     parser.add_argument("worker", help="a name unique to this worker")
     parser.add_argument("--budget-s", type=float, default=BUDGET_S)
+    parser.add_argument("--until-empty", action="store_true", help="stop once no task is ready or in progress, not only when the budget ends")
     args = parser.parse_args()
     stop_on_sigterm()
     db.init()
     try:
-        main(args.worker, args.budget_s)
+        main(args.worker, args.budget_s, args.until_empty)
     finally:
         write_report(args.worker)
