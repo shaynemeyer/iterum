@@ -2,6 +2,36 @@
 
 Decisions and why they were made. Newest first. Entries are never deleted; a decision that is reversed is marked "Superseded by" the entry that replaces it. Open decisions live in `open-questions.md`.
 
+## 2026-11-15: A failing `ITERUM_NOTIFY` hook changes nothing but one printed line
+
+**Decision.** The hook runs after `write_report()`, in its own process group, with a 30-second limit. A non-zero exit prints `<worker>  notify: exit <code>`; past 30 seconds the whole group is killed and it prints `<worker>  notify: timed out`. Either way the worker's exit code is unchanged and no event is logged; a notification is not part of the ledger. The hook's own output passes through to the worker's.
+
+**Context.** The last point in `todo.md`, "Notifications: the `ITERUM_NOTIFY` hook". The user: "30 seconds is fine".
+
+**Why a process group.** `subprocess.run(timeout=...)` kills only the child it started ([Python docs](https://docs.python.org/3/library/subprocess.html#subprocess.run)); with `shell=True` that is the shell, so a `curl` it started could outlive the timeout. The worker's `_shell()` already runs each task in its own group and kills the group.
+
+**Affects.** `fleet/worker.py`; `todo.md`.
+
+## 2026-11-15: What the `ITERUM_NOTIFY` summary says
+
+**Decision.** A few plain-text lines built from `report.report(date.today())`, the data behind the day's page: the worker's name; runs by status; how many are ready to land; how many need a person; today's spend, and the part spent by runs; the path to the report page `write_report()` just wrote. Nothing else: no land commands (too long for a desktop notification, and on the page), no reason the worker stopped (only printed today; every exit path would have to record it), and never code, file contents, plan intents or error text, since the summary may go to a third-party channel.
+
+**Context.** The second point in `todo.md`, "Notifications: the `ITERUM_NOTIFY` hook". The user agreed to this content and chose to keep the report path, which shows the home folder's name to whatever channel receives it.
+
+**Limits.** The numbers cover the calendar day, as the page the worker writes does, not the worker's own runs: a night that crosses midnight shows only its part after midnight.
+
+**Affects.** `fleet/worker.py`; `todo.md`.
+
+## 2026-11-15: `ITERUM_NOTIFY` fires once, when a worker stops
+
+**Decision.** The hook runs once per `iterum worker`, in the `finally` beside `write_report()` in `fleet/worker.py`, however the worker stops short of SIGKILL: queue empty, budget seconds used, a stop at `--max-usd` or the fleet ceiling, unseen spend, Ctrl-C or SIGTERM. A failed run or a stop at a limit does not notify at once; it shows in that one summary.
+
+**Context.** The first point to settle in `todo.md`, "Notifications: the `ITERUM_NOTIFY` hook". The user: "once per night is fine".
+
+**Alternatives.** Also at once on a failed run or a stop at a limit (more messages, a second firing point inside the loop); per run, on `run.done` and `run.failed` in `fleet/run.py` (one message per plan, and `iterum run` by hand would notify too).
+
+**Affects.** `fleet/worker.py`; `todo.md`.
+
 ## 2026-11-15: Notifications go through one command hook, `ITERUM_NOTIFY`, off by default
 
 **Decision.** Iterum notifies through a single setting, `ITERUM_NOTIFY`, holding a shell command it runs with a plain-text summary on stdin. Unset, nothing is sent; the day's report page is written as today. Iterum ships no channel of its own. The setup guide documents examples, the macOS one first: `osascript -e 'display notification ...'` ([Mac Automation Scripting Guide: Displaying Notifications](https://developer.apple.com/library/archive/documentation/LanguageUt/Conceptual/MacAutomationScriptingGuide/DisplayNotifications.html)), then `notify-send` on Linux, a mail command, and `curl` to a Slack incoming webhook.

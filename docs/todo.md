@@ -19,9 +19,9 @@ Status: open, written 2026-11-15 (decision log, "Notifications go through one co
 
 Settle with the user first, then record in the decision log:
 
-- **When it fires:** once when a worker stops, beside `write_report()` in `fleet/worker.py`, or also at once on a failed run or a stop at `--max-usd`; per run (`run.done`, `run.failed` in `fleet/run.py`) is the other choice.
-- **What the summary carries:** counts (done, failed, dead-lettered), ready to land, the night's spend; whether it includes the land commands. Never the app's code or file contents, since it may go to a third-party channel.
-- **A failing hook:** a non-zero exit or a hang must not stop the worker or block the report.
+- **When it fires:** settled 2026-11-15, once when a worker stops, beside `write_report()` in `fleet/worker.py` (decision log, "`ITERUM_NOTIFY` fires once, when a worker stops").
+- **What the summary carries:** settled 2026-11-15 (decision log, "What the `ITERUM_NOTIFY` summary says").
+- **A failing hook:** settled 2026-11-15 (decision log, "A failing `ITERUM_NOTIFY` hook changes nothing but one printed line").
 
 Then build it, and check it on a scratch `ITERUM_DB` with a local command (e.g. `cat > summary.txt`) before any real channel; then the `osascript` example once on this Mac (does it appear, and credited to which app). Document the examples in `setup-guide.md`, `ITERUM_NOTIFY` in its Settings and in CLAUDE.md.
 
