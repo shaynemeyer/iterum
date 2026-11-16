@@ -2,6 +2,14 @@
 
 Items moved here from `todo.md` once done. Newest first.
 
+## Drill labels that read like failures
+
+Completed 2026-11-16. Found in the same project review; not a `todo.md` item.
+
+**Change.** Three checks print whether a command's process group is alive and pass on `False`, but were labelled `command killed`, so a pass read `PASS  ... command killed: False`. Relabelled `command still alive` in `fleet/claims_drill.py` (two) and `fleet/kill_drill.py` (one); only the text changed (`a49fc0a`).
+
+**Checked.** `iterum drill claims`: 29 PASS, 0 FAIL. `iterum drill kill`: 9 PASS, 0 FAIL.
+
 ## The worker probed the receiver on every poll
 
 Completed 2026-11-16. Found in the same project review; not a `todo.md` item.
