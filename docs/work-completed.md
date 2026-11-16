@@ -2,6 +2,18 @@
 
 Items moved here from `todo.md` once done. Newest first.
 
+## `iterum budget suggest` gave the wrong reason for a step with no model
+
+Completed 2026-11-16. Found in the same project review; not a `todo.md` item.
+
+**Problem.** For a prompt step without `model`, `estimate()` looked up `None` among the models telemetry records, never found it, and printed `no past prompt steps on the default model`, even with past steps on the model the default may be. Reproduced on a scratch database with two Haiku `spend.reported` events. The summary line also called it `no past cost on their model`.
+
+**Change.** `fleet/suggest.py`: a plan with any prompt step that names no model says `typical unknown: <n> prompt step(s) name no model`; "at most" is unchanged, so the suggested `--max-usd` is too. The summary line reads `<n> task(s) have no 'typical' (see each note), so its total leaves them out`. CLAUDE.md's `suggest` paragraph names the case (`75c67f1`).
+
+**Checked.** Three queued plans: Haiku (typical 0.0200 from the two past steps), no model (the new note), Opus with no history (`no past prompt steps on claude-opus-5-5`, unchanged).
+
+**Found while checking.** The suggested `--max-usd` rounds `0.05 * 3` (`0.15000000000000002`) up to 0.16; the next step.
+
 ## A prompt step with no result envelope crashed the run
 
 Completed 2026-11-16. Found in the same project review (read, not seen in a real run: all 84 prompt-step sessions so far returned an envelope); not a `todo.md` item.
