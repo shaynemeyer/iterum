@@ -541,6 +541,11 @@ iterum worker night-1 --budget-s 600 --until-empty --max-usd 0.30</pre></div>
     <p>Each run records its task (<code>queue_task</code> in its <code>run.started</code> event), so a run and the task that started it can be matched in the ledger. In the morning, <code>iterum status</code>, <code>iterum dlq</code> and <code>iterum report</code> show what finished and what failed; land each finished branch with <code>iterum land</code> and <code>--check</code>. Landing stays a decision for a person.</p>
   </div>
   <div class="note warn"><b>Use <code>night/&lt;slug&gt;</code>, not <code>feat/&lt;slug&gt;</code>.</b> <code>/iterum:fleet-plan</code>'s dry run already made <code>feat/&lt;slug&gt;</code>, and the worker cannot make a branch that exists. The empty <code>feat/&lt;slug&gt;</code> branches can be deleted.</div>
+  <div class="col stack" id="notify">
+    <p><b>Notifications.</b> Set <code>ITERUM_NOTIFY</code> to a shell command and each worker runs it once when it stops, after writing the report, with a short summary on stdin: runs by status, how many are ready to land and need a person, today's spend, and the report's path. Unset, nothing is sent. A command that fails, or is still running after 30 seconds (it is killed, with anything it started), prints one line and changes nothing else. On macOS, a desktop notification:</p>
+  </div>
+  <div class="term"><button type="button">Copy</button><pre>export ITERUM_NOTIFY='osascript -e "on run argv" -e "display notification (item 1 of argv) with title \"Iterum\"" -e "end run" "$(cat)"'</pre></div>
+  <div class="note">It shows as from <b>Script Editor</b>; <code>display notification</code> cannot change the sender. If nothing appears, allow notifications for Script Editor in System Settings. Slack, email and Linux examples, untested, are in the <a href="https://github.com/shaynemeyer/iterum/blob/main/docs/setup-guide.md#notifications">setup guide</a>.</div>
 </section>
 
 <!-- 11 -->
@@ -654,6 +659,7 @@ iterum scorecard main                   <span class="c"># did my working tree br
         <tr><td><code>ITERUM_IDLE_SECONDS</code></td><td>60</td><td>Heartbeat age after which a running run counts as dead, for recovery and resume.</td></tr>
         <tr><td><code>ITERUM_MAX_ATTEMPTS</code></td><td>3</td><td>Default <code>--max-attempts</code> for <code>iterum recovery</code>.</td></tr>
         <tr><td><code>ITERUM_SYNC_DIR</code></td><td><code>~/private-data/iterum</code></td><td>The sync folder, inside a git repo with a remote.</td></tr>
+        <tr><td><code>ITERUM_NOTIFY</code></td><td>unset</td><td>A shell command each worker runs when it stops, with a summary on stdin (<a href="#notify">Notifications</a>).</td></tr>
         <tr><td><code>FLEET_WORK_MODULE</code></td><td>the shell runner</td><td>A module exporting <code>do_work(task)</code> for <code>iterum worker</code>, found from the folder you start it in.</td></tr>
         <tr><td><code>.env.example</code></td><td>not loaded</td><td><code>source</code> it to send Claude Code telemetry to <code>iterum receiver</code>; required for prompt steps under a ceiling.</td></tr>
       </tbody>
