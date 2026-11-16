@@ -2,6 +2,16 @@
 
 Items moved here from `todo.md` once done. Newest first.
 
+## `iterum budget suggest` rounded an exact cent up
+
+Completed 2026-11-16. Found while checking the no-model fix below.
+
+**Problem.** The suggested `--max-usd` was `math.ceil(at_most * 100) / 100`. Three tasks at 0.05 sum to `0.15000000000000002`, so the line said 0.16 while the total printed 0.1500. Reproduced on scratch databases.
+
+**Change.** `fleet/suggest.py`: `math.ceil(round(at_most * 100, 6)) / 100`, so float noise rounds away and any real fraction of a cent still rounds up (`cf2c25f`).
+
+**Checked.** Caps 0.05 × 3 suggest 0.15 (was 0.16); 0.151 suggests 0.16; 0.05 × 2 suggests 0.10.
+
 ## `iterum budget suggest` gave the wrong reason for a step with no model
 
 Completed 2026-11-16. Found in the same project review; not a `todo.md` item.
