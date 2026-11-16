@@ -2,6 +2,26 @@
 
 Items moved here from `todo.md` once done. Newest first.
 
+## Notifications: the `ITERUM_NOTIFY` hook
+
+Completed 2026-11-15. Taken up from `ideas.md`, "Notify when plans finish: Slack, email or text" (raised the same day by the user). Moved from `todo.md`:
+
+> Status: open, written 2026-11-15 (decision log, "Notifications go through one command hook, `ITERUM_NOTIFY`, off by default").
+>
+> Settle with the user first, then record in the decision log:
+>
+> - **When it fires:** settled 2026-11-15, once when a worker stops, beside `write_report()` in `fleet/worker.py` (decision log, "`ITERUM_NOTIFY` fires once, when a worker stops").
+> - **What the summary carries:** settled 2026-11-15 (decision log, "What the `ITERUM_NOTIFY` summary says").
+> - **A failing hook:** settled 2026-11-15 (decision log, "A failing `ITERUM_NOTIFY` hook changes nothing but one printed line").
+>
+> Then build it, and check it on a scratch `ITERUM_DB` with a local command (e.g. `cat > summary.txt`) before any real channel; then the `osascript` example once on this Mac (does it appear, and credited to which app). Document the examples in `setup-guide.md`, `ITERUM_NOTIFY` in its Settings and in CLAUDE.md.
+
+**Change.** `fleet/notify.py`: `worker_stopped()` does nothing unless `ITERUM_NOTIFY` is set; `summary()` builds six lines from `report.report(date.today())` (runs by status, ready to land, needs a person, today's spend and the runs' part, the page's path); `send()` runs the command with the summary on stdin in its own process group, kills the whole group after 30 seconds (`notify: timed out after 30s`), prints `notify: exit <code>` on a non-zero exit, and kills the group and re-raises on any other exception. `fleet/worker.py`: `write_report()` calls it after writing the page (`d0251c0`). Docs: the setup guide's Notifications part and Settings, README, CLAUDE.md, and the gh-pages guide (`1d423b2`, gh-pages `0b5e274`).
+
+**Evidence.** Scratch databases. Two plans through `iterum add --plan`, one passing and one exiting 4, with `ITERUM_NOTIFY="cat > summary.txt"`: `runs: 1 done, 1 failed`, `ready to land: 0`, `needs a person: 2` (the failure counted as a failed run and as a dead-lettered task, as on the page), spend `$0.00`, the report's path. Two bare shell tasks: `runs: none`, `needs a person: 1`. A hook printing a line and exiting 1: its line passed through, `notify: exit 1`, worker exit 0. Unset: nothing ran. A hook starting `sleep 300 &` then waiting: `notify: timed out after 30s` after 30 s, the `sleep` gone. Break test: with `p.kill()` in place of the group kill, the `sleep` survived with parent pid 1 and held the worker's stdout open, so the test's pipeline hung until it was killed by hand; the group kill restored and rerun, gone again. On this Mac, the documented `osascript` example showed the notification (the user saw it), credited to Script Editor.
+
+**Not done.** A notification credited to Iterum with its logo: an applet was refused by `usernoted` (`ideas.md`, "Notifications from 'Iterum' with its logo, not Script Editor"). Not tested: Ctrl-C while the hook runs; the Linux, mail and Slack examples; a worker started over SSH or by `launchd`.
+
 ## `install.sh`: one script for setup
 
 Completed 2026-11-15. Raised the same day by the user ("should we make the install script a bash script or something?"); never in `todo.md`. The guide's setup was a shell-profile edit and eight commands (install, doctor, seed-ledger, project, three plugin commands).
