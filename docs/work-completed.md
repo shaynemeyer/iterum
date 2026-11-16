@@ -2,6 +2,16 @@
 
 Items moved here from `todo.md` once done. Newest first.
 
+## `iterum project` crashed on a fresh database
+
+Completed 2026-11-16. Found in the same project review; not a `todo.md` item.
+
+**Problem.** `fleet/project.py` was the one entry point that did not call `db.init()`, so on a new `ITERUM_DB` it failed with `sqlite3.OperationalError: no such table: knowledge`. `install.sh` never met it, since `seed-ledger.py` creates the tables first.
+
+**Change.** `db.init()` before the rebuild. The docs said any first run reports DRIFT; a database with no `layer.checked` events reports MATCH, and DRIFT comes on the first run after new ones (a seed, a sync import). Corrected in the module docstring, CLAUDE.md's `iterum project` line and the setup guide's troubleshooting row (`4d3745d`).
+
+**Checked.** On a scratch database: a fresh one reports MATCH (exit 0); after seeding one audit layer, DRIFT (exit 1), then MATCH (exit 0).
+
 ## `iterum worker --until-empty` stopped after the first task
 
 Completed 2026-11-16. Found in a full project review the same day; not a `todo.md` item.
