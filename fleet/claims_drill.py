@@ -192,7 +192,7 @@ def _taken(d):
     d.check("paused agent taken over: exit code", p.returncode, 1)
     d.check("paused agent taken over: step", _query("SELECT status FROM steps WHERE run_id=?", run_id), [("failed",)])
     d.check("paused agent taken over: reason", [e[0].startswith("claim lost: file:b.txt") for e in error], [True])
-    d.check("paused agent taken over: step's command killed", group_alive(pgid), False)
+    d.check("paused agent taken over: step's command still alive", group_alive(pgid), False)
     d.check("paused agent taken over: file untouched", (d.wt / "b.txt").read_text(), "b4\n")
 
 
@@ -204,7 +204,7 @@ def _terminated(d):
     p.send_signal(signal.SIGTERM)
     p.communicate(timeout=10)
     time.sleep(0.2)
-    d.check("SIGTERM mid-step: step's command killed", group_alive(row[0][0]), False)
+    d.check("SIGTERM mid-step: step's command still alive", group_alive(row[0][0]), False)
     d.check("SIGTERM mid-step: file untouched", (d.wt / "a.txt").read_text(), "a5\n")
 
 

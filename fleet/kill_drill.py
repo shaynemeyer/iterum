@@ -123,7 +123,7 @@ def _run_sigterm():
     worker.send_signal(signal.SIGTERM)
     worker.wait()
     time.sleep(0.2)
-    return [_check("SIGTERM: task's command killed", group_alive(pgid), False)]
+    return [_check("SIGTERM: task's command still alive", group_alive(pgid), False)]
 
 
 def main():
