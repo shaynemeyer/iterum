@@ -92,4 +92,5 @@ def show():
     if no_history:
         print(f"{no_history} task(s) have no 'typical' (see each note), so its total leaves them out")
     if at_most > 0:
-        print(f"start the night with:\n  iterum worker night-1 --until-empty --max-usd {math.ceil(at_most * 100) / 100:.2f}")
+        # round() first: 0.05 * 3 is 0.15000000000000002, which a bare ceil turned into 0.16
+        print(f"start the night with:\n  iterum worker night-1 --until-empty --max-usd {math.ceil(round(at_most * 100, 6)) / 100:.2f}")
