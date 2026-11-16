@@ -275,7 +275,7 @@ w1  queue empty, stopping
 w1  report: ~/.local/share/iterum/reports/report-<date>.html
 ```
 
-`--until-empty` stops the worker once no task is ready or in progress; without it, the worker keeps polling until `--budget-s` runs out. Either way, it writes today's report when it stops.
+`--until-empty` stops the worker once no task is ready or in progress, with no time limit unless you also give `--budget-s`. Without it, the worker keeps polling until `--budget-s` (default 12 seconds) runs out; a task already running finishes, and the worker prints how many tasks it left queued. Either way, it writes today's report when it stops.
 
 With `--repo` and `--branch`, the worker creates the branch from `main`, runs the command on it, then leaves the repo detached at `main`, ready for `iterum land`. `iterum dlq` lists tasks that ran out of attempts.
 

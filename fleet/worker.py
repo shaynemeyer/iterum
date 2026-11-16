@@ -2,6 +2,7 @@
 
     iterum worker worker-1
     iterum worker worker-1 --budget-s 30
+    iterum worker worker-1 --until-empty                 # no time limit: until the queue is empty
     iterum worker worker-1 --budget-s 1800 --until-empty
     FLEET_WORK_MODULE=mypackage.mywork iterum worker worker-1
 
@@ -310,19 +311,25 @@ def main(worker, budget_s=BUDGET_S, until_empty=False, night=None):
             continue
         stop_on_dirty_repo(task, worker)
         _run_one(task, worker)
+    left = queue.pending()
+    if left:
+        print(f"{worker}  budget of {budget_s:.0f}s ended, {left} task(s) left queued")
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run one queue worker.")
     parser.add_argument("worker", help="a name unique to this worker")
-    parser.add_argument("--budget-s", type=float, default=BUDGET_S)
-    parser.add_argument("--until-empty", action="store_true", help="stop once no task is ready or in progress, not only when the budget ends")
+    parser.add_argument("--budget-s", type=float,
+                        help=f"seconds to keep claiming tasks (default {BUDGET_S:.0f}; with --until-empty, no limit)")
+    parser.add_argument("--until-empty", action="store_true", help="stop once no task is ready or in progress")
     parser.add_argument("--max-usd", type=float, help="stop before claiming once the runs this worker started have spent this much")
     args = parser.parse_args()
     stop_on_sigterm()
     db.init()
     night = start_night(args.worker, args.max_usd) if args.max_usd is not None else None
+    # --until-empty alone has no time limit: the 12s default stopped a night after its first task.
+    budget_s = args.budget_s if args.budget_s is not None else (float("inf") if args.until_empty else BUDGET_S)
     try:
-        main(args.worker, args.budget_s, args.until_empty, night)
+        main(args.worker, budget_s, args.until_empty, night)
     finally:
         write_report(args.worker)
