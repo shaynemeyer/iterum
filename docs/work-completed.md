@@ -2,6 +2,14 @@
 
 Items moved here from `todo.md` once done. Newest first.
 
+## Docs brought up to date after the project review
+
+Completed 2026-11-16. Found in the same project review; not a `todo.md` item.
+
+**Change.** `FLEET_TASK_TIMEOUT_S` (600 s per task command, then killed and failed), `FLEET_WORKER_BUDGET_S` (12) and `FLEET_WORK_MODULE` added to the settings in README, the setup guide and CLAUDE.md; no doc named them. The setup guide's opening flowchart now has its five sections, not eight steps. README components gain the report modules, `proc.py` and `iterum view context`. CLAUDE.md and the setup guide name `fleet/view.py` beside `fleet/doctor.py` for Python 3.14 syntax. Docstrings: `view.status()` no longer waits for `claude_step()` (wired in; the roster and `runs` still share no key, and nothing writes `runs.cost_usd` or `runs.session_id`), `step.py` names `run_steps()`, and `run.py` says `iterum` line-buffers, so `-u` is only for `python -m` (`3568bbb`).
+
+**Not changed.** The drill checks labelled `command killed: False` print whether the group is alive (cosmetic). Whether to raise `FLEET_TASK_TIMEOUT_S`'s default is open: the longest real run so far took 392 s.
+
 ## `iterum project` crashed on a fresh database
 
 Completed 2026-11-16. Found in the same project review; not a `todo.md` item.
