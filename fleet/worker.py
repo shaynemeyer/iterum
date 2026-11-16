@@ -299,9 +299,9 @@ def main(worker, budget_s=BUDGET_S, until_empty=False, night=None):
     while time.time() < deadline:
         if time.time() >= next_reap:
             _reap(worker)
+            stop_on_unseen_spend(worker, night)  # an HTTP probe: every REAP_EVERY seconds, not every 0.2s poll
             next_reap = time.time() + REAP_EVERY
         stop_at_ceiling(worker, night)
-        stop_on_unseen_spend(worker, night)
         task = queue.claim(worker)
         if not task:
             if until_empty and not queue.pending():
