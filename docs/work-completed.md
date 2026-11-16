@@ -2,6 +2,16 @@
 
 Items moved here from `todo.md` once done. Newest first.
 
+## A prompt step with no result envelope crashed the run
+
+Completed 2026-11-16. Found in the same project review (read, not seen in a real run: all 84 prompt-step sessions so far returned an envelope); not a `todo.md` item.
+
+**Problem.** `claude_step()` read `envelope["is_error"]`, and `parse_envelope()` returns `{}` when stdout is not JSON. A claude that exited 0 without JSON raised `KeyError`, not `RuntimeError`, so `run_steps()` never recorded the failure: the step stayed `proposed` and the run `running`, the ledger ending at `claude.finished`. Reproduced with a stub `claude` on `PATH` printing `not json` and exiting 0.
+
+**Change.** `fleet/run.py`: after the exit-code check, an empty envelope raises `RuntimeError("claude exited 0 but printed no JSON result envelope: ...")` with the first 200 characters of the output, so the step and run fail as any other step does (`06a54de`).
+
+**Checked.** With the stub: the run exits 1 with that message, step and run `failed`, ledger ending `step.failed`, `run.failed`. A stub envelope with `is_error: false` still commits; `is_error: true` still fails with `claude reported an error`. `iterum drill run` passes.
+
 ## Docs brought up to date after the project review
 
 Completed 2026-11-16. Found in the same project review; not a `todo.md` item.
