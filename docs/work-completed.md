@@ -2,6 +2,16 @@
 
 Items moved here from `todo.md` once done. Newest first.
 
+## A web page could post fake spend to the receiver
+
+Completed 2026-11-16. The last finding of the same project review; not a `todo.md` item.
+
+**Problem.** `fleet/telemetry.py` accepted any request on 127.0.0.1. Reproduced with curl on a scratch database: a `text/plain` POST (what a page can send cross-origin) and a POST with `Host: evil.example` (DNS rebinding) were each recorded as $5 of `spend.reported`, and a GET with that Host returned the database path.
+
+**Change.** A `Host` other than `127.0.0.1` or `localhost` gets 403; a POST that is not `application/json` gets 415, which a page can only send after a CORS preflight the receiver never answers. Why, and the evidence that Claude Code's exporter sends `application/json` to `Host: 127.0.0.1`: decision log, 2026-11-16. CLAUDE.md's telemetry paragraph updated (`ef547eb`).
+
+**Checked.** After the fix: 415 and 403 for the forged requests, nothing recorded; a POST with the exporter's headers recorded; GET answers. `iterum status` and `governor.unseen_spend()` pass with the endpoint at `127.0.0.1` and at `localhost`. Claude Code 2.1.325 with an invalid API key (nothing billed) exported to the fixed receiver with no export error. Not yet seen: a billed session's spend recorded through it; the next paid run shows it in `iterum budget`.
+
 ## Drill labels that read like failures
 
 Completed 2026-11-16. Found in the same project review; not a `todo.md` item.
