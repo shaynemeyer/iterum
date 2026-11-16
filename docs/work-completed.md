@@ -2,6 +2,16 @@
 
 Items moved here from `todo.md` once done. Newest first.
 
+## `iterum worker --until-empty` stopped after the first task
+
+Completed 2026-11-16. Found in a full project review the same day; not a `todo.md` item.
+
+**Problem.** `iterum budget suggest` (`fleet/suggest.py`) and the fleet-plan skill print `iterum worker night-1 --until-empty --max-usd <usd>`, with no `--budget-s`. The default budget is 12 seconds, and `--until-empty` added a reason to stop without lifting it, so the worker claimed nothing once the first task ended and exited 0 with the rest queued, saying nothing. Reproduced on a scratch database: tasks `sleep 15 && echo one` and `echo two` ended `done` and `ready`.
+
+**Change.** `fleet/worker.py`: `--until-empty` without `--budget-s` has no time limit; an explicit `--budget-s` still applies, and with neither flag the 12-second default stays. A budget that ends with tasks left prints `budget of <N>s ended, <n> task(s) left queued`. CLAUDE.md's worker line (it showed `--budget-s 30`; the default is 12) and the setup guide's `--until-empty` paragraph updated (`cfbca0e`).
+
+**Checked.** The same two tasks: `--until-empty` runs both; `--until-empty --budget-s 5` and no flags stop after the first and print the queued count. `iterum drill kill` passes (it passes `--budget-s` itself).
+
 ## Notifications: the `ITERUM_NOTIFY` hook
 
 Completed 2026-11-15. Taken up from `ideas.md`, "Notify when plans finish: Slack, email or text" (raised the same day by the user). Moved from `todo.md`:
