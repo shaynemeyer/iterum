@@ -30,7 +30,7 @@ import uuid
 from contextlib import contextmanager
 from datetime import date
 
-from fleet import db, governor, queue, report
+from fleet import db, governor, notify, queue, report
 from fleet.claim import Fenced, Refused
 from fleet.proc import stop_on_sigterm
 
@@ -282,9 +282,10 @@ def stop_on_dirty_repo(task, worker):
 
 
 def write_report(worker):
-    """Write today's report, so the morning finds the night on a page. Runs however the worker stops, short of SIGKILL."""
+    """Write today's report, then notify through ITERUM_NOTIFY. Runs however the worker stops, short of SIGKILL."""
     page = report.write_day(date.today())
     print(f"{worker}  report: {page}" if page else f"{worker}  report: no activity today, none written")
+    notify.worker_stopped(worker, page)
 
 
 def main(worker, budget_s=BUDGET_S, until_empty=False, night=None):
