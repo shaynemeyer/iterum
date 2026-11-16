@@ -10,7 +10,7 @@ Completed 2026-11-16. The last finding of the same project review; not a `todo.m
 
 **Change.** A `Host` other than `127.0.0.1` or `localhost` gets 403; a POST that is not `application/json` gets 415, which a page can only send after a CORS preflight the receiver never answers. Why, and the evidence that Claude Code's exporter sends `application/json` to `Host: 127.0.0.1`: decision log, 2026-11-16. CLAUDE.md's telemetry paragraph updated (`ef547eb`).
 
-**Checked.** After the fix: 415 and 403 for the forged requests, nothing recorded; a POST with the exporter's headers recorded; GET answers. `iterum status` and `governor.unseen_spend()` pass with the endpoint at `127.0.0.1` and at `localhost`. Claude Code 2.1.325 with an invalid API key (nothing billed) exported to the fixed receiver with no export error. Not yet seen: a billed session's spend recorded through it; the next paid run shows it in `iterum budget`.
+**Checked.** After the fix: 415 and 403 for the forged requests, nothing recorded; a POST with the exporter's headers recorded; GET answers. `iterum status` and `governor.unseen_spend()` pass with the endpoint at `127.0.0.1` and at `localhost`. Claude Code 2.1.325 with an invalid API key (nothing billed) exported to the fixed receiver with no export error. Then, with the user's go-ahead, one billed Haiku `claude -p` (0.00077 USD) through the fixed receiver: its spend was recorded (decision log, 2026-11-16).
 
 ## Drill labels that read like failures
 
