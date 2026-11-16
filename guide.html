@@ -524,7 +524,7 @@ iterum add --plan &lt;iterum&gt;/plans/not-found-links/plan.json --allow-claude 
 iterum add --plan &lt;iterum&gt;/plans/robots-sitemap/plan.json --allow-claude 0.05 --fix-retries 2 \
   --repo ~/code/my-app --branch night/robots-sitemap
 iterum budget suggest      <span class="c"># one prompt step each: at most (1 + 2) &times; 0.05 = 0.15 per task</span>
-iterum worker night-1 --budget-s 600 --until-empty --max-usd 0.30</pre></div>
+iterum worker night-1 --until-empty --max-usd 0.30</pre></div>
   <div class="tbl">
     <table>
       <thead><tr><th>When</th><th>The worker</th></tr></thead>
@@ -533,7 +533,8 @@ iterum worker night-1 --budget-s 600 --until-empty --max-usd 0.30</pre></div>
         <tr><td>The plan fails</td><td>Commits whatever the failed run left on the task's own branch ("iterum: what task N left behind"), returns to the base detached, deletes the branch if it holds no commits (so the task can be queued again on the same name), and dead-letters the task with the end of the error: usually the check's own message.</td></tr>
         <tr><td>The app has uncommitted changes before a task</td><td>Hands the task back and stops, listing the changes. Every queued task stays queued. Nothing is cleaned up for you: the changes may be someone's work.</td></tr>
         <tr><td>The ceiling, or the night's <code>--max-usd</code>, is reached</td><td>Stops before its next claim, leaving queued tasks queued. A plan already running stops before a step it cannot afford; its task is dead-lettered and its run can be resumed.</td></tr>
-        <tr><td>A ceiling or <code>--max-usd</code> is set, but its shell has no telemetry settings or the receiver is not answering</td><td>Stops before its next claim, leaving queued tasks queued: the ceiling could not count the night's spend. Start it from the shell where <code>.env.example</code> is sourced. It stops even for tasks with no prompt steps, since a task holds only a shell command.</td></tr>
+        <tr><td>A ceiling or <code>--max-usd</code> is set, but its shell has no telemetry settings or the receiver is not answering</td><td>Stops before its first claim, or within 5 seconds once the receiver stops answering, leaving queued tasks queued: the ceiling could not count the night's spend. Start it from the shell where <code>.env.example</code> is sourced. It stops even for tasks with no prompt steps, since a task holds only a shell command.</td></tr>
+        <tr><td>Its time budget ends (<code>--budget-s</code>; with <code>--until-empty</code> alone there is none)</td><td>Lets a running task finish, claims no more, and prints how many tasks it left queued.</td></tr>
       </tbody>
     </table>
   </div>
@@ -661,6 +662,8 @@ iterum scorecard main                   <span class="c"># did my working tree br
         <tr><td><code>ITERUM_SYNC_DIR</code></td><td><code>~/private-data/iterum</code></td><td>The sync folder, inside a git repo with a remote.</td></tr>
         <tr><td><code>ITERUM_NOTIFY</code></td><td>unset</td><td>A shell command each worker runs when it stops, with a summary on stdin (<a href="#notify">Notifications</a>).</td></tr>
         <tr><td><code>FLEET_WORK_MODULE</code></td><td>the shell runner</td><td>A module exporting <code>do_work(task)</code> for <code>iterum worker</code>, found from the folder you start it in.</td></tr>
+        <tr><td><code>FLEET_TASK_TIMEOUT_S</code></td><td>600</td><td>Seconds one task's command, usually a whole <code>iterum run</code>, may run; then it is killed and the task fails.</td></tr>
+        <tr><td><code>FLEET_WORKER_BUDGET_S</code></td><td>12</td><td>The worker's <code>--budget-s</code> when neither it nor <code>--until-empty</code> is given.</td></tr>
         <tr><td><code>.env.example</code></td><td>not loaded</td><td><code>source</code> it to send Claude Code telemetry to <code>iterum receiver</code>; required for prompt steps under a ceiling.</td></tr>
       </tbody>
     </table>
