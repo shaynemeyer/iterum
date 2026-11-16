@@ -2,6 +2,16 @@
 
 Items moved here from `todo.md` once done. Newest first.
 
+## The worker probed the receiver on every poll
+
+Completed 2026-11-16. Found in the same project review; not a `todo.md` item.
+
+**Problem.** `fleet.worker`'s loop called `stop_on_unseen_spend()`, an HTTP GET to the receiver, on every pass, and an idle worker passes every 0.2 s. Reproduced with a stub receiver counting requests on a scratch database with a ceiling: 15 GETs in a 3-second idle run.
+
+**Change.** `fleet/worker.py`: the probe runs in the `REAP_EVERY` (5 s) block beside `_reap()`, which also runs on the first pass, so the first claim is still checked. A receiver that dies mid-night is now noticed up to 5 s later; a plan with prompt steps still checks it at its own start (`check_receiver()`). CLAUDE.md said "before each claim" and now gives the timing (`6ce8ad2`).
+
+**Checked.** Idle 3 s with the receiver up: 1 GET. Ceiling set, receiver down, one task queued: the worker stops before claiming and the task stays `ready`. Receiver up: the task runs. `iterum drill kill` passes, twice.
+
 ## `iterum budget suggest` rounded an exact cent up
 
 Completed 2026-11-16. Found while checking the no-model fix below.
