@@ -2,6 +2,20 @@
 
 Decisions and why they were made. Newest first. Entries are never deleted; a decision that is reversed is marked "Superseded by" the entry that replaces it. Open decisions live in `open-questions.md`.
 
+## 2026-11-16: The telemetry receiver accepts only `application/json` from `Host` 127.0.0.1 or localhost
+
+**Decision.** `fleet/telemetry.py` answers 403 to any request whose `Host` is not `127.0.0.1` or `localhost`, and 415 to a POST whose `Content-Type` is not `application/json`.
+
+**Context.** Found in the 2026-11-16 project review. The receiver listens on 127.0.0.1 with no check, so any web page open in a browser on this machine could post a `claude_code.api_request` record and add fake spend, stopping runs and workers at the ceiling. Reproduced with curl: a `text/plain` POST and a POST with `Host: evil.example` were both recorded as `spend.reported`, and a GET with that Host returned the database path.
+
+**Why the content type, not only Host.** A page posting straight to `http://127.0.0.1:4318` sends `Host: 127.0.0.1:4318`, so a Host check stops only DNS rebinding. A cross-origin request with `Content-Type: application/json` is not a CORS simple request, so the browser sends a preflight `OPTIONS` first ([MDN: simple requests](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CORS#simple_requests)); the receiver has no `do_OPTIONS`, so the preflight fails and the POST is never sent. A `no-cors` fetch cannot set that type: it allows only CORS-safelisted headers ([MDN: `Request.mode`](https://developer.mozilla.org/en-US/docs/Web/API/Request/mode)). OTLP/HTTP specifies `application/json` for JSON payloads ([OTLP spec](https://opentelemetry.io/docs/specs/otlp/#otlphttp-request)).
+
+**Evidence that real spend still arrives.** Claude Code 2.1.325, run with an invalid `ANTHROPIC_API_KEY` (rejected, `total_cost_usd: 0`, nothing billed), exported its logs with `Content-Type: application/json`, `Host: 127.0.0.1:<port>`, no `Origin`, `User-Agent: OTel-OTLP-Exporter-JavaScript/0.208.0`, seen by a stub that logged headers only. A curl POST with those headers is recorded by the fixed receiver. Not yet seen: a billed session's `spend.reported` arriving through the fixed receiver; the first paid run after this change shows it.
+
+**Alternatives.** A shared secret header: the exporter can send one (`OTEL_EXPORTER_OTLP_HEADERS`), but it would be one more setting to keep in step for no gain over the preflight. Rejecting any request with an `Origin` header: not needed once the content type forces a preflight.
+
+**Affects.** `fleet/telemetry.py`; CLAUDE.md.
+
 ## 2026-11-15: A failing `ITERUM_NOTIFY` hook changes nothing but one printed line
 
 **Decision.** The hook runs after `write_report()`, in its own process group, with a 30-second limit. A non-zero exit prints `<worker>  notify: exit <code>`; past 30 seconds the whole group is killed and it prints `<worker>  notify: timed out`. Either way the worker's exit code is unchanged and no event is logged; a notification is not part of the ledger. The hook's own output passes through to the worker's.

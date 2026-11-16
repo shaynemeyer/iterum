@@ -78,10 +78,26 @@ def record(entries):
 
 
 class Receiver(BaseHTTPRequestHandler):
-    """Accepts POST /v1/logs, and GET /v1/logs for the database it writes to; every other path is 404."""
+    """Accepts POST /v1/logs, and GET /v1/logs for the database it writes to; every other path is 404.
+
+    A web page in any browser on this machine can send a request here. A Host other than 127.0.0.1
+    or localhost (DNS rebinding) gets 403. A POST that is not application/json gets 415: a page can
+    send that type cross-origin only after a CORS preflight, which this server never answers. Claude
+    Code 2.1.325's exporter sends application/json to Host 127.0.0.1 (decision log, 2026-11-16).
+    """
+
+    def _host_ok(self):
+        """403 and False unless the Host header names 127.0.0.1 or localhost."""
+        host = (self.headers.get("Host") or "").rsplit(":", 1)[0]
+        if host in ("127.0.0.1", "localhost"):
+            return True
+        self.send_error(403, "only 127.0.0.1 or localhost")
+        return False
 
     def do_GET(self):
         """Answer {"db": <resolved path>}, so fleet.run can check it reads the same ledger."""
+        if not self._host_ok():
+            return
         if self.path != "/v1/logs":
             self.send_error(404)
             return
@@ -92,8 +108,13 @@ class Receiver(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_POST(self):
+        if not self._host_ok():
+            return
         if self.path != "/v1/logs":
             self.send_error(404)
+            return
+        if self.headers.get_content_type() != "application/json":
+            self.send_error(415, "only application/json")
             return
         body = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
         written, skipped = record(list(spend(body)))
