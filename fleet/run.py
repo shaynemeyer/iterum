@@ -539,6 +539,8 @@ def claude_step(prompt, run_id, seq, cap_usd, model=None):
     log_finished(run_id, seq, code, envelope)
     if code != 0:
         raise RuntimeError(f"claude failed with exit {code}: {(stdout or stderr).strip()[:200]}")
+    if not envelope:  # without this, the KeyError below left the step proposed and the run running
+        raise RuntimeError(f"claude exited 0 but printed no JSON result envelope: {(stdout or stderr).strip()[:200]}")
     if envelope["is_error"]:
         raise RuntimeError(f"claude reported an error: {envelope.get('result')}")
     return str(envelope.get("result", ""))[:200]
