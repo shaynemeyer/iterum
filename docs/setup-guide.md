@@ -334,7 +334,7 @@ The summary never carries code, file contents or error text, but it does carry t
 | --- | --- |
 | `iterum: command not found` | Run `uv tool update-shell` and open a new terminal |
 | A command complains about `ITERUM_DEVICE` | Set it in your shell profile (step 1) |
-| First `iterum project` says DRIFT | Expected on an empty database; run it again |
+| First `iterum project` says DRIFT | Expected after new audit events, such as a first seed; run it again and it says MATCH |
 | "a plan that declares files must not run on main" | Switch to another branch |
 | `iterum land` refuses | `main` has local changes or is checked out in another worktree, or a changed file has no live claim |
 | `iterum worker` stops: "a spend limit is set, but claude would not report its spend" | With a ceiling or `--max-usd` set, `source .env.example` and run `iterum receiver` first |

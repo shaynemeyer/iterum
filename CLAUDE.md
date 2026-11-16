@@ -16,7 +16,7 @@ iterum status                                   # freeze, spend, receiver, runs,
 iterum report [--date D | --days N | --run RUN_ID | --serve [--port 8780]] [--out page.html] [--open] [--pdf] [--json]   # a day's work as one HTML page in reports/ beside the database, plus a page per linked run and an index.html (--pdf: also a PDF, via headless Chrome), or the data as JSON; a day with no activity writes nothing and says so
 iterum doctor                                   # audit this machine, writes ./harness-audit.json
 uv run scripts/seed-ledger.py                   # from the repo root: record ./harness-audit.json as layer.checked events
-iterum project                                  # rebuild knowledge; exits 1 on DRIFT (first run always DRIFT)
+iterum project                                  # rebuild knowledge; exits 1 on DRIFT (the first run after new layer.checked events, e.g. a seed, always DRIFT)
 iterum drill run                                # from the repo root: the six-step kill-and-resume drill
 iterum run p.json                               # a plan: [[seq, intent, command, [resource, ...]], ...]; resources optional
 iterum run p.json --allow-claude <usd>          # a plan with {"prompt": ...} steps: billed, each capped at <usd>

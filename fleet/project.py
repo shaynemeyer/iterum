@@ -8,8 +8,9 @@ Run with `iterum project`.
 
 Not read-only: it always replaces the knowledge table with the rebuild.
 Prints MATCH and exits 0 when the fingerprints agree, or DRIFT and exits 1
-when they differ, so a hook can fail on drift. A first run against an
-empty knowledge table reports DRIFT.
+when they differ, so a hook can fail on drift. The first run after new
+`layer.checked` events (a seed, or a sync import) reports DRIFT; a database
+with none reports MATCH.
 """
 
 import hashlib
@@ -54,6 +55,7 @@ def rebuild():
 
 
 if __name__ == "__main__":
+    db.init()  # a fresh agent.db has no tables yet; safe to repeat
     before, after = rebuild()
     print(f"before: {before}")
     print(f"after:  {after}")
