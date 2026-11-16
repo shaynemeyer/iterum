@@ -324,7 +324,7 @@ The summary never carries code, file contents or error text, but it does carry t
 | `ITERUM_IDLE_SECONDS` | `60` | Heartbeat age after which a running run counts as dead |
 | `ITERUM_MAX_ATTEMPTS` | `3` | Attempts at one step before `iterum recovery` halts the run |
 | `ITERUM_NOTIFY` | unset | A shell command each worker runs when it stops, with a summary on stdin ([Notifications](#notifications)) |
-| `FLEET_TASK_TIMEOUT_S` | `600` | Seconds one queue task's command may run; then it is killed and the task fails. Raise it for long plans |
+| `FLEET_TASK_TIMEOUT_S` | `600` | Seconds one queue task's command, usually a whole `iterum run`, may run; then it is killed and the task fails |
 | `FLEET_WORKER_BUDGET_S` | `12` | `iterum worker`'s default `--budget-s`, used when neither `--budget-s` nor `--until-empty` is given |
 | `FLEET_WORK_MODULE` | unset | A module exporting `do_work(task)`, used by `iterum worker` instead of the task's shell command |
 
