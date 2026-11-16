@@ -4,20 +4,17 @@ This guide takes you from a fresh clone to a first run you can kill, resume and 
 
 ```mermaid
 flowchart LR
-    A["1. Install"] --> B["2. Name this device"]
-    B --> C["3. Audit and seed"]
-    C --> D["4. Install the<br/>fleet-plan skill"]
-    D --> E["5. Create a plan"]
-    E --> F["6. Run it"]
-    F --> G["7. Land it"]
-    G --> H["8. Optional: queue,<br/>sync"]
+    A["1. Install<br/>(name, audit, skill)"] --> B["2. Create a plan"]
+    B --> C["3. Run it"]
+    C --> D["4. Land the branch"]
+    D --> E["5. Optional: queue,<br/>notifications, sync"]
 ```
 
 ## What you need
 
 | Requirement | Why | Get it |
 | --- | --- | --- |
-| Python 3.14 | `uuid.uuid7()` and newer syntax in `fleet/doctor.py` | [python.org](https://www.python.org/downloads/) or `uv python install 3.14` |
+| Python 3.14 | `uuid.uuid7()` and newer syntax in `fleet/doctor.py` and `fleet/view.py` | [python.org](https://www.python.org/downloads/) or `uv python install 3.14` |
 | [uv](https://docs.astral.sh/uv/) | Installs the `iterum` command | [Installing uv](https://docs.astral.sh/uv/getting-started/installation/) |
 | git | Plans run on branches; `iterum land` merges them | [git-scm.com](https://git-scm.com/) |
 | [Claude Code](https://code.claude.com/docs) (`claude`) | Runs the `fleet-plan` skill and prompt steps; the doctor also checks for it | [Quickstart](https://code.claude.com/docs/en/quickstart) |
@@ -327,6 +324,9 @@ The summary never carries code, file contents or error text, but it does carry t
 | `ITERUM_IDLE_SECONDS` | `60` | Heartbeat age after which a running run counts as dead |
 | `ITERUM_MAX_ATTEMPTS` | `3` | Attempts at one step before `iterum recovery` halts the run |
 | `ITERUM_NOTIFY` | unset | A shell command each worker runs when it stops, with a summary on stdin ([Notifications](#notifications)) |
+| `FLEET_TASK_TIMEOUT_S` | `600` | Seconds one queue task's command may run; then it is killed and the task fails. Raise it for long plans |
+| `FLEET_WORKER_BUDGET_S` | `12` | `iterum worker`'s default `--budget-s`, used when neither `--budget-s` nor `--until-empty` is given |
+| `FLEET_WORK_MODULE` | unset | A module exporting `do_work(task)`, used by `iterum worker` instead of the task's shell command |
 
 ## Troubleshooting
 

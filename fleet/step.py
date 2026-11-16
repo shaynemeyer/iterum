@@ -6,7 +6,7 @@ module nobody calls protects nothing.
 `run_step` UPDATEs a `steps` row, so called on its own, with no runner having
 INSERTed that row, it would update zero rows: the run then looks unstarted and
 a resume redoes everything. `_propose` below writes the row first, using the
-same write-before-act ordering as `fleet/run.py`'s `execute()`, and it is a
+same write-before-act ordering as `fleet/run.py`'s `run_steps()`, and it is a
 no-op when the runner already wrote the row.
 """
 

@@ -66,8 +66,8 @@ def runs_by_agent():
 def status():
     """Live sessions and ledger runs, side by side but not joined.
 
-    Session names and run agents share no key until claude_step() is wired in,
-    and runs.cost_usd stays 0 until telemetry fills it, so neither is shown joined.
+    The roster and the runs table share no key (a prompt step's session id is only in
+    its claude.finished event), and runs.cost_usd is never written, so neither is shown joined.
     """
     now = time.time()
     print(f"{'SESSION':<22} {'STATUS':<9} {'RUNTIME':>8}")

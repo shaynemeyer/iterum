@@ -31,6 +31,8 @@ Every event carries a UUIDv7 `uid` and the `device` that wrote it, so ledgers fr
 | `fleet/cli.py` | The `iterum` command: one word per module below |
 | `fleet/status.py` | One screen of fleet state; exits 1 when something needs a person |
 | `fleet/report.py`, `fleet/report_html.py` | A day's work as one self-contained HTML page, or as JSON |
+| `fleet/report_days.py`, `fleet/report_run.py` and their `_html` modules | `iterum report --days N` and `--run RUN_ID`: several days, or one run, as a page or JSON |
+| `fleet/report_index.py`, `fleet/report_serve.py` | The `index.html` of every report page; `iterum report --serve`, live pages on 127.0.0.1 |
 | `fleet/doctor.py` | Audits seven harness layers on this machine and writes `harness-audit.json` |
 | `fleet/db.py` | `agent.db` access; every write runs in `BEGIN IMMEDIATE` |
 | `fleet/schema.sql` | Tables for runs, events, knowledge, claims, the task queue, budgets, evals and approvals |
@@ -47,7 +49,8 @@ Every event carries a UUIDv7 `uid` and the `device` that wrote it, so ledgers fr
 | `fleet/telemetry.py` | Receives Claude Code telemetry and records each API request's cost; settings in [`.env.example`](.env.example) |
 | `fleet/governor.py` | `iterum budget`: a fleet-wide spend ceiling, summed from the ledger's `spend.reported` events, and a night's limit (`iterum worker --max-usd`) on one worker's runs; runs and workers stop at either. `iterum budget suggest` (`fleet/suggest.py`) estimates the queued tasks' cost |
 | `fleet/approve.py` | An approval gate for irreversible actions (`iterum approve`, `deny`; nothing calls it yet), and `iterum freeze`/`thaw` to stop new queue work |
-| `fleet/view.py` | Read-only views: live sessions and runs, one run's trace, failures per stage |
+| `fleet/view.py` | Read-only views: live sessions and runs, one run's trace, failures per stage, context size per request |
+| `fleet/proc.py` | Process-group checks, and SIGTERM handled as Ctrl-C, shared by runs, the queue and the merge gate |
 | `fleet/notify.py` | Runs `ITERUM_NOTIFY` once when a worker stops, with today's summary on stdin |
 | `fleet/canary.py` | `iterum canary`: flags recent runs whose median events, seconds or cost moved from the runs before them; detects change, not wrong output |
 | `fleet/replay.py`, `fleet/eval.py`, `fleet/scorecard.py` | Replays a run or queue task from the ledger on a scratch database; `iterum eval` turns past runs into a regression suite; `iterum scorecard` compares two git revisions on it |
@@ -107,6 +110,9 @@ It exports this device's events, commits only that file, pulls, pushes, imports 
 | `ITERUM_IDLE_SECONDS` | `60` | Heartbeat age after which a `running` run counts as dead |
 | `ITERUM_MAX_ATTEMPTS` | `3` | Attempts at one step before `fleet.recovery` halts the run |
 | `ITERUM_NOTIFY` | unset | A shell command each worker runs when it stops, with a summary on stdin, e.g. a macOS notification ([setup guide](docs/setup-guide.md#notifications)) |
+| `FLEET_TASK_TIMEOUT_S` | `600` | Seconds one queue task's command may run (or until its deadline, if sooner); then it is killed and the task fails |
+| `FLEET_WORKER_BUDGET_S` | `12` | `iterum worker`'s default `--budget-s`, used when neither `--budget-s` nor `--until-empty` is given |
+| `FLEET_WORK_MODULE` | unset | A module exporting `do_work(task)` that `iterum worker` uses instead of running the task's shell command |
 
 `agent.db` lives outside the repo by default; `harness-audit.json` is written to the current folder and git-ignored. Keep the sync folder in a private repo.
 

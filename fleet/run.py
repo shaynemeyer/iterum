@@ -7,8 +7,9 @@
     iterum resume <run_id> --force             # resume a halted run after review
     iterum run myplan.json --allow-claude 0.50   # a plan with prompt steps, each capped at $0.50 (billed)
 
-Always with `-u`. A killed process does not flush its buffers, so without it
-output that is piped or redirected is lost and you conclude the wrapper did nothing.
+Output must be unbuffered or line-buffered: a killed process does not flush its buffers, so
+piped or redirected output is lost and you conclude the wrapper did nothing. `iterum` line-buffers
+it; run as `python -m fleet.run`, add `-u`.
 """
 
 import argparse

@@ -8,7 +8,7 @@ A small Python harness for a fleet of Claude Code agents, built on one SQLite fi
 
 ## Commands
 
-Python 3.14 is required (`uuid.uuid7()`, and the unparenthesized `except A, B:` in `fleet/doctor.py`). Install the `iterum` command once with `uv tool install --editable .` (editable, so it runs this checkout's code); it works from any folder except where noted.
+Python 3.14 is required (`uuid.uuid7()`, and the unparenthesized `except A, B:` in `fleet/doctor.py` and `fleet/view.py`). Install the `iterum` command once with `uv tool install --editable .` (editable, so it runs this checkout's code); it works from any folder except where noted.
 
 ```bash
 ./install.sh                                    # from the repo root, once: asks for ITERUM_DEVICE (unless set), installs iterum, runs doctor, seed-ledger and project, installs the plugin
@@ -61,6 +61,9 @@ ITERUM_DB=/tmp/scratch.db ITERUM_DEVICE=test iterum drill run
 - `ITERUM_MAX_ATTEMPTS`: the default for `fleet.recovery --max-attempts`, default 3.
 - `ITERUM_SYNC_DIR`: sync folder, default `~/private-data/iterum`; must sit inside a git repo with a remote for `sync`.
 - `ITERUM_NOTIFY`: a shell command each `iterum worker` runs once when it stops (`fleet/notify.py`); unset, nothing is sent.
+- `FLEET_TASK_TIMEOUT_S`: seconds the default `do_work` lets one task's command run, default 600, or until the task's deadline if sooner; then `_shell()` kills its process group and the task fails.
+- `FLEET_WORKER_BUDGET_S`: `iterum worker`'s `--budget-s` when neither it nor `--until-empty` is given, default 12.
+- `FLEET_WORK_MODULE`: a module exporting `do_work(task)`, used by `fleet.worker` in place of the default shell runner; the current folder is appended to `sys.path` to import it.
 
 ## Architecture
 
