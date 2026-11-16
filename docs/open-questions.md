@@ -30,7 +30,7 @@ Decisions not made yet. When one is answered, record it in `decision-log.md`, ad
 
 ### Should settling an irreversible action go through `approvals`?
 
-**Context.** For an irreversible action that can neither take a key nor be checked, an `in_flight` receipt older than its timeout should be treated as an incident for a human, not retried. The schema has an `approvals` table (`run_id`, `seq`, `action`, `fingerprint`, `decision`, `decided_by`) for recording such decisions. Since 2026-11-13, `fleet/approve.py` writes it: `require()` records a pending request for an action in `IRREVERSIBLE` and `fleet.approve approve|deny` settles it. But nothing calls `require()`: `fleet.run` plan steps carry no action name to pass it, so the gate exists and stops nothing.
+**Context.** For an irreversible action that can neither take a key nor be checked, an `in_flight` receipt older than its timeout should be treated as an incident for a human, not retried. The schema has an `approvals` table (`run_id`, `seq`, `action`, `fingerprint`, `decision`, `decided_by`) for recording such decisions. Since 2026-11-13, `fleet/approve.py` writes it: `require()` records a pending request for an action in `IRREVERSIBLE` and `iterum approve|deny <fingerprint>` settles it. But nothing calls `require()`: `fleet.run` plan steps carry no action name to pass it, so the gate exists and stops nothing.
 
 **Options.** Have the settle command (see the question above) write an `approvals` row as well as its `action.settled` event; require an `approved` row before an irreversible action runs at all; or leave `approvals` unused until a concrete action needs it.
 
@@ -74,6 +74,6 @@ Decisions not made yet. When one is answered, record it in `decision-log.md`, ad
 
 **Options.** Leave as is; add some to `REFUSED`; or let `claude_step()` decide per failure, based on whether any tool ran.
 
-**Blocks.** Nothing yet. `claude_step()` is wired in (2026-11-11) but does not go through `commit_once()`, so a prompt step writes no receipt. The first paid run succeeded, so it gave no failure to inspect.
+**Blocks.** Nothing yet. `claude_step()` is wired in (2026-11-11) but does not go through `commit_once()`, so a prompt step writes no receipt. Through 2026-11-15, 84 prompt-step sessions in 58 runs all ended with exit 0 and `is_error` false, and no event names an account or setup category; the failures were later build or check steps. So there is still no such failure to inspect.
 
 **Settled by.** Wiring `claude_step()` in and inspecting real failed runs: where the final error appears (the `result` message or the last `api_retry` event) and whether tools ran before it.
