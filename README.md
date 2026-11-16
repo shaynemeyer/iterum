@@ -48,6 +48,7 @@ Every event carries a UUIDv7 `uid` and the `device` that wrote it, so ledgers fr
 | `fleet/governor.py` | `iterum budget`: a fleet-wide spend ceiling, summed from the ledger's `spend.reported` events, and a night's limit (`iterum worker --max-usd`) on one worker's runs; runs and workers stop at either. `iterum budget suggest` (`fleet/suggest.py`) estimates the queued tasks' cost |
 | `fleet/approve.py` | An approval gate for irreversible actions (`iterum approve`, `deny`; nothing calls it yet), and `iterum freeze`/`thaw` to stop new queue work |
 | `fleet/view.py` | Read-only views: live sessions and runs, one run's trace, failures per stage |
+| `fleet/notify.py` | Runs `ITERUM_NOTIFY` once when a worker stops, with today's summary on stdin |
 | `fleet/canary.py` | `iterum canary`: flags recent runs whose median events, seconds or cost moved from the runs before them; detects change, not wrong output |
 | `fleet/replay.py`, `fleet/eval.py`, `fleet/scorecard.py` | Replays a run or queue task from the ledger on a scratch database; `iterum eval` turns past runs into a regression suite; `iterum scorecard` compares two git revisions on it |
 | `fleet/sweep.py` | `iterum sweep`: runs each plan several times in rotated order and compares pass rate beside cost |
@@ -105,6 +106,7 @@ It exports this device's events, commits only that file, pulls, pushes, imports 
 | `ITERUM_CLAIM_TTL` | `300` | Seconds a `fleet.run` file claim lasts between renewals |
 | `ITERUM_IDLE_SECONDS` | `60` | Heartbeat age after which a `running` run counts as dead |
 | `ITERUM_MAX_ATTEMPTS` | `3` | Attempts at one step before `fleet.recovery` halts the run |
+| `ITERUM_NOTIFY` | unset | A shell command each worker runs when it stops, with a summary on stdin, e.g. a macOS notification ([setup guide](docs/setup-guide.md#notifications)) |
 
 `agent.db` lives outside the repo by default; `harness-audit.json` is written to the current folder and git-ignored. Keep the sync folder in a private repo.
 

@@ -279,6 +279,39 @@ w1  report: ~/.local/share/iterum/reports/report-<date>.html
 
 With `--repo` and `--branch`, the worker creates the branch from `main`, runs the command on it, then leaves the repo detached at `main`, ready for `iterum land`. `iterum dlq` lists tasks that ran out of attempts.
 
+### Notifications
+
+Set `ITERUM_NOTIFY` to a shell command, and each worker runs it once when it stops, after writing the report, with a short summary on stdin:
+
+```text
+Iterum: w1 stopped
+runs: 1 done, 1 failed
+ready to land: 0
+needs a person: 2
+spend today: $0.42 (runs $0.30)
+report: ~/.local/share/iterum/reports/report-<date>.html
+```
+
+The numbers are today's, as on the report page. A failure counts under "needs a person" once as a failed run and once as a dead-lettered task. Unset, nothing is sent. A command that fails prints `notify: exit <code>`; one still running after 30 seconds is killed, with anything it started, and prints `notify: timed out after 30s`. Neither changes the worker's exit code.
+
+On macOS, a desktop notification (tested):
+
+```bash
+export ITERUM_NOTIFY='osascript -e "on run argv" -e "display notification (item 1 of argv) with title \"Iterum\"" -e "end run" "$(cat)"'
+```
+
+It shows as from **Script Editor**: `display notification` has no option to change the sender ([Apple: Displaying Notifications](https://developer.apple.com/library/archive/documentation/LanguageUt/Conceptual/MacAutomationScriptingGuide/DisplayNotifications.html)). If nothing appears, allow notifications for Script Editor in System Settings, Notifications. It reaches you only at that Mac; overnight it waits in Notification Center.
+
+Other channels, not tested here:
+
+```bash
+export ITERUM_NOTIFY='notify-send Iterum "$(cat)"'          # Linux desktop
+export ITERUM_NOTIFY='mail -s Iterum you@example.com'      # needs a working mail setup
+export ITERUM_NOTIFY='jq -Rs "{text: .}" | curl -s -H "Content-Type: application/json" --data @- "$SLACK_WEBHOOK_URL"'   # Slack incoming webhook
+```
+
+The summary never carries code, file contents or error text, but it does carry the report's path, which names your home folder.
+
 ### Sync across machines
 
 `iterum sync` shares the ledger through a private git repo. Each device writes only its own events file, so git never has a conflict. See [sync.md](sync.md).
@@ -293,6 +326,7 @@ With `--repo` and `--branch`, the worker creates the branch from `main`, runs th
 | `ITERUM_CLAIM_TTL` | `300` | Seconds a file claim lasts between renewals |
 | `ITERUM_IDLE_SECONDS` | `60` | Heartbeat age after which a running run counts as dead |
 | `ITERUM_MAX_ATTEMPTS` | `3` | Attempts at one step before `iterum recovery` halts the run |
+| `ITERUM_NOTIFY` | unset | A shell command each worker runs when it stops, with a summary on stdin ([Notifications](#notifications)) |
 
 ## Troubleshooting
 

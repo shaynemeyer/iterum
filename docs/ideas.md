@@ -41,3 +41,17 @@ Raised 2026-11-13. `iterum report` writes an HTML page (and a PDF with `--pdf`) 
 ## Readable small values in report charts
 
 Raised 2026-11-13. On a linear scale, small spend vanishes beside a large day: Haiku's spend on 2026-11-12 is invisible next to the $2.02 Opus hour, and one costly plan squeezes the cost-per-plan dots. Options: a total label on each bar, a log-scale option, or a second chart for the small series. The table views and hover titles already give the values. Settled by whether the charts are read for totals or for small series.
+
+## Notifications from "Iterum" with its logo, not Script Editor
+
+Raised 2026-11-15 by the user: "wouldn't it be more prefessional to have it from Iterum with the logo?" The documented macOS `ITERUM_NOTIFY` example uses `osascript`'s `display notification`, which shows as from Script Editor and has no option to change the sender ([Apple: Displaying Notifications](https://developer.apple.com/library/archive/documentation/LanguageUt/Conceptual/MacAutomationScriptingGuide/DisplayNotifications.html)).
+
+**Tried, did not work.** An AppleScript applet, `Iterum.app`, built with `osacompile` (bundle id `dev.iterum.notify`, the gh-pages `favicon.svg` as its icon via `sips` and `iconutil`, `LSUIElement`, signed ad hoc), launched with `open`, reading its message from a file. It ran and quit, and no notification appeared: `usernoted` logged `Denying message 3` and `Denying message 7 from connection <LegacyConnection identifier: dev.iterum.notify ...>`, with no permission prompt and no Notifications settings entry. Script Editor's notification over the same legacy path, minutes before, was "successfully processed ... Presenting ... as banner". Registering the applet with `lsregister -f` (the log had said `Failed to find dev.iterum.notify in LaunchServices`) changed nothing: the same two denials. Why it is denied is not known; untested guesses are that a new app cannot gain permission through the legacy path, or that an ad-hoc signature without a Team ID is refused.
+
+**Options.**
+
+1. **A small Swift app** using `UserNotifications`, whose `requestAuthorization` asks the user for permission ([Apple](https://developer.apple.com/documentation/usernotifications/unusernotificationcenter/requestauthorization(options:completionhandler:))); `install.sh` would build it on macOS (needs Xcode's command-line tools), and `ITERUM_NOTIFY` would call it. Whether an ad-hoc-signed app is allowed is the same open question.
+2. **`terminal-notifier`** (Homebrew, third-party): `-sender` and `-appIcon`; the latter relies on a private method, and it uses the deprecated `NSUserNotification` API, which a replacement project says breaks parts of it on macOS 26 ([send/macnotifier](https://github.com/send/macnotifier)); not verified.
+3. **Leave it:** Script Editor, documented in the setup guide.
+
+**Settled by.** Whether a Swift app, ad-hoc signed, gets a permission prompt and shows "Iterum" with the logo, tried once on this Mac.
