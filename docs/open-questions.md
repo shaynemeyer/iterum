@@ -12,7 +12,11 @@ Decisions not made yet. When one is answered, record it in `decision-log.md`, ad
 
 **Settled by.** Whether anything needs the other fields. The `result` text can be long, so logging it whole has a cost.
 
-## How does a human settle a stuck `in_flight` receipt?
+## Waiting on a plan with an irreversible action
+
+`commit_once()` and `approve.require()` are built, but neither runs: `commit_once()`'s only caller is `run_step()` in `fleet/step.py`, which nothing calls, and nothing calls `approve.require()`. The questions below matter only once a plan does something outside the repo that cannot be undone (a deploy, a push, a payment). Until then, nothing writes receipts or asks for approval. Reopen them when such a plan is written.
+
+### How does a human settle a stuck `in_flight` receipt?
 
 **Context.** An ambiguous failure leaves the receipt `in_flight`, and every later attempt raises `Uncertain` (see the decision log). Today the only way out is editing `agent.db` by hand.
 
@@ -24,7 +28,7 @@ Decisions not made yet. When one is answered, record it in `decision-log.md`, ad
 
 **Settled by.** Choosing where the command lives, what it records in the ledger, and whether it needs `--force` like a halted run.
 
-## Should settling an irreversible action go through `approvals`?
+### Should settling an irreversible action go through `approvals`?
 
 **Context.** For an irreversible action that can neither take a key nor be checked, an `in_flight` receipt older than its timeout should be treated as an incident for a human, not retried. The schema has an `approvals` table (`run_id`, `seq`, `action`, `fingerprint`, `decision`, `decided_by`) for recording such decisions. Since 2026-11-13, `fleet/approve.py` writes it: `require()` records a pending request for an action in `IRREVERSIBLE` and `fleet.approve approve|deny` settles it. But nothing calls `require()`: `fleet.run` plan steps carry no action name to pass it, so the gate exists and stops nothing.
 
@@ -34,7 +38,7 @@ Decisions not made yet. When one is answered, record it in `decision-log.md`, ad
 
 **Settled by.** Deciding which actions count as irreversible, and whether the human decision belongs on the settle path, before the action, or both.
 
-## How should a `fleet.run` step call `approve.require()`?
+### How should a `fleet.run` step call `approve.require()`?
 
 **Context.** `fleet/approve.py` (2026-11-13, `0627be3`) records and settles approvals, but nothing calls `require()`. A plan step is `[seq, intent, command, resources]`, and its command is an opaque shell string or prompt, so `fleet.run` cannot tell that a step is, say, a `git.push`; guessing from the shell text would be the verb-level matching that `IRREVERSIBLE`'s exact names avoid. A run also has no way to wait: `runs.status` allows `running`, `done`, `failed`, `halted` and `budget_exhausted`, and SQLite cannot change that CHECK in place. Iterum performs no irreversible action itself; the app's plans would.
 
@@ -44,7 +48,7 @@ Decisions not made yet. When one is answered, record it in `decision-log.md`, ad
 
 **Settled by.** A plan that needs it, and choosing whether a waiting run reuses `halted` or gets its own status. Test plan for (a): a scratch-database drill that pauses, restarts, approves and resumes, and checks that a changed param asks again.
 
-## Should some actions get exactly-once, not just at-most-once?
+### Should some actions get exactly-once, not just at-most-once?
 
 **Context.** `commit_once()` guarantees at most once. A failure after the side effect leaves the receipt `in_flight`, and the step stays blocked until a human checks. Getting exactly once across that failure needs the target system to take part, and `commit_once()` cannot involve it: it calls `action()` with no arguments, so the key never leaves `agent.db`.
 
@@ -54,7 +58,7 @@ Decisions not made yet. When one is answered, record it in `decision-log.md`, ad
 
 **Settled by.** Knowing which actions the fleet will run and whether their targets accept a key or can be queried.
 
-## Which actions can prove nothing ran?
+### Which actions can prove nothing ran?
 
 **Context.** An action that knows it failed before taking effect can raise an error whose `category` is in `REFUSED`, freeing its key. Anything else stays locked.
 
@@ -64,7 +68,7 @@ Decisions not made yet. When one is answered, record it in `decision-log.md`, ad
 
 **Settled by.** Listing each action's failure modes and which of them are certain.
 
-## Should any Claude Code account or setup errors be `REFUSED`?
+### Should any Claude Code account or setup errors be `REFUSED`?
 
 **Context.** `authentication_failed`, `billing_error` and the others are `LOGICAL` but not `REFUSED`, so their receipt stays `in_flight`. For a single API call that is too cautious; for a whole `claude -p` session it may be right, since the error can arrive after tools have run.
 
