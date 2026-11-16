@@ -50,9 +50,12 @@ def estimate(payload, costs):
     if cap is None:
         return {"at_most": None, "typical": None, "note": "iterum run will refuse it: prompt steps but no --allow-claude"}
     at_most = (len(models) + payload.get("fix_retries", 0)) * cap
+    unnamed = models.count(None)
+    if unnamed:  # telemetry records the model used, but the plan does not say which model the default is
+        return {"at_most": at_most, "typical": None, "note": f"typical unknown: {unnamed} prompt step(s) name no model"}
     known = [statistics.median(costs[m]) for m in models if m in costs]
     if len(known) < len(models):
-        missing = sorted({m or "the default model" for m in models if m not in costs})
+        missing = sorted({m for m in models if m not in costs})
         return {"at_most": at_most, "typical": None, "note": f"no past prompt steps on {', '.join(missing)}"}
     used = ", ".join(f"{m}: median of {len(costs[m])}" for m in sorted(set(models)))
     return {"at_most": at_most, "typical": sum(known), "note": f"{len(models)} prompt step(s); {used}"}
@@ -87,6 +90,6 @@ def show():
         print(f"{unknown} task(s) without an 'at most' are not counted; a limit from these totals may stop them")
     no_history = sum(e["at_most"] is not None and e["typical"] is None for _, e in rows)
     if no_history:
-        print(f"{no_history} task(s) have no past cost on their model, so 'typical' leaves them out")
+        print(f"{no_history} task(s) have no 'typical' (see each note), so its total leaves them out")
     if at_most > 0:
         print(f"start the night with:\n  iterum worker night-1 --until-empty --max-usd {math.ceil(at_most * 100) / 100:.2f}")
